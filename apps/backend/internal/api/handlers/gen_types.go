@@ -91,6 +91,7 @@ func (e ErrorPatternSeverity) Valid() bool {
 const (
 	ErrorResponseCodeAnalysisFailed  ErrorResponseCode = "analysis_failed"
 	ErrorResponseCodeAnalysisPending ErrorResponseCode = "analysis_pending"
+	ErrorResponseCodeInvalidState    ErrorResponseCode = "invalid_state"
 	ErrorResponseCodeLlmUnavailable  ErrorResponseCode = "llm_unavailable"
 	ErrorResponseCodeNotFound        ErrorResponseCode = "not_found"
 	ErrorResponseCodeValidationError ErrorResponseCode = "validation_error"
@@ -102,6 +103,8 @@ func (e ErrorResponseCode) Valid() bool {
 	case ErrorResponseCodeAnalysisFailed:
 		return true
 	case ErrorResponseCodeAnalysisPending:
+		return true
+	case ErrorResponseCodeInvalidState:
 		return true
 	case ErrorResponseCodeLlmUnavailable:
 		return true
@@ -329,6 +332,16 @@ type TargetRule struct {
 	Verb  string  `json:"verb"`
 }
 
+// UpdatePracticeRequest defines model for UpdatePracticeRequest.
+type UpdatePracticeRequest struct {
+	// DraftText Traducción experimental del usuario (inglés).
+	DraftText *string `json:"draft_text,omitempty"`
+
+	// SourceText Texto base en español.
+	SourceText  *string       `json:"source_text,omitempty"`
+	TargetRules *[]TargetRule `json:"target_rules,omitempty"`
+}
+
 // Window defines model for Window.
 type Window string
 
@@ -346,6 +359,9 @@ type WindowQuery = Window
 
 // AnalysisPending defines model for AnalysisPending.
 type AnalysisPending = ErrorResponse
+
+// InvalidState defines model for InvalidState.
+type InvalidState = ErrorResponse
 
 // LLMUnavailable defines model for LLMUnavailable.
 type LLMUnavailable = ErrorResponse
@@ -388,3 +404,6 @@ type ListPracticesParams struct {
 
 // CreatePracticeJSONRequestBody defines body for CreatePractice for application/json ContentType.
 type CreatePracticeJSONRequestBody = CreatePracticeRequest
+
+// UpdatePracticeJSONRequestBody defines body for UpdatePractice for application/json ContentType.
+type UpdatePracticeJSONRequestBody = UpdatePracticeRequest

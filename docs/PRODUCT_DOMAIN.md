@@ -202,6 +202,7 @@ Para mantener el proyecto acotado y evitar la parálisis por análisis (MVP acot
 | `ValidationError` | Entrada inválida (texto vacío, `TargetRules` vacío, JSON malformado) | 422 | `validation_error` |
 | `NotFoundError` | `Practice`/`Analysis` no existe | 404 | `not_found` |
 | `AnalysisPendingError` | Se solicita el resultado antes de que termine el análisis | 409 | `analysis_pending` |
+| `InvalidStateError` | Operación no válida para el estado actual (editar una práctica no `draft`; borrar una `analyzing`) | 409 | `invalid_state` |
 | `AnalysisFailedError` | El análisis terminó con fallo (el cliente lo observa vía `analysis.status == "failed"`) | — (sin 4xx; ver §5.1) | `analysis_failed` (reservado) |
 | `LLMUnavailableError` | Proveedor LLM caído / timeout | 503 | `llm_unavailable` |
 
@@ -270,6 +271,8 @@ Cada `ErrorPattern` además lleva `severity` (`minor` | `moderate` | `critical`)
 | `POST` | `/v1/practices` | Crea una práctica (source + draft + target rules). | `201` `Practice` |
 | `GET` | `/v1/practices` | Lista las prácticas del usuario (paginado `?limit&offset`). | `200` `PracticeList` (`{items, total}`) |
 | `GET` | `/v1/practices/{practiceId}` | Obtiene práctica + análisis embebido. | `200` `PracticeDetail` |
+| `PATCH` | `/v1/practices/{practiceId}` | Edita parcialmente una práctica en `draft`. | `200` `Practice` · `409 invalid_state` si no está en `draft` |
+| `DELETE` | `/v1/practices/{practiceId}` | Elimina (soft-delete) una práctica. | `204` · `409 invalid_state` si está `analyzing` |
 | `POST` | `/v1/practices/{practiceId}/analyze` | Dispara el análisis asíncrono. | `202` (polling) + `Retry-After` |
 | `GET` | `/v1/analytics/error-patterns` | Agregados de patrones de error (`?window=day\|week\|month`). | `200` `ErrorPatternStats` |
 | `GET` | `/v1/analytics/progress` | Serie temporal de progreso (`?window=day\|week\|month`). | `200` `ProgressSeries` |
@@ -282,6 +285,8 @@ Cada `ErrorPattern` además lleva `severity` (`minor` | `moderate` | `critical`)
 > **Fallos de análisis (no usan 4xx)**: un análisis terminado con fallo se comunica con `200` y `analysis.status == "failed"` en `PracticeDetail`; **no** se devuelve `422 analysis_failed` (el `422` queda reservado a errores de validación del input). El código `analysis_failed` permanece en la taxonomía de errores del contrato como valor reservado.
 >
 > **Paginación y ventana**: los listados usan `limit` (1..100, por defecto 20) y `offset` (por defecto 0) y devuelven `{items, total}`. Los agregados de analítica aceptan `window` (`day|week|month`, por defecto `week`).
+>
+> **Ciclo de vida (CRUD de `Practice`)**: `Practice` es editable solo en `draft` (`PATCH`, parcial); el borrado es **soft-delete** (`DELETE` → `204`, el job `purge-raw-data` lo materializa después, A8). Los conflictos de estado devuelven `409 invalid_state`.
 
 ### 5.2 Schema `FragmentAnalysis` (el corazón del producto)
 

@@ -39,10 +39,22 @@ export interface paths {
         get: operations["get_practice"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Elimina una práctica
+         * @description Soft-delete: marca la práctica como eliminada; el job `purge-raw-data`
+         *     del provisioner la borra físicamente después (A8, retención limitada).
+         *     Bloqueado mientras `status == "analyzing"` (`409 invalid_state`).
+         */
+        delete: operations["delete_practice"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Edita una práctica en borrador
+         * @description Actualiza parcialmente una práctica. Solo permitido cuando
+         *     `status == "draft"` (antes de analizar). Si no está en `draft`,
+         *     responde `409 invalid_state`.
+         */
+        patch: operations["update_practice"];
         trace?: never;
     };
     "/practices/{practiceId}/analyze": {
@@ -181,7 +193,7 @@ export interface components {
     schemas: {
         ErrorResponse: {
             /** @enum {string} */
-            code: "validation_error" | "not_found" | "analysis_pending" | "analysis_failed" | "llm_unavailable";
+            code: "validation_error" | "not_found" | "analysis_pending" | "analysis_failed" | "invalid_state" | "llm_unavailable";
             message: string;
         };
         CreatePracticeRequest: {
@@ -190,6 +202,13 @@ export interface components {
             /** @description Traducción experimental del usuario (inglés). */
             draft_text: string;
             target_rules: components["schemas"]["TargetRule"][];
+        };
+        UpdatePracticeRequest: {
+            /** @description Texto base en español. */
+            source_text?: string;
+            /** @description Traducción experimental del usuario (inglés). */
+            draft_text?: string;
+            target_rules?: components["schemas"]["TargetRule"][];
         };
         TargetRule: {
             verb: string;
@@ -352,6 +371,19 @@ export interface components {
                 "application/json": components["schemas"]["ErrorResponse"];
             };
         };
+        /**
+         * @description La operación no es válida para el estado actual del recurso (p. ej.
+         *     editar una práctica que no está en `draft`, o borrar una que está en
+         *     `analyzing`).
+         */
+        InvalidState: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
         /** @description El proveedor LLM está caído o excedió el timeout. */
         LLMUnavailable: {
             headers: {
@@ -454,6 +486,59 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+        };
+    };
+    delete_practice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador de la práctica (UUID v7). */
+                practiceId: components["parameters"]["PracticeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Práctica marcada como eliminada (soft-delete). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+        };
+    };
+    update_practice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador de la práctica (UUID v7). */
+                practiceId: components["parameters"]["PracticeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePracticeRequest"];
+            };
+        };
+        responses: {
+            /** @description Práctica actualizada. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Practice"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["InvalidState"];
+            422: components["responses"]["ValidationError"];
         };
     };
     analyze_practice: {

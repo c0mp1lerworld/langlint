@@ -35,9 +35,15 @@ type ServerInterface interface {
 	// CreatePractice Crea una práctica
 	// (POST /practices)
 	CreatePractice(w http.ResponseWriter, r *http.Request)
+	// DeletePractice Elimina una práctica
+	// (DELETE /practices/{practiceId})
+	DeletePractice(w http.ResponseWriter, r *http.Request, practiceId PracticeId)
 	// GetPractice Obtiene una práctica con su análisis embebido
 	// (GET /practices/{practiceId})
 	GetPractice(w http.ResponseWriter, r *http.Request, practiceId PracticeId)
+	// UpdatePractice Edita una práctica en borrador
+	// (PATCH /practices/{practiceId})
+	UpdatePractice(w http.ResponseWriter, r *http.Request, practiceId PracticeId)
 	// AnalyzePractice Dispara el análisis asíncrono de una práctica
 	// (POST /practices/{practiceId}/analyze)
 	AnalyzePractice(w http.ResponseWriter, r *http.Request, practiceId PracticeId)
@@ -89,9 +95,21 @@ func (_ Unimplemented) CreatePractice(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// DeletePractice Elimina una práctica
+// (DELETE /practices/{practiceId})
+func (_ Unimplemented) DeletePractice(w http.ResponseWriter, r *http.Request, practiceId PracticeId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // GetPractice Obtiene una práctica con su análisis embebido
 // (GET /practices/{practiceId})
 func (_ Unimplemented) GetPractice(w http.ResponseWriter, r *http.Request, practiceId PracticeId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdatePractice Edita una práctica en borrador
+// (PATCH /practices/{practiceId})
+func (_ Unimplemented) UpdatePractice(w http.ResponseWriter, r *http.Request, practiceId PracticeId) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -310,6 +328,32 @@ func (siw *ServerInterfaceWrapper) CreatePractice(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// DeletePractice operation middleware
+func (siw *ServerInterfaceWrapper) DeletePractice(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "practiceId" -------------
+	var practiceId PracticeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "practiceId", chi.URLParam(r, "practiceId"), &practiceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "practiceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeletePractice(w, r, practiceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetPractice operation middleware
 func (siw *ServerInterfaceWrapper) GetPractice(w http.ResponseWriter, r *http.Request) {
 
@@ -327,6 +371,32 @@ func (siw *ServerInterfaceWrapper) GetPractice(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetPractice(w, r, practiceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdatePractice operation middleware
+func (siw *ServerInterfaceWrapper) UpdatePractice(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "practiceId" -------------
+	var practiceId PracticeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "practiceId", chi.URLParam(r, "practiceId"), &practiceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "practiceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdatePractice(w, r, practiceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -482,7 +552,13 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/practices", wrapper.CreatePractice)
 	})
 	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/practices/{practiceId}", wrapper.DeletePractice)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/practices/{practiceId}", wrapper.GetPractice)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/practices/{practiceId}", wrapper.UpdatePractice)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/practices/{practiceId}/analyze", wrapper.AnalyzePractice)

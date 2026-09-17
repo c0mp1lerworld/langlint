@@ -19,6 +19,7 @@
 - [ ] `2.2.2` Crear value objects `SourceText`, `DraftText`, `TargetRule`, `PracticeStatus`.
 - [ ] `2.2.3` Implementar invariantes: textos no vacíos, ≥1 `TargetRule`, transición `draft → analyzing → completed|failed`.
 - [ ] `2.2.4` Definir evento `PracticeCreated` (payload `PracticeID`, `UserID`).
+- [ ] `2.2.5` Exponer `Edit(...)` (solo en `draft`) y `Delete(...)` (soft-delete; bloquea `analyzing`) en el agregado, con `InvalidStateError` (409 `invalid_state`), alineado con `PATCH`/`DELETE /v1/practices/{practiceId}` del contrato.
 
 ## 2.3 Bounded context `analysis/`
 
@@ -36,7 +37,7 @@
 ## 2.5 Errores, identificadores y eventos compartidos (raíz del dominio)
 
 - [ ] `2.5.1` Crear `identifiers.go` con UUID v7 usando **solo** `crypto/rand`, `time`, `fmt` (A7). API: `NewID`, `MustNewID`, `IsValid`, `Version`.
-- [ ] `2.5.2` Crear `errors.go` con `ValidationError`, `NotFoundError`, `AnalysisPendingError`, `AnalysisFailedError`, `LLMUnavailableError` (A5).
+- [ ] `2.5.2` Crear `errors.go` con `ValidationError`, `NotFoundError`, `AnalysisPendingError`, `AnalysisFailedError`, `InvalidStateError`, `LLMUnavailableError` (A5).
 - [ ] `2.5.3` Crear `events.go` con los structs `DomainEvent` inmutables + campo `Version`.
 - [ ] `2.5.4` Verificar que **ningún** archivo del dominio importa fuera de stdlib (regla `domain_purity`, A1).
 - [ ] `2.5.5` Verificar que ningún bounded context importa a otro (regla `forbidden_imports`, A3).

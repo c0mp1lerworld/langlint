@@ -4,6 +4,36 @@
 
 ---
 
+## 2026-09-17 — Fase 1: CRUD de `Practice` (PATCH + DELETE)
+
+**Estado**: gate de Fase 1 sigue en verde. `pnpm generate` idempotente, `pnpm lint` `valid` (6 warnings `operation-4xx-response`), `pnpm build` OK.
+
+**Contexto**: se evaluó si la superficie permitía un CRUD completo. Faltaban `Update` y `Delete` sobre `Practice`; se añaden (contract-first).
+
+**Hecho (todo en `apps/contracts/openapi/api.yaml` → `pnpm generate`)**:
+1. **`PATCH /practices/{practiceId}`**: edición **parcial** (`UpdatePracticeRequest` con `source_text`/`draft_text`/`target_rules` opcionales, `minProperties: 1`). Solo permitido en `status == "draft"` → `200 Practice`; si no, `409 invalid_state`.
+2. **`DELETE /practices/{practiceId}`**: **soft-delete síncrono** → `204`; bloqueado con `409 invalid_state` si `status == "analyzing"`. La purga física la hará `purge-raw-data` (A8).
+3. **Nuevo código `invalid_state`** (409) en `ErrorResponse.code` + componente de respuesta `InvalidState`.
+4. Regenerados `gen_types.go` (nuevo `UpdatePracticeRequest`, alias `InvalidState = ErrorResponse`, enum `ErrorResponseCodeInvalidState`), `gen_server.go` (`DeletePractice`/`UpdatePractice`) y `gen.ts`.
+
+**Decisiones**:
+- **PATCH parcial** (no PUT): semánticamente correcto para editar un borrador; editable solo en `draft`.
+- **Soft-delete + `204`**: coherente con la retención limitada (A8); reversible y purgable por el provisioner. Se descarta el hard-delete inmediato.
+- **Código propio `invalid_state`** (no reutilizar `analysis_pending`): `analysis_pending` es un **éxito idempotente** del endpoint `analyze`; los conflictos de estado son errores reales y distintos (AP3: un concepto, un tipo).
+- **Versionado**: cambio **aditivo** (nuevos endpoints + valor de enum) → `apps/contracts` sigue en `1.0.0`.
+
+**Docs actualizados**: `docs/PRODUCT_DOMAIN.md` §5.1 (dos filas nuevas + nota de ciclo de vida) y §4.5 (`InvalidStateError` → 409 `invalid_state`). `docs/checklist/02-dominio-puro.md`: nuevo item `2.2.5` (métodos `Edit`/`Delete` del agregado) y `2.5.2` ampliado con `InvalidStateError`.
+
+**Impacto en Fase 2**: el agregado `Practice` debe exponer `Edit(...)` (solo `draft`) y `Delete(...)` (soft-delete) y el error `InvalidStateError`.
+
+**Verificación**: `pnpm generate` ×2 + `git diff --exit-code` (idempotente) → `pnpm lint` (`valid`, 6 warnings) → `pnpm build` (1 successful).
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 2 — Dominio puro. Primero el módulo Go (`go.mod`, module path) y resolver la nota de bounded contexts del manifiesto (§3.1).
+
+---
+
 ## 2026-09-17 — Fase 1: endurecimiento del contrato OpenAPI (revisión REST, puntos 1–4)
 
 **Estado**: gate de Fase 1 sigue en verde. `pnpm generate` idempotente, `pnpm lint` `valid` (6 warnings `operation-4xx-response`, ya conocidos), `pnpm build` OK.

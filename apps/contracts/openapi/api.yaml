@@ -88,6 +88,48 @@ paths:
                 $ref: '#/components/schemas/PracticeDetail'
         '404':
           $ref: '#/components/responses/NotFound'
+    patch:
+      operationId: update_practice
+      summary: Edita una práctica en borrador
+      description: |
+        Actualiza parcialmente una práctica. Solo permitido cuando
+        `status == "draft"` (antes de analizar). Si no está en `draft`,
+        responde `409 invalid_state`.
+      tags: [practices]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePracticeRequest'
+      responses:
+        '200':
+          description: Práctica actualizada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Practice'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/InvalidState'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      operationId: delete_practice
+      summary: Elimina una práctica
+      description: |
+        Soft-delete: marca la práctica como eliminada; el job `purge-raw-data`
+        del provisioner la borra físicamente después (A8, retención limitada).
+        Bloqueado mientras `status == "analyzing"` (`409 invalid_state`).
+      tags: [practices]
+      responses:
+        '204':
+          description: Práctica marcada como eliminada (soft-delete).
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/InvalidState'
 
   /practices/{practiceId}/analyze:
     parameters:
@@ -255,6 +297,15 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    InvalidState:
+      description: |
+        La operación no es válida para el estado actual del recurso (p. ej.
+        editar una práctica que no está en `draft`, o borrar una que está en
+        `analyzing`).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     LLMUnavailable:
       description: El proveedor LLM está caído o excedió el timeout.
       content:
@@ -277,6 +328,7 @@ components:
             - not_found
             - analysis_pending
             - analysis_failed
+            - invalid_state
             - llm_unavailable
         message:
           type: string
@@ -285,6 +337,23 @@ components:
     CreatePracticeRequest:
       type: object
       required: [source_text, draft_text, target_rules]
+      properties:
+        source_text:
+          type: string
+          description: Texto base en español.
+        draft_text:
+          type: string
+          description: Traducción experimental del usuario (inglés).
+        target_rules:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/TargetRule'
+
+    # Edición parcial de una práctica en `draft` (PATCH /practices/{id}).
+    UpdatePracticeRequest:
+      type: object
+      minProperties: 1
       properties:
         source_text:
           type: string
