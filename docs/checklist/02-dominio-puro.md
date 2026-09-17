@@ -15,11 +15,11 @@
 
 ## 2.2 Bounded context `practice/`
 
-- [ ] `2.2.1` Crear agregado `Practice` (`SourceText`, `DraftText`, `TargetRules`, `Status`, timestamps).
-- [ ] `2.2.2` Crear value objects `SourceText`, `DraftText`, `TargetRule`, `PracticeStatus`.
-- [ ] `2.2.3` Implementar invariantes: textos no vacíos, ≥1 `TargetRule`, transición `draft → analyzing → completed|failed`.
-- [ ] `2.2.4` Definir evento `PracticeCreated` (payload `PracticeID`, `UserID`).
-- [ ] `2.2.5` Exponer `Edit(...)` (solo en `draft`) y `Delete(...)` (soft-delete; bloquea `analyzing`) en el agregado, con `InvalidStateError` (409 `invalid_state`), alineado con `PATCH`/`DELETE /v1/practices/{practiceId}` del contrato.
+- [x] `2.2.1` Crear agregado `Practice` (`SourceText`, `DraftText`, `TargetRules`, `Status`, timestamps).
+- [x] `2.2.2` Crear value objects `SourceText`, `DraftText`, `TargetRule`, `PracticeStatus`.
+- [x] `2.2.3` Implementar invariantes: textos no vacíos, ≥1 `TargetRule`, transición `draft → analyzing → completed|failed`.
+- [x] `2.2.4` Definir evento `PracticeCreated` (payload `PracticeID`, `UserID`).
+- [x] `2.2.5` Exponer `Edit(...)` (solo en `draft`) y `Delete(...)` (soft-delete; bloquea `analyzing`) en el agregado, con `InvalidStateError` (409 `invalid_state`), alineado con `PATCH`/`DELETE /v1/practices/{practiceId}` del contrato.
 
 ## 2.3 Bounded context `analysis/`
 

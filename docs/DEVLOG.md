@@ -4,6 +4,38 @@
 
 ---
 
+## 2026-09-17 — Fase 2: bounded context `practice/` (items 2.2.1–2.2.5)
+
+**Estado**: Fase 2 en curso. `go test -race -count=1 ./...` en verde; `internal/domain/...` con **100%** de cobertura; `go build ./...` y `go vet ./...` OK.
+
+**Hecho**:
+- Nuevo paquete `apps/backend/internal/domain/practice/` (solo stdlib + raíz `domain`, A1):
+  - `2.2.2` value objects: `PracticeStatus` (`draft|analyzing|completed|failed`, `IsValid`/`String`), `SourceText` y `DraftText` (no vacíos, preservan el texto crudo), `TargetRule{Verb,Tense,Note}` (`verb` obligatorio).
+  - `2.2.1` agregado `Practice{ID, UserID, SourceText, DraftText, TargetRules, Status, CreatedAt, UpdatedAt, DeletedAt}`; `NewPractice(...)` genera UUID v7 (seam `generateID`) y arranca en `draft`.
+  - `2.2.3` invariantes: textos no vacíos (en los VOs), ≥1 `TargetRule` (`NewPractice`/`Edit`), transición `draft → analyzing → completed|failed` vía `StartAnalysis`/`MarkCompleted`/`MarkFailed` (cada una bumps `UpdatedAt`).
+  - `2.2.5` `Edit` (solo en `draft`, PATCH parcial: `nil` = sin cambio; reglas vacías → `ValidationError`) y `Delete` (soft-delete: fija `DeletedAt *time.Time`; bloquea `analyzing`; re-borrado → `InvalidStateError`).
+- `2.2.4` raíz `domain/events.go`: `EventNamePracticeCreated = "practice.created"` + `PracticeCreated{PracticeID, UserID, Version}` con tags `snake_case`.
+- `2.5.2` (parcial) raíz `domain/errors.go`: nuevo `InvalidStateError{Field, Message}` (409 `invalid_state`), mismo patrón que `ValidationError`.
+
+**Decisiones**:
+- **`DeletedAt *time.Time`** (interno, `json:"-"`): da al job `purge-raw-data` la ventana de retención (A8); no se expone en el wire (el contrato `Practice` no lo tiene).
+- **Solo no-vacío** en `SourceText`/`DraftText`: el checklist y §4.2.2 solo exigen no-vacío; la "longitud acotada" de §4.3 se difiere a cuando el contrato fije un `maxLength`.
+- **Métodos de transición incluidos ya** (`StartAnalysis`/`MarkCompleted`/`MarkFailed`) para que el invariante de 2.2.3 sea verificable; el wiring a `AnalysisCompleted`/`AnalysisFailed` es de Fase 2.3/3.
+- **`Edit` con `nil` = sin cambio** y no-op sin tocar `UpdatedAt`; el `minProperties: 1` del `PATCH` se valida en el wire, no en el dominio.
+- **Sin guard de `DeletedAt` en `Edit`/transiciones**: el filtrado de borradas es responsabilidad de la capa de persistencia (query). El agregado solo enforce las reglas del contrato (estado).
+
+**Verificación**:
+- `go test -race -count=1 ./...` → OK (domain, identity y practice).
+- `go test -cover ./internal/domain/...` → **100.0%** en los tres paquetes.
+- `go build ./...` → OK · `go vet ./...` → OK · `gofmt -l` → sin diferencias.
+- A1: imports de `internal/domain/practice/` = `strings`, `time` + raíz `domain`. A3: `practice/` **no** importa `identity/` ni ningún otro BC.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 2, bloque `2.3` — bounded context `analysis/` (agregado `Analysis`, VOs `Fragment`/`ErrorPattern`, invariante de `Fragments` no vacío cuando `Status == completed`, eventos `AnalysisCompleted`/`AnalysisFailed`).
+
+---
+
 ## 2026-09-17 — Fase 2 (inicio): bootstrap raíz + bounded context `identity` (items 2.1.1–2.1.4)
 
 **Estado**: Fase 2 en curso. `go test -race -count=1 ./...` en verde; dominio con **100%** de cobertura; `go build ./...` y `go vet ./...` OK.

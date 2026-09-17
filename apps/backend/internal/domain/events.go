@@ -18,3 +18,16 @@ type IdentityIssued struct {
 
 // EventName returns the stable wire name of the event.
 func (IdentityIssued) EventName() string { return EventNameIdentityIssued }
+
+// EventNamePracticeCreated is the wire name of PracticeCreated.
+const EventNamePracticeCreated = "practice.created"
+
+// PracticeCreated is emitted when a practice is created (triggers analysis).
+type PracticeCreated struct {
+	PracticeID ID  `json:"practice_id"`
+	UserID     ID  `json:"user_id"`
+	Version    int `json:"version"`
+}
+
+// EventName returns the stable wire name of the event.
+func (PracticeCreated) EventName() string { return EventNamePracticeCreated }

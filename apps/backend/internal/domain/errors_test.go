@@ -38,3 +38,31 @@ func TestValidationError_Error_WithoutField_ReturnsMessage(t *testing.T) {
 		t.Fatalf("Error() = %q, want %q", got, "invalid input")
 	}
 }
+
+func TestInvalidStateError_Error_IncludesFieldAndMessage(t *testing.T) {
+	err := &domain.InvalidStateError{Field: "status", Message: "must be draft to be edited"}
+
+	msg := err.Error()
+	for _, want := range []string{"status", "must be draft to be edited"} {
+		if !strings.Contains(msg, want) {
+			t.Fatalf("Error() = %q, want it to contain %q", msg, want)
+		}
+	}
+}
+
+func TestInvalidStateError_Error_WithoutField_ReturnsMessage(t *testing.T) {
+	err := &domain.InvalidStateError{Message: "invalid state"}
+
+	if got := err.Error(); got != "invalid state" {
+		t.Fatalf("Error() = %q, want %q", got, "invalid state")
+	}
+}
+
+func TestInvalidStateError_AsDomainError(t *testing.T) {
+	var target *domain.InvalidStateError
+	err := error(&domain.InvalidStateError{Field: "status", Message: "invalid"})
+
+	if !errors.As(err, &target) {
+		t.Fatal("errors.As must match *domain.InvalidStateError")
+	}
+}
