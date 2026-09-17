@@ -4,9 +4,9 @@
 
 ## Estado del proyecto
 
-- **Fase actual**: Fase 0 — Preparación (aún no se inicia Fase 1).
-- **Siguiente fase**: Fase 1 — Fundaciones (ver `docs/checklist/01-fundaciones.md`).
-- **Estado**: solo documentación. No hay código todavía (`apps/` no existe).
+- **Fase actual**: Fase 1 — Fundaciones (en curso: 1.1.x y 1.2.x completados).
+- **Siguiente item**: bloque 1.3 — Contrato OpenAPI fundacional (`docs/checklist/01-fundaciones.md`).
+- **Estado**: monorepo base (Turborepo + pnpm workspaces) y árbol canónico de directorios creados. Sin código de dominio todavía.
 
 ## Primeros pasos obligatorios al iniciar una sesión
 

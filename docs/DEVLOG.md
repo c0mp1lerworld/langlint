@@ -4,6 +4,30 @@
 
 ---
 
+## 2026-09-17 — Fase 1: árbol canónico de directorios (items 1.2.1–1.2.4)
+
+**Estado**: Fase 1 en curso. Gate `pnpm install --frozen-lockfile && pnpm build` en verde.
+
+**Hecho**:
+- `1.2.1` Creados `apps/contracts/openapi/`, `apps/contracts/scripts/`, `apps/backend/` y `apps/frontend/` (según §3.1 del manifiesto).
+- `1.2.2` Creados `ops/scripts/` y `ops/docker/`. `docs/` ya existía (`PRODUCT_DOMAIN.md` incluido), no se tocó.
+- `1.2.3` Creado `.github/workflows/` como placeholder para Fase 7.
+- `1.2.4` Verificado que no hay wire code fuera de `apps/contracts/openapi/`: no existe todavía ningún `gen_*.go`, `gen.ts` ni spec OpenAPI en el repo.
+- Cada directorio vacío lleva un `.gitkeep` (git no versiona directorios vacíos).
+- Actualizado el estado de `AGENTS.md` (estaba en Fase 0 pese a que 1.1.x ya estaba hecho).
+
+**Decisiones**:
+- Alcance ajustado al checklist: solo directorios de primer nivel. `apps/backend/internal/**` (Fase 2), `apps/frontend/src/**` (Fase 5) y `ops/terraform/` + `ops/k8s/` (posteriores) se difieren; el árbol §3.1 es plantilla, no se materializa completo aquí.
+- `.gitkeep` como placeholder mínimo en lugar de `README.md`/`package.json` prematuros.
+
+**Observación (no bloqueante)**: el árbol §3.1 del manifiesto lista los bounded contexts `identity/organization/billing/audit`, pero `PRODUCT_DOMAIN`/`DEVLOG` fijaron `identity/practice/analysis/analytics`. No afecta a 1.2.x (no se crean subdirs de `internal/domain/`). A resolver antes de Fase 2.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: item `1.3.1` (redactar `apps/contracts/openapi/api.yaml` como OpenAPI 3.1.0) y siguientes del bloque 1.3.
+
+---
+
 ## 2026-09-17 — Fase 1 (inicio): base del monorepo (items 1.1.1–1.1.6)
 
 **Estado**: Fase 1 en curso. `pnpm install --frozen-lockfile && pnpm build` en verde.
