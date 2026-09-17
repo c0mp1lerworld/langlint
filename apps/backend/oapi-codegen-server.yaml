@@ -1,0 +1,9 @@
+# Genera el servidor chi (ServerInterface + router) del contrato -> gen_server.go.
+# Los tipos referenciados viven en gen_types.go (mismo paquete httpapi).
+# Invocado desde apps/backend (`make generate`) o vía `pnpm generate`.
+package: httpapi
+
+generate:
+  chi-server: true
+
+output: internal/api/handlers/gen_server.go

@@ -1,8 +1,13 @@
 {
   "name": "@langlint/contracts",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "scripts": {
-    "build": "echo \"contracts: nothing to build yet (OpenAPI spec llega en 1.2/1.3)\""
+    "build": "echo \"contracts: spec validado con 'pnpm lint'; codegen con 'pnpm generate'\"",
+    "lint": "redocly lint openapi/api.yaml",
+    "generate": "bash scripts/generate.sh"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^2.53.3"
   }
 }

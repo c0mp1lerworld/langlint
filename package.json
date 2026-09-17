@@ -7,7 +7,7 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test-integration": "turbo run test-integration --filter=backend",
-    "generate": "turbo run generate",
+    "generate": "turbo run generate --filter=@langlint/contracts",
     "typecheck": "turbo run typecheck",
     "dev:backend": "turbo run dev --filter=backend",
     "dev:frontend": "turbo run dev --filter=frontend"

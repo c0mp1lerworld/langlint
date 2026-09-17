@@ -4,9 +4,9 @@
 
 ## Estado del proyecto
 
-- **Fase actual**: Fase 1 — Fundaciones (en curso: 1.1.x–1.3.x completados).
-- **Siguiente item**: bloque 1.4 — Pipeline de generación `pnpm generate` (`docs/checklist/01-fundaciones.md`).
-- **Estado**: monorepo base, árbol canónico de directorios y contrato OpenAPI fundacional (`apps/contracts/openapi/api.yaml`) creados. Sin código de dominio todavía.
+- **Fase actual**: Fase 1 — Fundaciones **completada** (gate de salida en verde). Siguiente: Fase 2 — Dominio puro.
+- **Siguiente item**: Fase 2, bloque `2.5`/`2.1` — crear `go.mod` del backend y arrancar el dominio (`docs/checklist/02-dominio-puro.md`).
+- **Estado**: monorepo base, árbol canónico, contrato OpenAPI (`apps/contracts/openapi/api.yaml`) y pipeline `pnpm generate` (oapi-codegen + openapi-typescript) operativos. `gen_*.go`/`gen.ts` commiteados. Sin código de dominio todavía.
 
 ## Primeros pasos obligatorios al iniciar una sesión
 

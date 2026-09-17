@@ -4,6 +4,37 @@
 
 ---
 
+## 2026-09-17 — Fase 1 (cierre): pipeline de generación `pnpm generate` (items 1.4.1–1.4.5)
+
+**Estado**: **Gate de salida de Fase 1 en verde**. `pnpm install --frozen-lockfile`, `pnpm generate` (idempotente), `pnpm build`, `pnpm lint` (OpenAPI validado) — todo OK.
+
+**Hecho**:
+- `1.4.1` `apps/contracts/scripts/generate.sh`: orquestador que invoca `make -C apps/backend generate` (Go) y `pnpm run generate` en `apps/frontend` (TS). `apps/contracts/package.json` → `"generate": "bash scripts/generate.sh"` + `"lint": "redocly lint openapi/api.yaml"`.
+- `1.4.2` `apps/backend/Makefile` con `tools` (instala `oapi-codegen@v2.8.0`) y `generate` (dos invocaciones). Configs `oapi-codegen-types.yaml` (models → `internal/api/handlers/gen_types.go`) y `oapi-codegen-server.yaml` (chi-server → `internal/api/handlers/gen_server.go`), package `httpapi`.
+- `1.4.3` `apps/frontend/package.json`: `"generate": "openapi-typescript ../contracts/openapi/api.yaml -o src/lib/api/gen.ts"` + devDeps `openapi-typescript@^7.13.0` y `typescript@5.9.3`. Genera `apps/frontend/src/lib/api/gen.ts`.
+- `1.4.4` `gen_types.go` (343 líneas), `gen_server.go` (404) y `gen.ts` (569) commiteados (builds offline, sin `go.mod` — ver decisiones).
+- `1.4.5` Idempotencia verificada: `pnpm generate` ×2 + `git diff --exit-code` → sin drift.
+- Bump `apps/contracts` `0.1.0 → 1.0.0` (gate `contracts-v1.0.0`; el tag git se difiere: no hay push).
+- Lint OpenAPI cableado de forma permanente (`@redocly/cli@^2.53.3` como devDep de contracts, script `lint`), cerrando lo acordado en 1.3.
+
+**Decisiones**:
+- **`go.mod` diferido a Fase 2** (acordado): el pipeline solo genera/commitea. `gen_server.go` importa `go-chi/chi/v5` y `oapi-codegen/runtime`, por lo que **no compilará** hasta que Fase 2 cree el módulo (A11). Es deliberado; el gate de Fase 1 no exige compilar Go.
+- **oapi-codegen v2 con archivo de config**: el manifiesto §6.3 muestra flags v1 (`-generate types`, `-package`) **obsoletos** en la versión actual. Se usa v2.8.0 con config YAML (package `httpapi`, dos salidas), preservando la intención (dos archivos `gen_*.go`).
+- **Orquestación sin doble ejecución**: `turbo run generate` ejecutaría el `generate` de contracts (orquestador) **y** el de frontend, generando `gen.ts` dos veces en paralelo. Se acota el script raíz a `turbo run generate --filter=@langlint/contracts` para que el orquestador sea la única vía. `pnpm generate` es el comando canónico (no invocar `turbo run generate` a pelo).
+- **TS 5.9.3 local en frontend**: `openapi-typescript@7.13.0` es incompatible con el `typescript@7.0.2` de la raíz (peer `^5.x`; `ts.factory` undefined). Se añade TS 5.9.3 como devDep de frontend (solo afecta a la generación; la raíz mantiene TS7).
+- **`ProgressPoint.accuracy` sale `float32`** (OpenAPI `number` sin `format`). Si se quiere `float64`, cambiar a `format: double` en `api.yaml` y regenerar. Se difiere (no bloquea).
+
+**Verificación**:
+- `pnpm generate` ×2 → `git diff --exit-code` limpio (idempotente/drift-free).
+- `pnpm install --frozen-lockfile` → OK. `pnpm build` → `1 successful, 1 total` (persiste el warning conocido de outputs del stub de contracts).
+- `pnpm lint` → redocly: `valid` (0 errores, 6 warnings `operation-4xx-response` ya documentados en 1.3).
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 2 — Dominio puro (`docs/checklist/02-dominio-puro.md`). Primer item sugerido `2.5.1`/`2.1.x`: crear el módulo Go (`go.mod`, module path) y arrancar `identity/`. Antes, resolver la nota de bounded contexts del manifiesto (§3.1 lista `organization/billing/audit`; el producto usa `identity/practice/analysis/analytics`).
+
+---
+
 ## 2026-09-17 — Fase 1: contrato OpenAPI fundacional `api.yaml` (items 1.3.1–1.3.6)
 
 **Estado**: Fase 1 en curso. `npx @redocly/cli lint apps/contracts/openapi/api.yaml` → **valid** (0 errores, 6 warnings). `pnpm build` en verde.

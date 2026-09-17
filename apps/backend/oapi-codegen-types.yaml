@@ -1,0 +1,8 @@
+# Genera los modelos/tipos Go del contrato OpenAPI -> gen_types.go.
+# Invocado desde apps/backend (`make generate`) o vía `pnpm generate`.
+package: httpapi
+
+generate:
+  models: true
+
+output: internal/api/handlers/gen_types.go
