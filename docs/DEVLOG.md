@@ -4,6 +4,38 @@
 
 ---
 
+## 2026-09-17 — Fase 2 (inicio): bootstrap raíz + bounded context `identity` (items 2.1.1–2.1.4)
+
+**Estado**: Fase 2 en curso. `go test -race -count=1 ./...` en verde; dominio con **100%** de cobertura; `go build ./...` y `go vet ./...` OK.
+
+**Hecho**:
+- Módulo Go creado: `apps/backend/go.mod` → `module github.com/c0mp1lerworld/langlint/backend` + `go 1.26`; `go mod tidy` resuelve `go-chi/chi/v5 v5.3.2` y `oapi-codegen/runtime v1.7.0` (deps que ya importaban los `gen_*.go`), generando `go.sum`.
+- `2.5.1` (bootstrap) `internal/domain/identifiers.go`: `ID [16]byte` UUID v7 con **solo** `crypto/rand` + `time` + `fmt` + `encoding/hex`. API: `NewID`, `MustNewID`, `ParseID`, `IsValid`, `Version`, `IsZero`, `String`, `MarshalJSON`/`UnmarshalJSON`.
+- `2.5.2` (parcial) `internal/domain/errors.go`: `ValidationError{Field, Message}` + `Error()`.
+- `2.5.3` (bootstrap) + `2.1.3` `internal/domain/events.go`: interfaz `DomainEvent` (`EventName()`) + struct inmutable `IdentityIssued{UserID, Version}` con tags `snake_case` y constante `EventNameIdentityIssued`.
+- `2.1.1` + `2.1.4` `internal/domain/identity/user.go`: entidad `User{ID, Email, CreatedAt}`; `NewUser` genera el ID. **Sin `tenant_id`** (AP1).
+- `2.1.2` `internal/domain/identity/email.go`: VO `Email` (`type Email string`) con `NewEmail` validando vía `net/mail` (stdlib) → `*domain.ValidationError`.
+- Tests TDD por paquete (convención `TestXxx_Method_Condition_ExpectedResult`), incluyendo el test que prueba que el JSON de `User` **no** tiene `tenant_id`.
+
+**Decisiones**:
+- **Eventos en la raíz** (`events.go`), no en `identity/`: A3/§4.4 obligan a que los `DomainEvent` los defina el paquete raíz; los BC no se importan entre sí.
+- **`ID` como `[16]byte`** (comparable, usable como map key) con `MarshalJSON` a UUID canónico; así el payload del outbox y `DataExport.user_id` (`format: uuid`) serializan como string.
+- **`Email` como `type Email string`**: valida por constructor y serializa como string sin `MarshalJSON` custom.
+- **Seams `randRead`/`generateID`** (vars con default a `crypto/rand.Read`/`domain.NewID`): permiten forzar el fallo de generación en tests y cumplir el gate de **100%** de cobertura (A10) sin ramas muertas.
+- **Alcance**: bootstrap mínimo de la raíz (solo `ValidationError`); `NotFoundError`, `InvalidStateError`, etc. se implementan en sus items (2.2.x/2.3.x/2.4.x/2.5.2).
+- **Orden checklist vs dependencias**: los items 2.1.x dependían de las primitivas 2.5.x; se resolvió con un bootstrap mínimo de la raíz en el mismo incremento (acordado con el humano).
+
+**Verificación**:
+- `go test -race -count=1 ./internal/domain/...` → OK; con `-cover` → **100.0%** (domain y identity).
+- `go mod tidy` → OK · `go build ./...` → OK · `go vet ./...` → OK · `go test -race -count=1 ./...` → OK.
+- A1: imports de `internal/domain/` = solo stdlib + raíz `domain` (permitido por A3). `github.com/google/uuid` figura como **indirect** (dep de `oapi-codegen/runtime`) pero **no** se importa desde el dominio (A7).
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 2, bloque `2.2` — bounded context `practice/` (agregado `Practice`, value objects `SourceText`/`DraftText`/`TargetRule`/`PracticeStatus`, invariantes y `Edit`/`Delete` con `InvalidStateError`). Antes, ampliar `errors.go` con los tipos que 2.2 necesita.
+
+---
+
 ## 2026-09-17 — Fase 1: CRUD de `Practice` (PATCH + DELETE)
 
 **Estado**: gate de Fase 1 sigue en verde. `pnpm generate` idempotente, `pnpm lint` `valid` (6 warnings `operation-4xx-response`), `pnpm build` OK.

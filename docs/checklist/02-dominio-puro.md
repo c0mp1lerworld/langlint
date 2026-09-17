@@ -8,10 +8,10 @@
 
 ## 2.1 Bounded context `identity/`
 
-- [ ] `2.1.1` Crear entidad `User` (identidad portable) con `ID` (UUID v7), `Email`, `CreatedAt` (PRODUCT_DOMAIN §4.2.1).
-- [ ] `2.1.2` Crear value object `Email` con validación.
-- [ ] `2.1.3` Definir evento `IdentityIssued` (payload `UserID`).
-- [ ] `2.1.4` La identidad portable **sin** `tenant_id` (AP1).
+- [x] `2.1.1` Crear entidad `User` (identidad portable) con `ID` (UUID v7), `Email`, `CreatedAt` (PRODUCT_DOMAIN §4.2.1).
+- [x] `2.1.2` Crear value object `Email` con validación.
+- [x] `2.1.3` Definir evento `IdentityIssued` (payload `UserID`).
+- [x] `2.1.4` La identidad portable **sin** `tenant_id` (AP1).
 
 ## 2.2 Bounded context `practice/`
 
@@ -36,9 +36,9 @@
 
 ## 2.5 Errores, identificadores y eventos compartidos (raíz del dominio)
 
-- [ ] `2.5.1` Crear `identifiers.go` con UUID v7 usando **solo** `crypto/rand`, `time`, `fmt` (A7). API: `NewID`, `MustNewID`, `IsValid`, `Version`.
-- [ ] `2.5.2` Crear `errors.go` con `ValidationError`, `NotFoundError`, `AnalysisPendingError`, `AnalysisFailedError`, `InvalidStateError`, `LLMUnavailableError` (A5).
-- [ ] `2.5.3` Crear `events.go` con los structs `DomainEvent` inmutables + campo `Version`.
+- [x] `2.5.1` Crear `identifiers.go` con UUID v7 usando **solo** `crypto/rand`, `time`, `fmt` (A7). API: `NewID`, `MustNewID`, `IsValid`, `Version`.
+- [ ] `2.5.2` Crear `errors.go` con `ValidationError`, `NotFoundError`, `AnalysisPendingError`, `AnalysisFailedError`, `InvalidStateError`, `LLMUnavailableError` (A5). _(parcial: solo `ValidationError`)_
+- [ ] `2.5.3` Crear `events.go` con los structs `DomainEvent` inmutables + campo `Version`. _(parcial: `DomainEvent` + `IdentityIssued`)_
 - [ ] `2.5.4` Verificar que **ningún** archivo del dominio importa fuera de stdlib (regla `domain_purity`, A1).
 - [ ] `2.5.5` Verificar que ningún bounded context importa a otro (regla `forbidden_imports`, A3).
 - [ ] `2.5.6` Todos los fields exportados con tag `json:"snake_case"` explícito (AP2).

@@ -4,9 +4,9 @@
 
 ## Estado del proyecto
 
-- **Fase actual**: Fase 1 — Fundaciones **completada** (gate de salida en verde). Siguiente: Fase 2 — Dominio puro.
-- **Siguiente item**: Fase 2, bloque `2.5`/`2.1` — crear `go.mod` del backend y arrancar el dominio (`docs/checklist/02-dominio-puro.md`).
-- **Estado**: monorepo base, árbol canónico, contrato OpenAPI (`apps/contracts/openapi/api.yaml`) y pipeline `pnpm generate` (oapi-codegen + openapi-typescript) operativos. `gen_*.go`/`gen.ts` commiteados. Sin código de dominio todavía.
+- **Fase actual**: Fase 2 — Dominio puro **en curso**. Bootstrap de la raíz del dominio (`ID` UUID v7, `ValidationError`, `DomainEvent`/`IdentityIssued`) y bounded context `identity/` (`User`, `Email`) completados con 100% de cobertura.
+- **Siguiente item**: Fase 2, bloque `2.2` — bounded context `practice/` (agregado `Practice`, value objects, invariantes, `Edit`/`Delete` con `InvalidStateError`). Ver `docs/checklist/02-dominio-puro.md`.
+- **Estado**: monorepo base, contrato OpenAPI (`apps/contracts/openapi/api.yaml`), pipeline `pnpm generate` y ahora el módulo Go (`apps/backend/go.mod`, module path `github.com/c0mp1lerworld/langlint/backend`). `gen_*.go`/`gen.ts` commiteados. Dominio puro stdlib-only; `go build/vet/test` en verde.
 
 ## Primeros pasos obligatorios al iniciar una sesión
 
