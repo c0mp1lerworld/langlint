@@ -4,6 +4,37 @@
 
 ---
 
+## 2026-09-17 — Fase 1: contrato OpenAPI fundacional `api.yaml` (items 1.3.1–1.3.6)
+
+**Estado**: Fase 1 en curso. `npx @redocly/cli lint apps/contracts/openapi/api.yaml` → **valid** (0 errores, 6 warnings). `pnpm build` en verde.
+
+**Hecho**:
+- `1.3.1` Creado `apps/contracts/openapi/api.yaml` (OpenAPI 3.1.0) con `info.version: 1.0.0` y `servers: [{ url: /v1 }]`.
+- `1.3.2` Schemas núcleo: `Fragment`, `ErrorPattern`, `Analysis`, `Practice`, `PracticeStatus` (+ soporte y superficie, ver abajo).
+- `1.3.3` `ErrorPatternCode` (los 8 códigos de §4.6) y `ErrorPatternSeverity` (`minor|moderate|critical`) como schemas nominales reutilizables.
+- `1.3.4` Los 9 endpoints de §5.1: `/practices*`, `/analytics/*`, `/me/*` (paths relativos a `servers: /v1`).
+- `1.3.5` `409 analysis_pending` documentado como **éxito idempotente** en `POST /practices/{practiceId}/analyze` (AP4).
+- `1.3.6` Todos los campos de wire en `snake_case` (AP2).
+
+**Decisiones**:
+- **Convención de rutas**: `servers: [{ url: /v1 }]` + paths relativos (`/practices`, `/analytics/*`, `/me/*`). Evita la duplicación `/v1/v1/...` del ejemplo del manifiesto §6.3; las URLs finales coinciden con §5.1.
+- **Sin `securityScheme`** y `security: []` explícito: el MVP no tiene login/JWT/API keys (non-goal §3.2); identidad portable mínima (A9).
+- **Enums extraídos**: `ErrorPatternCode`/`ErrorPatternSeverity` como schemas nominales (en lugar de enums inline) para reutilizarlos en `ErrorPatternStats` y facilitar un tipo Go reutilizable en 1.4.
+- **Superficie completa**: además de los 5 schemas del checklist se modelaron `CreatePracticeRequest`, `TargetRule`, `Window`, `PracticeDetail`, `ErrorPatternStats`/`ErrorPatternAggregate`, `ProgressSeries`/`ProgressPoint`, `DataExport`, `AccessLog`/`AccessLogEntry` y `ErrorResponse`. Los no detallados en los docs se definieron coherentes con §4.2/§4.3/§7 y §9 (cierre del gap de 1.3.4).
+- **`PracticeDetail`** repite los campos de `Practice` (en lugar de `allOf`) para que `oapi-codegen` genere structs planos sin sorpresas.
+- **`AnalysisFailed` (422)** se asocia a `GET /practices/{practiceId}` (única superficie donde el fallo del análisis es observable); así el response deja de estar huérfano.
+- **Warnings aceptados**: Redocly emite `operation-4xx-response` en 6 GET (list, analytics×2, me/export, me/data, me/access-log). No se añade un 4xx artificial porque en el MVP single-user esos endpoints no tienen error de entrada real (AP5: no documentar lo que no existe). Se revisará si aparece un 4xx legítimo.
+
+**Verificación**:
+- `npx --yes @redocly/cli lint apps/contracts/openapi/api.yaml` → `valid` (0 errores, 6 warnings de `operation-4xx-response`).
+- `pnpm build` → `1 successful, 1 total`.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: bloque `1.4` — pipeline de generación (`apps/contracts/scripts/generate.sh`, `oapi-codegen` en `apps/backend/Makefile`, `openapi-typescript` en `apps/frontend`).
+
+---
+
 ## 2026-09-17 — Fase 1: árbol canónico de directorios (items 1.2.1–1.2.4)
 
 **Estado**: Fase 1 en curso. Gate `pnpm install --frozen-lockfile && pnpm build` en verde.

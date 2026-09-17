@@ -1,0 +1,544 @@
+openapi: 3.1.0
+
+info:
+  title: LangLint API
+  version: 1.0.0
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+  description: |
+    Contrato HTTP de LangLint (SSOT del wire format, A12).
+    Todos los cambios de wire empiezan aquí y se propagan con `pnpm generate`
+    (oapi-codegen en Go, openapi-typescript en TS). Nunca se editan a mano
+    `gen_*.go` ni `gen.ts`.
+
+    Autenticación: fuera de alcance del MVP (PRODUCT_DOMAIN §3.2). El sistema
+    usa identidad portable mínima (A9); por eso no se declara ningún
+    `securityScheme`.
+
+# Todas las rutas son relativas a este servidor; la URL final es `/v1/<path>`.
+servers:
+  - url: /v1
+
+# El MVP no requiere autenticación (non-goal §3.2). Se declara vacío
+# explícitamente para documentar la ausencia de seguridad, no su olvido.
+security: []
+
+tags:
+  - name: practices
+    description: El ejercicio de escritura (texto base, borrador, reglas objetivo).
+  - name: analytics
+    description: Agregados históricos de errores y progreso.
+  - name: identity
+    description: Portabilidad y auditoría de los datos del usuario (A9).
+
+paths:
+  /practices:
+    post:
+      operationId: create_practice
+      summary: Crea una práctica
+      description: Registra una práctica (source + draft + reglas objetivo) en estado `draft`.
+      tags: [practices]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePracticeRequest'
+      responses:
+        '201':
+          description: Práctica creada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Practice'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    get:
+      operationId: list_practices
+      summary: Lista las prácticas del usuario
+      tags: [practices]
+      responses:
+        '200':
+          description: Lista de prácticas del usuario.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Practice'
+
+  /practices/{practiceId}:
+    parameters:
+      - $ref: '#/components/parameters/PracticeId'
+    get:
+      operationId: get_practice
+      summary: Obtiene una práctica con su análisis embebido
+      tags: [practices]
+      responses:
+        '200':
+          description: Práctica con su análisis embebido (si existe).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PracticeDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/AnalysisFailed'
+
+  /practices/{practiceId}/analyze:
+    parameters:
+      - $ref: '#/components/parameters/PracticeId'
+    post:
+      operationId: analyze_practice
+      summary: Dispara el análisis asíncrono de una práctica
+      description: |
+        Encola el análisis de la práctica. Responde `202` (el cliente hace
+        polling con `GET /practices/{practiceId}`).
+
+        Idempotencia (AP4): si el análisis ya está en curso, responde
+        `409 analysis_pending`, que es un ÉXITO IDEMPOTENTE. El cliente DEBE
+        tratarlo como éxito (F5), no como error.
+      tags: [practices]
+      responses:
+        '202':
+          description: Análisis encolado; hacer polling de `GET /practices/{practiceId}`.
+        '409':
+          $ref: '#/components/responses/AnalysisPending'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/LLMUnavailable'
+
+  /analytics/error-patterns:
+    get:
+      operationId: get_error_pattern_stats
+      summary: Agregados de patrones de error
+      description: Frecuencia clasificada de errores por patrón (PRODUCT_DOMAIN §7.3).
+      tags: [analytics]
+      responses:
+        '200':
+          description: Agregados de patrones de error del usuario.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorPatternStats'
+
+  /analytics/progress:
+    get:
+      operationId: get_progress_series
+      summary: Serie temporal de progreso
+      description: Serie temporal de precisión y volumen por ventana (PRODUCT_DOMAIN §7.1).
+      tags: [analytics]
+      responses:
+        '200':
+          description: Serie temporal de progreso del usuario.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressSeries'
+
+  /me/data/export:
+    get:
+      operationId: export_data
+      summary: Exporta los datos del usuario
+      description: Portabilidad de datos (A9, GDPR Art. 15+20).
+      tags: [identity]
+      responses:
+        '200':
+          description: Exportación completa de los datos del usuario.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataExport'
+
+  /me/data:
+    delete:
+      operationId: delete_data
+      summary: Solicita el borrado de los datos del usuario
+      description: |
+        Derecho al olvido (A9, GDPR Art. 17). El borrado no es inmediato:
+        existe una gracia de 30 días tras la cual el job `execute-deletions`
+        del provisioner lo materializa. Por eso responde `202`.
+      tags: [identity]
+      responses:
+        '202':
+          description: Solicitud de borrado aceptada (gracia de 30 días).
+
+  /me/access-log:
+    get:
+      operationId: get_access_log
+      summary: Auditoría de accesos del usuario
+      description: Eventos append-only de auditoría (A9, A4).
+      tags: [identity]
+      responses:
+        '200':
+          description: Registro de accesos del usuario.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessLog'
+
+components:
+  parameters:
+    PracticeId:
+      name: practiceId
+      in: path
+      required: true
+      description: Identificador de la práctica (UUID v7).
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    ValidationError:
+      description: Entrada inválida (texto vacío, reglas objetivo vacías, JSON malformado).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: El recurso solicitado no existe.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    AnalysisPending:
+      description: |
+        Ya hay un análisis en curso para la práctica. Es un ÉXITO IDEMPOTENTE
+        (AP4): el cliente debe tratarlo como éxito, no como error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    AnalysisFailed:
+      description: El análisis terminó con fallo.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    LLMUnavailable:
+      description: El proveedor LLM está caído o excedió el timeout.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    # --- Errores de wire (PRODUCT_DOMAIN §4.5) ---
+    # Nota: `ErrorResponse.code` (5 códigos de error) es distinto de
+    # `ErrorPatternCode` (taxonomía gramatical de 8 códigos, §4.6).
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - validation_error
+            - not_found
+            - analysis_pending
+            - analysis_failed
+            - llm_unavailable
+        message:
+          type: string
+
+    # --- Práctica (PRODUCT_DOMAIN §4.2.2) ---
+    CreatePracticeRequest:
+      type: object
+      required: [source_text, draft_text, target_rules]
+      properties:
+        source_text:
+          type: string
+          description: Texto base en español.
+        draft_text:
+          type: string
+          description: Traducción experimental del usuario (inglés).
+        target_rules:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/TargetRule'
+
+    TargetRule:
+      type: object
+      required: [verb]
+      properties:
+        verb:
+          type: string
+        tense:
+          type: string
+        note:
+          type: string
+
+    PracticeStatus:
+      type: string
+      description: Ciclo de vida de una práctica.
+      enum: [draft, analyzing, completed, failed]
+
+    Practice:
+      type: object
+      required:
+        - id
+        - user_id
+        - source_text
+        - draft_text
+        - target_rules
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        source_text:
+          type: string
+        draft_text:
+          type: string
+        target_rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/TargetRule'
+        status:
+          $ref: '#/components/schemas/PracticeStatus'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # Práctica + análisis embebido (PRODUCT_DOMAIN §5.1).
+    # Los campos de práctica se repiten (en lugar de usar `allOf`) para que la
+    # generación de código en 1.4 produzca structs planos sin sorpresas.
+    PracticeDetail:
+      type: object
+      required:
+        - id
+        - user_id
+        - source_text
+        - draft_text
+        - target_rules
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        source_text:
+          type: string
+        draft_text:
+          type: string
+        target_rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/TargetRule'
+        status:
+          $ref: '#/components/schemas/PracticeStatus'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        analysis:
+          oneOf:
+            - $ref: '#/components/schemas/Analysis'
+            - type: 'null'
+
+    # --- Análisis (PRODUCT_DOMAIN §4.2.3 y §5.2) ---
+    ErrorPatternCode:
+      type: string
+      description: Taxonomía de errores (PRODUCT_DOMAIN §4.6).
+      enum:
+        - infinitive_conjugation
+        - passive_voice_misuse
+        - idiom_literal_translation
+        - preposition_infinitive
+        - pronoun_possession
+        - false_friend
+        - word_order
+        - tense_agreement
+
+    ErrorPatternSeverity:
+      type: string
+      enum: [minor, moderate, critical]
+
+    ErrorPattern:
+      type: object
+      required: [code, severity]
+      properties:
+        code:
+          $ref: '#/components/schemas/ErrorPatternCode'
+        severity:
+          $ref: '#/components/schemas/ErrorPatternSeverity'
+        note:
+          type: string
+          description: Explicación breve del error.
+
+    Fragment:
+      type: object
+      required:
+        - source_es
+        - user_draft
+        - correction
+        - target_verb_review
+        - lexical_clarification
+        - grammar_explanation
+        - error_patterns
+      properties:
+        source_es:
+          type: string
+          description: Frase base en español.
+        user_draft:
+          type: string
+          description: Borrador del usuario (inglés).
+        correction:
+          type: string
+          description: Corrección directa.
+        target_verb_review:
+          type: string
+          description: Revisión del verbo objetivo.
+        lexical_clarification:
+          type: string
+          description: Aclaración léxica.
+        grammar_explanation:
+          type: string
+          description: Regla gramatical profunda.
+        error_patterns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorPattern'
+
+    Analysis:
+      type: object
+      required: [id, practice_id, model, model_version, status, fragments]
+      properties:
+        id:
+          type: string
+          format: uuid
+        practice_id:
+          type: string
+          format: uuid
+        model:
+          type: string
+        model_version:
+          type: string
+        status:
+          type: string
+          enum: [pending, completed, failed]
+        fragments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Fragment'
+
+    # --- Analítica (PRODUCT_DOMAIN §4.2.4 y §7) ---
+    Window:
+      type: string
+      enum: [day, week, month]
+
+    ErrorPatternStats:
+      type: object
+      required: [window, patterns]
+      properties:
+        window:
+          $ref: '#/components/schemas/Window'
+        patterns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorPatternAggregate'
+
+    ErrorPatternAggregate:
+      type: object
+      required: [code, count, last_seen_at]
+      properties:
+        code:
+          $ref: '#/components/schemas/ErrorPatternCode'
+        count:
+          type: integer
+          minimum: 0
+        last_seen_at:
+          type: string
+          format: date-time
+
+    ProgressSeries:
+      type: object
+      required: [window, points]
+      properties:
+        window:
+          $ref: '#/components/schemas/Window'
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgressPoint'
+
+    ProgressPoint:
+      type: object
+      required: [period_start, total_fragments, error_count, accuracy]
+      properties:
+        period_start:
+          type: string
+          format: date-time
+        total_fragments:
+          type: integer
+          minimum: 0
+        error_count:
+          type: integer
+          minimum: 0
+        accuracy:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    # --- Identidad portable (PRODUCT_DOMAIN §9) ---
+    DataExport:
+      type: object
+      required: [user_id, email, practices, generated_at]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        practices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Practice'
+        generated_at:
+          type: string
+          format: date-time
+
+    AccessLog:
+      type: object
+      required: [entries]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessLogEntry'
+
+    AccessLogEntry:
+      type: object
+      required: [id, action, occurred_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        action:
+          type: string
+        resource_type:
+          type: string
+        resource_id:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time

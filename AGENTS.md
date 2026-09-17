@@ -4,9 +4,9 @@
 
 ## Estado del proyecto
 
-- **Fase actual**: Fase 1 — Fundaciones (en curso: 1.1.x y 1.2.x completados).
-- **Siguiente item**: bloque 1.3 — Contrato OpenAPI fundacional (`docs/checklist/01-fundaciones.md`).
-- **Estado**: monorepo base (Turborepo + pnpm workspaces) y árbol canónico de directorios creados. Sin código de dominio todavía.
+- **Fase actual**: Fase 1 — Fundaciones (en curso: 1.1.x–1.3.x completados).
+- **Siguiente item**: bloque 1.4 — Pipeline de generación `pnpm generate` (`docs/checklist/01-fundaciones.md`).
+- **Estado**: monorepo base, árbol canónico de directorios y contrato OpenAPI fundacional (`apps/contracts/openapi/api.yaml`) creados. Sin código de dominio todavía.
 
 ## Primeros pasos obligatorios al iniciar una sesión
 
