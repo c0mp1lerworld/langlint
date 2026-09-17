@@ -4,8 +4,8 @@
 
 ## Estado del proyecto
 
-- **Fase actual**: Fase 2 — Dominio puro **en curso**. Bootstrap de la raíz del dominio (`ID` UUID v7, `ValidationError`, `InvalidStateError`, `DomainEvent`/`IdentityIssued`/`PracticeCreated`) y bounded contexts `identity/` (`User`, `Email`) y `practice/` (`Practice`, `SourceText`, `DraftText`, `TargetRule`, `PracticeStatus`) completados con 100% de cobertura.
-- **Siguiente item**: Fase 2, bloque `2.3` — bounded context `analysis/` (agregado `Analysis`, VOs `Fragment`/`ErrorPattern`, invariante `Fragments` no vacío en `completed`, eventos `AnalysisCompleted`/`AnalysisFailed`). Ver `docs/checklist/02-dominio-puro.md`.
+- **Fase actual**: Fase 2 — Dominio puro **en curso**. Raíz del dominio (`ID` UUID v7, errores `ValidationError`/`InvalidStateError`, `ErrorPattern` + enums, eventos `IdentityIssued`/`PracticeCreated`/`AnalysisCompleted`/`AnalysisFailed`) y bounded contexts `identity/` (`User`, `Email`), `practice/` (`Practice`, `SourceText`, `DraftText`, `TargetRule`, `PracticeStatus`) y `analysis/` (`Analysis`, `Fragment`, `AnalysisStatus`) completados con 100% de cobertura.
+- **Siguiente item**: Fase 2, bloque `2.4` — bounded context `analytics/` (`ErrorMetric`, `ProgressMetric`, VO `Window`). Ver `docs/checklist/02-dominio-puro.md`.
 - **Estado**: monorepo base, contrato OpenAPI (`apps/contracts/openapi/api.yaml`), pipeline `pnpm generate` y ahora el módulo Go (`apps/backend/go.mod`, module path `github.com/c0mp1lerworld/langlint/backend`). `gen_*.go`/`gen.ts` commiteados. Dominio puro stdlib-only; `go build/vet/test` en verde.
 
 ## Primeros pasos obligatorios al iniciar una sesión

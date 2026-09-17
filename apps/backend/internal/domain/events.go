@@ -31,3 +31,33 @@ type PracticeCreated struct {
 
 // EventName returns the stable wire name of the event.
 func (PracticeCreated) EventName() string { return EventNamePracticeCreated }
+
+// EventNameAnalysisCompleted is the wire name of AnalysisCompleted.
+const EventNameAnalysisCompleted = "analysis.completed"
+
+// AnalysisCompleted is emitted when an analysis finishes successfully.
+// It feeds the analytics bounded context (A3).
+type AnalysisCompleted struct {
+	AnalysisID    ID             `json:"analysis_id"`
+	PracticeID    ID             `json:"practice_id"`
+	UserID        ID             `json:"user_id"`
+	ErrorPatterns []ErrorPattern `json:"error_patterns"`
+	Version       int            `json:"version"`
+}
+
+// EventName returns the stable wire name of the event.
+func (AnalysisCompleted) EventName() string { return EventNameAnalysisCompleted }
+
+// EventNameAnalysisFailed is the wire name of AnalysisFailed.
+const EventNameAnalysisFailed = "analysis.failed"
+
+// AnalysisFailed is emitted when an analysis cannot be completed.
+type AnalysisFailed struct {
+	AnalysisID ID     `json:"analysis_id"`
+	PracticeID ID     `json:"practice_id"`
+	Reason     string `json:"reason"`
+	Version    int    `json:"version"`
+}
+
+// EventName returns the stable wire name of the event.
+func (AnalysisFailed) EventName() string { return EventNameAnalysisFailed }

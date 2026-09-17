@@ -4,6 +4,37 @@
 
 ---
 
+## 2026-09-17 — Fase 2: bounded context `analysis/` (items 2.3.1–2.3.5)
+
+**Estado**: Fase 2 en curso. `go test -race -count=1 ./...` en verde; `internal/domain/...` con **100%** de cobertura; `go build ./...` y `go vet ./...` OK.
+
+**Hecho**:
+- Nuevo paquete `apps/backend/internal/domain/analysis/` (solo stdlib + raíz `domain`, A1):
+  - `2.3.1` agregado `Analysis{ID, PracticeID, Fragments, Model, ModelVersion, Status, CreatedAt}`; `NewAnalysis(...)` genera UUID v7 (seam `generateID`) y arranca en `pending`; `Complete(fragments)` (pending → completed) y `Fail()` (pending → failed) con guard de estado (`InvalidStateError`).
+  - `2.3.2` VO `Fragment` (7 campos de §5.2 con tags `snake_case`, incl. `error_patterns []domain.ErrorPattern`) — struct plano, sin validación (el adapter valida el JSON del LLM contra el schema, §6.2).
+  - `2.3.4` invariante: `Complete` rechaza `fragments` vacío con `ValidationError`.
+- `2.3.3` raíz `domain/error_pattern.go`: `ErrorPatternCode` (8 códigos + `IsValid`), `ErrorPatternSeverity` (`minor|moderate|critical` + `IsValid`), `ErrorPattern{Code, Severity, Note}` + `NewErrorPattern` (valida enums).
+- `2.3.5` raíz `domain/events.go`: `AnalysisCompleted{AnalysisID, PracticeID, UserID, ErrorPatterns, Version}` y `AnalysisFailed{AnalysisID, PracticeID, Reason, Version}` + `EventName*`.
+
+**Decisiones**:
+- **`ErrorPattern` (y sus enums) en la raíz `domain/`**, no en `analysis/`: A2/A3 y el payload `[]ErrorPattern` de `AnalysisCompleted` (evento en la raíz) más el consumo de `ErrorPattern.Code` por `analytics/` obligan a que sea un tipo compartido (como `ID`). El checklist 2.3.3 lo agrupa bajo `analysis/`, pero su ubicación literal rompería A2/A3. Confirmado con el humano.
+- **`Fragment` struct plano** (sin constructor validante): el contrato solo exige que los campos *estén presentes*, no que sean no vacíos; la validación del output del LLM es del adapter (§6.2).
+- **`Analysis.CreatedAt`** existe en el dominio (§4.2.3) aunque el schema `Analysis` del contrato no lo exponga; no hay drift (la conversión a wire la hará el handler).
+- **Sin errores nuevos**: 2.3 usa `ValidationError` (fragments vacío) e `InvalidStateError` (guards). `AnalysisPendingError`/`AnalysisFailedError`/`NotFoundError`/`LLMUnavailableError` (2.5.2) se difieren a cuando un servicio los necesite.
+- **2.5.3 marcado completo**: los 4 eventos del MVP (§4.4) ya están definidos con `Version`.
+
+**Verificación**:
+- `go test -race -count=1 ./...` → OK (domain, analysis, identity, practice).
+- `go test -cover ./internal/domain/...` → **100.0%** en los cuatro paquetes.
+- `go build ./...` → OK · `go vet ./...` → OK · `gofmt -l` → sin diferencias.
+- A1: imports de `analysis/` = `time` + raíz `domain`. A3: `analysis/` **no** importa `practice/` ni `identity/` (referencia por `PracticeID domain.ID`).
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 2, bloque `2.4` — bounded context `analytics/` (agregados `ErrorMetric`/`ProgressMetric`, VO `Window` `day|week|month`).
+
+---
+
 ## 2026-09-17 — Fase 2: bounded context `practice/` (items 2.2.1–2.2.5)
 
 **Estado**: Fase 2 en curso. `go test -race -count=1 ./...` en verde; `internal/domain/...` con **100%** de cobertura; `go build ./...` y `go vet ./...` OK.

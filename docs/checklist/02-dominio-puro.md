@@ -23,11 +23,11 @@
 
 ## 2.3 Bounded context `analysis/`
 
-- [ ] `2.3.1` Crear agregado `Analysis` (`PracticeID` por referencia, `Fragments`, `Model`, `ModelVersion`, `Status`).
-- [ ] `2.3.2` Crear value object `Fragment` (7 campos del schema §5.2).
-- [ ] `2.3.3` Crear value object `ErrorPattern` (`code` enum + `severity` + `note`).
-- [ ] `2.3.4` Invariante: `Fragments` no vacío cuando `Status == completed`.
-- [ ] `2.3.5` Definir eventos `AnalysisCompleted` y `AnalysisFailed`.
+- [x] `2.3.1` Crear agregado `Analysis` (`PracticeID` por referencia, `Fragments`, `Model`, `ModelVersion`, `Status`).
+- [x] `2.3.2` Crear value object `Fragment` (7 campos del schema §5.2).
+- [x] `2.3.3` Crear value object `ErrorPattern` (`code` enum + `severity` + `note`). _(en la raíz `domain/`: es compartido por `analysis`/`analytics` y por el payload de `AnalysisCompleted`, A2/A3)_
+- [x] `2.3.4` Invariante: `Fragments` no vacío cuando `Status == completed`.
+- [x] `2.3.5` Definir eventos `AnalysisCompleted` y `AnalysisFailed`.
 
 ## 2.4 Bounded context `analytics/`
 
@@ -38,7 +38,7 @@
 
 - [x] `2.5.1` Crear `identifiers.go` con UUID v7 usando **solo** `crypto/rand`, `time`, `fmt` (A7). API: `NewID`, `MustNewID`, `IsValid`, `Version`.
 - [ ] `2.5.2` Crear `errors.go` con `ValidationError`, `NotFoundError`, `AnalysisPendingError`, `AnalysisFailedError`, `InvalidStateError`, `LLMUnavailableError` (A5). _(parcial: solo `ValidationError`)_
-- [ ] `2.5.3` Crear `events.go` con los structs `DomainEvent` inmutables + campo `Version`. _(parcial: `DomainEvent` + `IdentityIssued`)_
+- [x] `2.5.3` Crear `events.go` con los structs `DomainEvent` inmutables + campo `Version`. _(completo: `IdentityIssued`, `PracticeCreated`, `AnalysisCompleted`, `AnalysisFailed`)_
 - [ ] `2.5.4` Verificar que **ningún** archivo del dominio importa fuera de stdlib (regla `domain_purity`, A1).
 - [ ] `2.5.5` Verificar que ningún bounded context importa a otro (regla `forbidden_imports`, A3).
 - [ ] `2.5.6` Todos los fields exportados con tag `json:"snake_case"` explícito (AP2).
