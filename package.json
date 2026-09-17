@@ -1,0 +1,19 @@
+{
+  "name": "langlint",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test-integration": "turbo run test-integration --filter=backend",
+    "generate": "turbo run generate",
+    "typecheck": "turbo run typecheck",
+    "dev:backend": "turbo run dev --filter=backend",
+    "dev:frontend": "turbo run dev --filter=frontend"
+  },
+  "devDependencies": {
+    "turbo": "^2.10.13",
+    "typescript": "^7.0.2"
+  }
+}

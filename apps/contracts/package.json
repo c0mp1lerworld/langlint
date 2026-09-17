@@ -1,0 +1,8 @@
+{
+  "name": "@langlint/contracts",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "echo \"contracts: nothing to build yet (OpenAPI spec llega en 1.2/1.3)\""
+  }
+}

@@ -1,0 +1,30 @@
+# Dependencias
+node_modules/
+.pnpm-store/
+
+# Turborepo
+.turbo/
+
+# Builds
+dist/
+build/
+.next/
+out/
+coverage/
+apps/backend/bin/
+
+# Entorno
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Artefactos Windows
+*Zone.Identifier
