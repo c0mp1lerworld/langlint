@@ -8,12 +8,12 @@
 
 ## 1.1 Monorepo base (Turborepo + pnpm workspaces)
 
-- [ ] `1.1.1` Crear `package.json` raíz con `"private": true` obligatorio (AP-MR5) y `"packageManager": "pnpm@9.15.4"`.
-- [ ] `1.1.2` Definir scripts globales: `build`, `lint`, `test`, `test-integration`, `generate`, `typecheck`, `dev:backend`, `dev:frontend` (§2.2 del manifiesto monorepo).
-- [ ] `1.1.3` Crear `pnpm-workspace.yaml` con `packages: ['apps/*']`.
-- [ ] `1.1.4` Crear `turbo.json` con tasks `build` (dependsOn `^build`), `lint`, `test`, `test-integration`, `typecheck`, `dev`, `generate` (§2.2).
-- [ ] `1.1.5` Instalar `turbo` y `typescript` como `devDependencies` de la raíz.
-- [ ] `1.1.6` Crear `.nvmrc`, `.tool-versions` (Go, Node, pnpm), `.editorconfig`, `.gitignore`.
+- [x] `1.1.1` Crear `package.json` raíz con `"private": true` obligatorio (AP-MR5) y `"packageManager": "pnpm@9.15.4"`.
+- [x] `1.1.2` Definir scripts globales: `build`, `lint`, `test`, `test-integration`, `generate`, `typecheck`, `dev:backend`, `dev:frontend` (§2.2 del manifiesto monorepo).
+- [x] `1.1.3` Crear `pnpm-workspace.yaml` con `packages: ['apps/*']`.
+- [x] `1.1.4` Crear `turbo.json` con tasks `build` (dependsOn `^build`), `lint`, `test`, `test-integration`, `typecheck`, `dev`, `generate` (§2.2).
+- [x] `1.1.5` Instalar `turbo` y `typescript` como `devDependencies` de la raíz.
+- [x] `1.1.6` Crear `.nvmrc`, `.tool-versions` (Go, Node, pnpm), `.editorconfig`, `.gitignore`.
 
 ## 1.2 Árbol canónico de directorios
 
