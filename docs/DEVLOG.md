@@ -4,6 +4,38 @@
 
 ---
 
+## 2026-09-17 — Fase 2 (cierre): `analytics/`, errores A5 y Gate de salida (items 2.4.1–2.5.6)
+
+**Estado**: **Fase 2 completada y Gate de salida en verde.** `go test -race -count=1 ./...` OK; `internal/domain/...` con **100%** de cobertura en los 5 paquetes; `go build ./...` y `go vet ./...` OK.
+
+**Hecho**:
+- `2.4.2` nuevo paquete `apps/backend/internal/domain/analytics/` (solo stdlib + raíz `domain`): VO `Window` (`day|week|month`) con `IsValid`/`String`.
+- `2.4.1` agregado `ErrorMetric{UserID, Code, Window, Count, LastSeenAt}` (clave natural `(UserID, Code, Window)`, sin UUID): `NewErrorMetric` valida `code`/`window` y arranca `Count=1`; `Record(now)` incrementa `Count` y actualiza `LastSeenAt` (§7.1). Agregado `ProgressMetric{UserID, Window, TotalFragments, ErrorCount, Accuracy}`: `NewProgressMetric` valida `window`/conteos `>= 0` y deriva `Accuracy`.
+- `2.5.2` completado `errors.go`: añadidos `NotFoundError` (404), `AnalysisPendingError` (409), `AnalysisFailedError` (reservado), `LLMUnavailableError` (503) — todos con shape `{Field, Message}` + `Error()`, consistente con `ValidationError`/`InvalidStateError`.
+- `2.5.4`/`2.5.5` smoke checks: imports de `internal/domain/` = **solo stdlib + raíz `domain`**; ningún BC importa a otro (`go list`).
+- `2.5.6` todos los fields exportados de structs del dominio llevan tag `json` (verificado con un checker AST temporal, ver abajo).
+
+**Decisiones**:
+- **`Window` en `analytics/`** (no en la raíz): §4.3 lo asigna solo a analytics; no hay consumo cruzado.
+- **`Accuracy` con clamp**: `NewProgressMetric` valida `TotalFragments >= 0` y `ErrorCount >= 0`; `Accuracy = 1 - ErrorCount/TotalFragments` con clamp inferior a `0`; `TotalFragments == 0 → Accuracy = 1`. Confirmado con el humano. El clamp superior (`> 1`) es innecesario: con `ErrorCount >= 0`, la fórmula nunca supera `1`; no se añade rama muerta.
+- **`ErrorMetric`/`ProgressMetric` sin UUID**: son agregados materializados por clave natural (`Upsert` por tupla), no entidades con identidad propia.
+- **Tags `json` en los errores**: AP2 los exime (no cruzan el wire), pero 2.5.6 pide "todos los fields exportados". Se añaden tags a los 6 errores para que el checklist sea literalmente cierto y consistente con logging estructurado futuro; inocuo (nadie marshala errores hoy).
+- **Verificación 2.5.6 con checker AST temporal** (`/tmp/opencode/checktags`, no commiteado): parsea `internal/domain/**/*.go` (sin tests) y comprueba que todo field exportado de struct tiene tag `json`. Resultado: `OK`. No se añade herramienta al repo (el lint `domain_purity`/`forbidden_imports` de golangci-lint es de Fase 7).
+- **`make test` no existe**: el `Makefile` solo tiene `tools`/`generate`; la verificación canónica usada es `go test -race -count=1 ./...` + `go test -cover`, no `make test` (no se inventan comandos).
+
+**Verificación**:
+- `go test -race -count=1 ./...` → OK (domain, analysis, analytics, identity, practice).
+- `go test -cover ./internal/domain/...` → **100.0%** en los 5 paquetes.
+- `go build ./...` → OK · `go vet ./...` → OK · `gofmt -l` → sin diferencias.
+- Purity: `grep` de imports → `crypto/rand`, `encoding/hex`, `fmt`, `net/mail`, `strings`, `time` + raíz `domain`.
+- Gate de salida de Fase 2: las 4 casillas en verde (cobertura 100%, `-race`, purity, convención de nombres).
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: **Fase 3 — Puertos y adaptadores** (`docs/checklist/03-*.md`): puertos `LLMExtractor`, repositorios, `UnitOfWork` y outbox en `internal/api/ports/` + adaptadores Postgres con testcontainers.
+
+---
+
 ## 2026-09-17 — Fase 2: bounded context `analysis/` (items 2.3.1–2.3.5)
 
 **Estado**: Fase 2 en curso. `go test -race -count=1 ./...` en verde; `internal/domain/...` con **100%** de cobertura; `go build ./...` y `go vet ./...` OK.

@@ -66,3 +66,82 @@ func TestInvalidStateError_AsDomainError(t *testing.T) {
 		t.Fatal("errors.As must match *domain.InvalidStateError")
 	}
 }
+
+func TestDomainErrors_Error_IncludeFieldAndMessage(t *testing.T) {
+	cases := []struct {
+		name  string
+		err   error
+		field string
+		msg   string
+	}{
+		{"NotFoundError", &domain.NotFoundError{Field: "practice", Message: "not found"}, "practice", "not found"},
+		{"AnalysisPendingError", &domain.AnalysisPendingError{Field: "analysis", Message: "still pending"}, "analysis", "still pending"},
+		{"AnalysisFailedError", &domain.AnalysisFailedError{Field: "analysis", Message: "has failed"}, "analysis", "has failed"},
+		{"LLMUnavailableError", &domain.LLMUnavailableError{Field: "llm", Message: "unavailable"}, "llm", "unavailable"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.err.Error()
+			for _, want := range []string{tc.field, tc.msg} {
+				if !strings.Contains(got, want) {
+					t.Fatalf("Error() = %q, want it to contain %q", got, want)
+				}
+			}
+		})
+	}
+}
+
+func TestDomainErrors_Error_WithoutField_ReturnsMessage(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		msg  string
+	}{
+		{"NotFoundError", &domain.NotFoundError{Message: "not found"}, "not found"},
+		{"AnalysisPendingError", &domain.AnalysisPendingError{Message: "still pending"}, "still pending"},
+		{"AnalysisFailedError", &domain.AnalysisFailedError{Message: "has failed"}, "has failed"},
+		{"LLMUnavailableError", &domain.LLMUnavailableError{Message: "unavailable"}, "unavailable"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.err.Error(); got != tc.msg {
+				t.Fatalf("Error() = %q, want %q", got, tc.msg)
+			}
+		})
+	}
+}
+
+func TestDomainErrors_AsDomainError(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		as   func(error) bool
+	}{
+		{"NotFoundError", &domain.NotFoundError{Message: "not found"}, func(e error) bool {
+			var target *domain.NotFoundError
+			return errors.As(e, &target)
+		}},
+		{"AnalysisPendingError", &domain.AnalysisPendingError{Message: "pending"}, func(e error) bool {
+			var target *domain.AnalysisPendingError
+			return errors.As(e, &target)
+		}},
+		{"AnalysisFailedError", &domain.AnalysisFailedError{Message: "failed"}, func(e error) bool {
+			var target *domain.AnalysisFailedError
+			return errors.As(e, &target)
+		}},
+		{"LLMUnavailableError", &domain.LLMUnavailableError{Message: "unavailable"}, func(e error) bool {
+			var target *domain.LLMUnavailableError
+			return errors.As(e, &target)
+		}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if !tc.as(tc.err) {
+				t.Fatalf("errors.As must match %s", tc.name)
+			}
+		})
+	}
+}

@@ -31,26 +31,26 @@
 
 ## 2.4 Bounded context `analytics/`
 
-- [ ] `2.4.1` Crear agregados `ErrorMetric` (`Code`, `Window`, `Count`, `LastSeenAt`) y `ProgressMetric` (`TotalFragments`, `ErrorCount`, `Accuracy`).
-- [ ] `2.4.2` Crear value object `Window` (`day|week|month`).
+- [x] `2.4.1` Crear agregados `ErrorMetric` (`Code`, `Window`, `Count`, `LastSeenAt`) y `ProgressMetric` (`TotalFragments`, `ErrorCount`, `Accuracy`).
+- [x] `2.4.2` Crear value object `Window` (`day|week|month`).
 
 ## 2.5 Errores, identificadores y eventos compartidos (raíz del dominio)
 
 - [x] `2.5.1` Crear `identifiers.go` con UUID v7 usando **solo** `crypto/rand`, `time`, `fmt` (A7). API: `NewID`, `MustNewID`, `IsValid`, `Version`.
-- [ ] `2.5.2` Crear `errors.go` con `ValidationError`, `NotFoundError`, `AnalysisPendingError`, `AnalysisFailedError`, `InvalidStateError`, `LLMUnavailableError` (A5). _(parcial: solo `ValidationError`)_
+- [x] `2.5.2` Crear `errors.go` con `ValidationError`, `NotFoundError`, `AnalysisPendingError`, `AnalysisFailedError`, `InvalidStateError`, `LLMUnavailableError` (A5). _(completo)_
 - [x] `2.5.3` Crear `events.go` con los structs `DomainEvent` inmutables + campo `Version`. _(completo: `IdentityIssued`, `PracticeCreated`, `AnalysisCompleted`, `AnalysisFailed`)_
-- [ ] `2.5.4` Verificar que **ningún** archivo del dominio importa fuera de stdlib (regla `domain_purity`, A1).
-- [ ] `2.5.5` Verificar que ningún bounded context importa a otro (regla `forbidden_imports`, A3).
-- [ ] `2.5.6` Todos los fields exportados con tag `json:"snake_case"` explícito (AP2).
+- [x] `2.5.4` Verificar que **ningún** archivo del dominio importa fuera de stdlib (regla `domain_purity`, A1).
+- [x] `2.5.5` Verificar que ningún bounded context importa a otro (regla `forbidden_imports`, A3).
+- [x] `2.5.6` Todos los fields exportados con tag `json:"snake_case"` explícito (AP2).
 
 ---
 
 ## ✅ Gate de salida
 
-- [ ] Cobertura del dominio **100%** (`go test -cover` en verde, gate CI, A10).
-- [ ] `go test -race ./...` sin fallos en el dominio.
-- [ ] Smoke check `purity` (grep de imports) sin violaciones.
-- [ ] Nombres de test según convención `TestXxx_Method_Condition_ExpectedResult` (A10).
+- [x] Cobertura del dominio **100%** (`go test -cover` en verde, gate CI, A10).
+- [x] `go test -race ./...` sin fallos en el dominio.
+- [x] Smoke check `purity` (grep de imports) sin violaciones.
+- [x] Nombres de test según convención `TestXxx_Method_Condition_ExpectedResult` (A10).
 
 ## Fuente normativa
 

@@ -4,8 +4,8 @@
 
 ## Estado del proyecto
 
-- **Fase actual**: Fase 2 — Dominio puro **en curso**. Raíz del dominio (`ID` UUID v7, errores `ValidationError`/`InvalidStateError`, `ErrorPattern` + enums, eventos `IdentityIssued`/`PracticeCreated`/`AnalysisCompleted`/`AnalysisFailed`) y bounded contexts `identity/` (`User`, `Email`), `practice/` (`Practice`, `SourceText`, `DraftText`, `TargetRule`, `PracticeStatus`) y `analysis/` (`Analysis`, `Fragment`, `AnalysisStatus`) completados con 100% de cobertura.
-- **Siguiente item**: Fase 2, bloque `2.4` — bounded context `analytics/` (`ErrorMetric`, `ProgressMetric`, VO `Window`). Ver `docs/checklist/02-dominio-puro.md`.
+- **Fase actual**: Fase 2 — Dominio puro **completada** (gate de salida en verde). Raíz del dominio (`ID` UUID v7, errores A5, `ErrorPattern` + enums, eventos `IdentityIssued`/`PracticeCreated`/`AnalysisCompleted`/`AnalysisFailed`) y bounded contexts `identity/`, `practice/`, `analysis/` y `analytics/` con **100%** de cobertura.
+- **Siguiente item**: Fase 3 — Puertos y adaptadores (`docs/checklist/03-*.md`): puertos `LLMExtractor`, repositorios, `UnitOfWork` y outbox en `internal/api/ports/` + adaptadores Postgres (testcontainers).
 - **Estado**: monorepo base, contrato OpenAPI (`apps/contracts/openapi/api.yaml`), pipeline `pnpm generate` y ahora el módulo Go (`apps/backend/go.mod`, module path `github.com/c0mp1lerworld/langlint/backend`). `gen_*.go`/`gen.ts` commiteados. Dominio puro stdlib-only; `go build/vet/test` en verde.
 
 ## Primeros pasos obligatorios al iniciar una sesión
