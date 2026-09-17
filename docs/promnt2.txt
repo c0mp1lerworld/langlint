@@ -1,0 +1,17 @@
+Actúa como un desarrollador experto y un mentor técnico muy paciente. Acabo de recibir una solución de una IA que no entiendo en lo absoluto y necesito tu ayuda para desglosarla. Con respecto a todo lo que se hizo en la Fase 1
+
+Quiero que generes el contenido para un documento Markdown (.md) que guardaré en mi proyecto bajo la ruta `docs/explains/`. 
+
+El documento debe tener la siguiente estructura exacta:
+
+## 1. ¿De qué trata esto? (Explicación para no técnicos)
+Explica qué problema resuelve este código y qué hace exactamente. Usa un lenguaje muy simple, cero jerga técnica, y utiliza una analogía de la vida real. El objetivo es que cualquier persona del equipo, sepa o no de programación, entienda qué hace esta pieza.
+
+## 2. Guía de Estudio (Para entender qué hizo la IA)
+Aquí necesito que me expliques la lógica detrás de la solución para que yo pueda estudiar y aprender. 
+- Desglosa el código en bloques lógicos y explica qué hace cada uno.
+- Explícame **por qué** la IA decidió hacerlo de esta manera (qué patrones o funciones usó y cuál es su propósito).
+- Define brevemente cualquier concepto, método o función compleja que se esté utilizando.
+
+## 3. Resumen de los cambios
+Haz un listado rápido de 3 viñetas resumiendo exactamente qué fue lo que la IA anterior construyó o modificó.
