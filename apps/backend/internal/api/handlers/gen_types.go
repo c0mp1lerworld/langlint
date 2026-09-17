@@ -161,7 +161,10 @@ func (e Window) Valid() bool {
 
 // AccessLog defines model for AccessLog.
 type AccessLog struct {
-	Entries []AccessLogEntry `json:"entries"`
+	Items []AccessLogEntry `json:"items"`
+
+	// Total Número total de eventos de auditoría (sin paginar).
+	Total int `json:"total"`
 }
 
 // AccessLogEntry defines model for AccessLogEntry.
@@ -294,6 +297,14 @@ type PracticeDetail struct {
 	UserId      openapi_types.UUID `json:"user_id"`
 }
 
+// PracticeList defines model for PracticeList.
+type PracticeList struct {
+	Items []Practice `json:"items"`
+
+	// Total Número total de prácticas del usuario (sin paginar).
+	Total int `json:"total"`
+}
+
 // PracticeStatus Ciclo de vida de una práctica.
 type PracticeStatus string
 
@@ -321,11 +332,17 @@ type TargetRule struct {
 // Window defines model for Window.
 type Window string
 
+// Limit defines model for Limit.
+type Limit = int
+
+// Offset defines model for Offset.
+type Offset = int
+
 // PracticeId defines model for PracticeId.
 type PracticeId = openapi_types.UUID
 
-// AnalysisFailed defines model for AnalysisFailed.
-type AnalysisFailed = ErrorResponse
+// WindowQuery defines model for WindowQuery.
+type WindowQuery = Window
 
 // AnalysisPending defines model for AnalysisPending.
 type AnalysisPending = ErrorResponse
@@ -338,6 +355,36 @@ type NotFound = ErrorResponse
 
 // ValidationError defines model for ValidationError.
 type ValidationError = ErrorResponse
+
+// GetErrorPatternStatsParams defines parameters for GetErrorPatternStats.
+type GetErrorPatternStatsParams struct {
+	// Window Ventana temporal de agregación (`day|week|month`). Por defecto `week`.
+	Window *WindowQuery `form:"window,omitempty" json:"window,omitempty"`
+}
+
+// GetProgressSeriesParams defines parameters for GetProgressSeries.
+type GetProgressSeriesParams struct {
+	// Window Ventana temporal de agregación (`day|week|month`). Por defecto `week`.
+	Window *WindowQuery `form:"window,omitempty" json:"window,omitempty"`
+}
+
+// GetAccessLogParams defines parameters for GetAccessLog.
+type GetAccessLogParams struct {
+	// Limit Número máximo de elementos por página (1..100). Por defecto `20`.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Desplazamiento desde el primer elemento. Por defecto `0`.
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// ListPracticesParams defines parameters for ListPractices.
+type ListPracticesParams struct {
+	// Limit Número máximo de elementos por página (1..100). Por defecto `20`.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Desplazamiento desde el primer elemento. Por defecto `0`.
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+}
 
 // CreatePracticeJSONRequestBody defines body for CreatePractice for application/json ContentType.
 type CreatePracticeJSONRequestBody = CreatePracticeRequest

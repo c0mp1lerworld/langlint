@@ -202,7 +202,7 @@ Para mantener el proyecto acotado y evitar la parálisis por análisis (MVP acot
 | `ValidationError` | Entrada inválida (texto vacío, `TargetRules` vacío, JSON malformado) | 422 | `validation_error` |
 | `NotFoundError` | `Practice`/`Analysis` no existe | 404 | `not_found` |
 | `AnalysisPendingError` | Se solicita el resultado antes de que termine el análisis | 409 | `analysis_pending` |
-| `AnalysisFailedError` | El análisis terminó con fallo | 422 | `analysis_failed` |
+| `AnalysisFailedError` | El análisis terminó con fallo (el cliente lo observa vía `analysis.status == "failed"`) | — (sin 4xx; ver §5.1) | `analysis_failed` (reservado) |
 | `LLMUnavailableError` | Proveedor LLM caído / timeout | 503 | `llm_unavailable` |
 
 > **Regla (AP3)**: nunca reutilizar `ValidationError` para un concepto distinto. Cada error con un código HTTP distinto tiene su propio tipo.
@@ -268,16 +268,20 @@ Cada `ErrorPattern` además lleva `severity` (`minor` | `moderate` | `critical`)
 | Método | Ruta | Descripción | Respuesta |
 |---|---|---|---|
 | `POST` | `/v1/practices` | Crea una práctica (source + draft + target rules). | `201` `Practice` |
-| `GET` | `/v1/practices` | Lista las prácticas del usuario. | `200` `Practice[]` |
+| `GET` | `/v1/practices` | Lista las prácticas del usuario (paginado `?limit&offset`). | `200` `PracticeList` (`{items, total}`) |
 | `GET` | `/v1/practices/{practiceId}` | Obtiene práctica + análisis embebido. | `200` `PracticeDetail` |
-| `POST` | `/v1/practices/{practiceId}/analyze` | Dispara el análisis asíncrono. | `202` (polling) |
-| `GET` | `/v1/analytics/error-patterns` | Agregados de patrones de error. | `200` `ErrorPatternStats` |
-| `GET` | `/v1/analytics/progress` | Serie temporal de progreso. | `200` `ProgressSeries` |
+| `POST` | `/v1/practices/{practiceId}/analyze` | Dispara el análisis asíncrono. | `202` (polling) + `Retry-After` |
+| `GET` | `/v1/analytics/error-patterns` | Agregados de patrones de error (`?window=day\|week\|month`). | `200` `ErrorPatternStats` |
+| `GET` | `/v1/analytics/progress` | Serie temporal de progreso (`?window=day\|week\|month`). | `200` `ProgressSeries` |
 | `GET` | `/v1/me/data/export` | Portabilidad de datos (A9, GDPR Art. 15+20). | `200` `DataExport` |
 | `DELETE` | `/v1/me/data` | Derecho al olvido, gracia 30 días (A9, GDPR Art. 17). | `202` |
-| `GET` | `/v1/me/access-log` | Auditoría del usuario (A9). | `200` `AccessLog` |
+| `GET` | `/v1/me/access-log` | Auditoría del usuario (A9), paginada (`?limit&offset`). | `200` `AccessLog` (`{items, total}`) |
 
 > **Idempotencia (AP4)**: `POST /v1/practices/{id}/analyze` documenta en el contrato que `409 analysis_pending` es un **éxito idempotente** (ya está en análisis); el cliente lo trata como éxito (F5).
+>
+> **Fallos de análisis (no usan 4xx)**: un análisis terminado con fallo se comunica con `200` y `analysis.status == "failed"` en `PracticeDetail`; **no** se devuelve `422 analysis_failed` (el `422` queda reservado a errores de validación del input). El código `analysis_failed` permanece en la taxonomía de errores del contrato como valor reservado.
+>
+> **Paginación y ventana**: los listados usan `limit` (1..100, por defecto 20) y `offset` (por defecto 0) y devuelven `{items, total}`. Los agregados de analítica aceptan `window` (`day|week|month`, por defecto `week`).
 
 ### 5.2 Schema `FragmentAnalysis` (el corazón del producto)
 

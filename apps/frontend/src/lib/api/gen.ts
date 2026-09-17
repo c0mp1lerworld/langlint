@@ -230,6 +230,11 @@ export interface components {
             updated_at: string;
             analysis?: components["schemas"]["Analysis"] | null;
         };
+        PracticeList: {
+            items: components["schemas"]["Practice"][];
+            /** @description Número total de prácticas del usuario (sin paginar). */
+            total: number;
+        };
         /**
          * @description Taxonomía de errores (PRODUCT_DOMAIN §4.6).
          * @enum {string}
@@ -302,7 +307,9 @@ export interface components {
             generated_at: string;
         };
         AccessLog: {
-            entries: components["schemas"]["AccessLogEntry"][];
+            items: components["schemas"]["AccessLogEntry"][];
+            /** @description Número total de eventos de auditoría (sin paginar). */
+            total: number;
         };
         AccessLogEntry: {
             /** Format: uuid */
@@ -345,15 +352,6 @@ export interface components {
                 "application/json": components["schemas"]["ErrorResponse"];
             };
         };
-        /** @description El análisis terminó con fallo. */
-        AnalysisFailed: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["ErrorResponse"];
-            };
-        };
         /** @description El proveedor LLM está caído o excedió el timeout. */
         LLMUnavailable: {
             headers: {
@@ -367,6 +365,12 @@ export interface components {
     parameters: {
         /** @description Identificador de la práctica (UUID v7). */
         PracticeId: string;
+        /** @description Ventana temporal de agregación (`day|week|month`). Por defecto `week`. */
+        WindowQuery: components["schemas"]["Window"];
+        /** @description Número máximo de elementos por página (1..100). Por defecto `20`. */
+        Limit: number;
+        /** @description Desplazamiento desde el primer elemento. Por defecto `0`. */
+        Offset: number;
     };
     requestBodies: never;
     headers: never;
@@ -376,20 +380,25 @@ export type $defs = Record<string, never>;
 export interface operations {
     list_practices: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Número máximo de elementos por página (1..100). Por defecto `20`. */
+                limit?: components["parameters"]["Limit"];
+                /** @description Desplazamiento desde el primer elemento. Por defecto `0`. */
+                offset?: components["parameters"]["Offset"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Lista de prácticas del usuario. */
+            /** @description Página de prácticas del usuario. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Practice"][];
+                    "application/json": components["schemas"]["PracticeList"];
                 };
             };
         };
@@ -431,7 +440,11 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Práctica con su análisis embebido (si existe). */
+            /**
+             * @description Práctica con su análisis embebido (si existe). Si el análisis falló,
+             *     se devuelve igualmente `200` con `analysis.status == "failed"`
+             *     (no se usa `422`, reservado a errores de validación del input).
+             */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -441,7 +454,6 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
-            422: components["responses"]["AnalysisFailed"];
         };
     };
     analyze_practice: {
@@ -459,6 +471,8 @@ export interface operations {
             /** @description Análisis encolado; hacer polling de `GET /practices/{practiceId}`. */
             202: {
                 headers: {
+                    /** @description Segundos a esperar antes de la siguiente consulta de estado. */
+                    "Retry-After": number;
                     [name: string]: unknown;
                 };
                 content?: never;
@@ -470,7 +484,10 @@ export interface operations {
     };
     get_error_pattern_stats: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Ventana temporal de agregación (`day|week|month`). Por defecto `week`. */
+                window?: components["parameters"]["WindowQuery"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -490,7 +507,10 @@ export interface operations {
     };
     get_progress_series: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Ventana temporal de agregación (`day|week|month`). Por defecto `week`. */
+                window?: components["parameters"]["WindowQuery"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -548,14 +568,19 @@ export interface operations {
     };
     get_access_log: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Número máximo de elementos por página (1..100). Por defecto `20`. */
+                limit?: components["parameters"]["Limit"];
+                /** @description Desplazamiento desde el primer elemento. Por defecto `0`. */
+                offset?: components["parameters"]["Offset"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Registro de accesos del usuario. */
+            /** @description Página del registro de accesos del usuario. */
             200: {
                 headers: {
                     [name: string]: unknown;

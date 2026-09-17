@@ -4,6 +4,33 @@
 
 ---
 
+## 2026-09-17 — Fase 1: endurecimiento del contrato OpenAPI (revisión REST, puntos 1–4)
+
+**Estado**: gate de Fase 1 sigue en verde. `pnpm generate` idempotente, `pnpm lint` `valid` (6 warnings `operation-4xx-response`, ya conocidos), `pnpm build` OK.
+
+**Contexto**: revisión de la superficie REST antes de generar clientes. Se corrigieron 4 puntos; los puntos 5 (acciones como sub-recursos), 6 (idempotencia de `POST /practices`) y 7 (sin `PUT/PATCH` de práctica) se aceptan como decisiones/deuda conocida del MVP.
+
+**Hecho (todo en `apps/contracts/openapi/api.yaml` → `pnpm generate`)**:
+1. **`window` en `/analytics/*`**: nuevo `components.parameters.WindowQuery` (query, `$ref` a `Window`, opcional, `default: week`) en `GET /analytics/error-patterns` y `GET /analytics/progress`.
+2. **Paginación**: `components.parameters.Limit` (int, 1..100, default 20) y `Offset` (int, ≥0, default 0) en `GET /practices` y `GET /me/access-log`. Nueva envoltura `PracticeList { items, total }`; `AccessLog` pasa de `{ entries }` a `{ items, total }` (renombrado `entries` → `items` por consistencia).
+3. **Fallos de análisis**: `GET /practices/{practiceId}` ya no devuelve `422 analysis_failed`; se comunica con `200` y `analysis.status == "failed"`. Se elimina el componente `AnalysisFailed` (huérfano). `analysis_failed` permanece en el enum de `ErrorResponse.code` como valor reservado. El `422` queda exclusivo de `validation_error`.
+4. **`Retry-After`**: header `Retry-After` (integer, segundos, `required: true`) en el `202` de `POST /practices/{practiceId}/analyze`.
+
+**Decisiones**:
+- `window` **opcional con default `week`** (no rompe llamadas sin parámetro). `limit`/`offset` con los defaults indicados.
+- Versionado: `apps/contracts` se mantiene en **`1.0.0`**. El cambio de forma de respuesta (`array` → `{items,total}`) es breaking, pero el contrato **no está publicado ni tiene consumidores**; se documenta aquí en lugar de saltar a `2.0.0` (AP-MR6 se aplicará cuando exista release real).
+- Generación: `$ref` + `default` (sibling 3.1) produjo alias limpios en Go (`WindowQuery = Window`, `Limit = Offset = int`).
+
+**Docs actualizados**: `docs/PRODUCT_DOMAIN.md` §5.1 (tabla de endpoints + notas de idempotencia, fallos sin 4xx, paginación/ventana) y §4.5 (fila de `AnalysisFailedError`). `docs/explains/fase-1-fundaciones.md` revisado: sin contenido obsoleto.
+
+**Verificación**: `pnpm generate` ×2 + `git diff --exit-code` (idempotente) → `pnpm lint` (`valid`, 6 warnings) → `pnpm build` (1 successful).
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 2 — Dominio puro. Primero crear el módulo Go (`go.mod`, module path) y resolver la nota de bounded contexts del manifiesto (§3.1).
+
+---
+
 ## 2026-09-17 — Fase 1 (cierre): pipeline de generación `pnpm generate` (items 1.4.1–1.4.5)
 
 **Estado**: **Gate de salida de Fase 1 en verde**. `pnpm install --frozen-lockfile`, `pnpm generate` (idempotente), `pnpm build`, `pnpm lint` (OpenAPI validado) — todo OK.

@@ -58,15 +58,16 @@ paths:
       operationId: list_practices
       summary: Lista las prácticas del usuario
       tags: [practices]
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
-          description: Lista de prácticas del usuario.
+          description: Página de prácticas del usuario.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Practice'
+                $ref: '#/components/schemas/PracticeList'
 
   /practices/{practiceId}:
     parameters:
@@ -77,15 +78,16 @@ paths:
       tags: [practices]
       responses:
         '200':
-          description: Práctica con su análisis embebido (si existe).
+          description: |
+            Práctica con su análisis embebido (si existe). Si el análisis falló,
+            se devuelve igualmente `200` con `analysis.status == "failed"`
+            (no se usa `422`, reservado a errores de validación del input).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PracticeDetail'
         '404':
           $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/AnalysisFailed'
 
   /practices/{practiceId}/analyze:
     parameters:
@@ -104,6 +106,13 @@ paths:
       responses:
         '202':
           description: Análisis encolado; hacer polling de `GET /practices/{practiceId}`.
+          headers:
+            Retry-After:
+              required: true
+              description: Segundos a esperar antes de la siguiente consulta de estado.
+              schema:
+                type: integer
+                minimum: 1
         '409':
           $ref: '#/components/responses/AnalysisPending'
         '404':
@@ -117,6 +126,8 @@ paths:
       summary: Agregados de patrones de error
       description: Frecuencia clasificada de errores por patrón (PRODUCT_DOMAIN §7.3).
       tags: [analytics]
+      parameters:
+        - $ref: '#/components/parameters/WindowQuery'
       responses:
         '200':
           description: Agregados de patrones de error del usuario.
@@ -131,6 +142,8 @@ paths:
       summary: Serie temporal de progreso
       description: Serie temporal de precisión y volumen por ventana (PRODUCT_DOMAIN §7.1).
       tags: [analytics]
+      parameters:
+        - $ref: '#/components/parameters/WindowQuery'
       responses:
         '200':
           description: Serie temporal de progreso del usuario.
@@ -172,9 +185,12 @@ paths:
       summary: Auditoría de accesos del usuario
       description: Eventos append-only de auditoría (A9, A4).
       tags: [identity]
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
-          description: Registro de accesos del usuario.
+          description: Página del registro de accesos del usuario.
           content:
             application/json:
               schema:
@@ -190,6 +206,33 @@ components:
       schema:
         type: string
         format: uuid
+    WindowQuery:
+      name: window
+      in: query
+      required: false
+      description: Ventana temporal de agregación (`day|week|month`). Por defecto `week`.
+      schema:
+        $ref: '#/components/schemas/Window'
+        default: week
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Número máximo de elementos por página (1..100). Por defecto `20`.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Offset:
+      name: offset
+      in: query
+      required: false
+      description: Desplazamiento desde el primer elemento. Por defecto `0`.
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
 
   responses:
     ValidationError:
@@ -208,12 +251,6 @@ components:
       description: |
         Ya hay un análisis en curso para la práctica. Es un ÉXITO IDEMPOTENTE
         (AP4): el cliente debe tratarlo como éxito, no como error.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    AnalysisFailed:
-      description: El análisis terminó con fallo.
       content:
         application/json:
           schema:
@@ -353,6 +390,20 @@ components:
           oneOf:
             - $ref: '#/components/schemas/Analysis'
             - type: 'null'
+
+    # Envoltorio paginado de prácticas (GET /practices).
+    PracticeList:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Practice'
+        total:
+          type: integer
+          minimum: 0
+          description: Número total de prácticas del usuario (sin paginar).
 
     # --- Análisis (PRODUCT_DOMAIN §4.2.3 y §5.2) ---
     ErrorPatternCode:
@@ -519,12 +570,16 @@ components:
 
     AccessLog:
       type: object
-      required: [entries]
+      required: [items, total]
       properties:
-        entries:
+        items:
           type: array
           items:
             $ref: '#/components/schemas/AccessLogEntry'
+        total:
+          type: integer
+          minimum: 0
+          description: Número total de eventos de auditoría (sin paginar).
 
     AccessLogEntry:
       type: object

@@ -4,6 +4,7 @@
 package httpapi
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -15,13 +16,13 @@ import (
 type ServerInterface interface {
 	// GetErrorPatternStats Agregados de patrones de error
 	// (GET /analytics/error-patterns)
-	GetErrorPatternStats(w http.ResponseWriter, r *http.Request)
+	GetErrorPatternStats(w http.ResponseWriter, r *http.Request, params GetErrorPatternStatsParams)
 	// GetProgressSeries Serie temporal de progreso
 	// (GET /analytics/progress)
-	GetProgressSeries(w http.ResponseWriter, r *http.Request)
+	GetProgressSeries(w http.ResponseWriter, r *http.Request, params GetProgressSeriesParams)
 	// GetAccessLog Auditoría de accesos del usuario
 	// (GET /me/access-log)
-	GetAccessLog(w http.ResponseWriter, r *http.Request)
+	GetAccessLog(w http.ResponseWriter, r *http.Request, params GetAccessLogParams)
 	// DeleteData Solicita el borrado de los datos del usuario
 	// (DELETE /me/data)
 	DeleteData(w http.ResponseWriter, r *http.Request)
@@ -30,7 +31,7 @@ type ServerInterface interface {
 	ExportData(w http.ResponseWriter, r *http.Request)
 	// ListPractices Lista las prácticas del usuario
 	// (GET /practices)
-	ListPractices(w http.ResponseWriter, r *http.Request)
+	ListPractices(w http.ResponseWriter, r *http.Request, params ListPracticesParams)
 	// CreatePractice Crea una práctica
 	// (POST /practices)
 	CreatePractice(w http.ResponseWriter, r *http.Request)
@@ -48,19 +49,19 @@ type Unimplemented struct{}
 
 // GetErrorPatternStats Agregados de patrones de error
 // (GET /analytics/error-patterns)
-func (_ Unimplemented) GetErrorPatternStats(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) GetErrorPatternStats(w http.ResponseWriter, r *http.Request, params GetErrorPatternStatsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // GetProgressSeries Serie temporal de progreso
 // (GET /analytics/progress)
-func (_ Unimplemented) GetProgressSeries(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) GetProgressSeries(w http.ResponseWriter, r *http.Request, params GetProgressSeriesParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // GetAccessLog Auditoría de accesos del usuario
 // (GET /me/access-log)
-func (_ Unimplemented) GetAccessLog(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) GetAccessLog(w http.ResponseWriter, r *http.Request, params GetAccessLogParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -78,7 +79,7 @@ func (_ Unimplemented) ExportData(w http.ResponseWriter, r *http.Request) {
 
 // ListPractices Lista las prácticas del usuario
 // (GET /practices)
-func (_ Unimplemented) ListPractices(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) ListPractices(w http.ResponseWriter, r *http.Request, params ListPracticesParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -112,8 +113,27 @@ type MiddlewareFunc func(http.Handler) http.Handler
 // GetErrorPatternStats operation middleware
 func (siw *ServerInterfaceWrapper) GetErrorPatternStats(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetErrorPatternStatsParams
+
+	// ------------- Optional query parameter "window" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "window", r.URL.Query(), &params.Window, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "window"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "window", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetErrorPatternStats(w, r)
+		siw.Handler.GetErrorPatternStats(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -126,8 +146,27 @@ func (siw *ServerInterfaceWrapper) GetErrorPatternStats(w http.ResponseWriter, r
 // GetProgressSeries operation middleware
 func (siw *ServerInterfaceWrapper) GetProgressSeries(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProgressSeriesParams
+
+	// ------------- Optional query parameter "window" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "window", r.URL.Query(), &params.Window, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "window"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "window", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetProgressSeries(w, r)
+		siw.Handler.GetProgressSeries(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -140,8 +179,40 @@ func (siw *ServerInterfaceWrapper) GetProgressSeries(w http.ResponseWriter, r *h
 // GetAccessLog operation middleware
 func (siw *ServerInterfaceWrapper) GetAccessLog(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetAccessLogParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetAccessLog(w, r)
+		siw.Handler.GetAccessLog(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -182,8 +253,40 @@ func (siw *ServerInterfaceWrapper) ExportData(w http.ResponseWriter, r *http.Req
 // ListPractices operation middleware
 func (siw *ServerInterfaceWrapper) ListPractices(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPracticesParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListPractices(w, r)
+		siw.Handler.ListPractices(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
