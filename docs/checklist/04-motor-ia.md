@@ -21,19 +21,19 @@
 
 ## 4.3 Anonimización, contexto y timeouts
 
-- [ ] `4.3.1` Implementar `anonymizer.go` que elimina emails, teléfonos y nombres propios antes de enviar al LLM (A8).
-- [ ] `4.3.2` Toda goroutine del extractor recibe `context.Context` y chequea `ctx.Done()` (AP6, regla `goroutine_context`).
-- [ ] `4.3.3` Configurar timeout de la llamada; ante fallo emitir `AnalysisFailed` (sin filtrar error crudo).
-- [ ] `4.3.4` El `PIIHandler` descarta logs con contenido libre (>100 chars) y patrones PII (A8).
+- [x] `4.3.1` Implementar `anonymizer.go` que elimina emails, teléfonos y nombres propios antes de enviar al LLM (A8). _(`services/anonymizer.go`: `Anonymize` (emails → `[email]`, teléfonos → `[phone]`, nombres de lista curada ES/EN → `[name]`) y `AnonymizeSpanish` (+ heurística de mayúsculas a mitad de frase, solo para el source es). `AnalysisService` anonimiza antes de `Extract`.)_
+- [x] `4.3.2` Toda goroutine del extractor recibe `context.Context` y chequea `ctx.Done()` (AP6, regla `goroutine_context`). _(Sin cambios: no existen goroutines propias en `internal/` (`grep "go func"` → 0); `Extract` es síncrono y propaga `ctx` al SDK. AP6 se cumple por construcción; la regla `goroutine_context` es de Fase 7.)_
+- [x] `4.3.3` Configurar timeout de la llamada; ante fallo emitir `AnalysisFailed` (sin filtrar error crudo). _(`analysis_service.go`: `context.WithTimeout` (default 60s) alrededor del LLM; ante fallo (`Extract`/`Complete`) `Analysis.Fail()` + `Analysis.Save` + `outbox.Append(AnalysisFailed{Reason genérico})` en una tx, retorno `nil` (fallo manejado, sin reintento del relay); el error crudo no se filtra.)_
+- [x] `4.3.4` El `PIIHandler` descarta logs con contenido libre (>100 chars) y patrones PII (A8). _(`shared/logger/pii_handler.go`: decorador de `slog.Handler` que descarta mensajes/attrs con texto libre >100 runas, email, teléfono, API key (`sk-`/`pk-`/`AKIA`) o JWT; `WithAttrs` elimina atributos sensibles. No se cablea aún: no existe `cmd/api` (Fase 5).)_
 
 ---
 
 ## ✅ Gate de salida
 
-- [ ] Análisis fragmentado devuelto y validado contra el schema (sin `Fragment` malformado persistido).
-- [ ] Test con output inválido del LLM → `LLMUnavailableError` (no se persiste basura).
-- [ ] Cambio de proveedor no requiere tocar `internal/domain/` (A1 verificado).
-- [ ] `go test -race ./...` en verde en el motor de IA.
+- [x] Análisis fragmentado devuelto y validado contra el schema (sin `Fragment` malformado persistido). _(4.2.1/4.2.2.)_
+- [x] Test con output inválido del LLM → `LLMUnavailableError` (no se persiste basura). _(4.2.2.)_
+- [x] Cambio de proveedor no requiere tocar `internal/domain/` (A1 verificado). _(`go list -deps ./internal/domain/... | grep -c openai` → 0.)_
+- [x] `go test -race ./...` en verde en el motor de IA. _(Tier 1 + Tier 3; `go test -race -count=1 ./...` y `-tags=integration`.)_
 
 ## Fuente normativa
 

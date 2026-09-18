@@ -4,9 +4,9 @@
 
 ## Estado del proyecto
 
-- **Fase actual**: Fase 4 — Motor de IA **en curso**. Bloques `4.1` (OpenAIExtractor + prompt) y `4.2` (Structured Outputs, validación y `AnalysisService`) completados; pendiente el bloque `4.3`.
-- **Siguiente item**: Fase 4, bloque `4.3` — anonimización previa al LLM (`anonymizer.go`, 4.3.1), timeout + `AnalysisFailed` (4.3.3) y `PIIHandler` (4.3.4).
-- **Estado**: monorepo base, contrato OpenAPI (`apps/contracts/openapi/api.yaml`), pipeline `pnpm generate`, módulo Go (`apps/backend/go.mod`, module path `github.com/c0mp1lerworld/langlint/backend`), Fase 3 (puertos/adaptadores Postgres, UoW, outbox + event bus) y Fase 4.1/4.2 (Structured Outputs + `AnalysisService`). `gen_*.go`/`gen.ts` commiteados. Dominio puro stdlib-only; `go build/vet/test` en verde.
+- **Fase actual**: Fase 4 — Motor de IA **completada** (Gate de salida en verde). Bloques `4.1` (OpenAIExtractor + prompt), `4.2` (Structured Outputs + `AnalysisService`) y `4.3` (anonimización, timeout/`AnalysisFailed`, `PIIHandler`).
+- **Siguiente item**: Fase 5 — Frontend (`docs/checklist/05-*.md`) según roadmap. **Pendiente de decisión**: el cableado HTTP (`cmd/api`, handlers chi, `CreatePracticeService` y el handler de `PracticeCreated`) no está cubierto por el checklist de Fase 4 y hace falta antes/además del frontend; también falta cablear `PIIHandler` y el timeout por config.
+- **Estado**: monorepo base, contrato OpenAPI (`apps/contracts/openapi/api.yaml`), pipeline `pnpm generate`, módulo Go (`apps/backend/go.mod`, module path `github.com/c0mp1lerworld/langlint/backend`), Fase 3 (puertos/adaptadores Postgres, UoW, outbox + event bus) y Fase 4 (motor de IA con Structured Outputs, `AnalysisService`, `anonymizer` y `PIIHandler`). `gen_*.go`/`gen.ts` commiteados. Dominio puro stdlib-only; `go build/vet/test` en verde.
 
 ## Primeros pasos obligatorios al iniciar una sesión
 
