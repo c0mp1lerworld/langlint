@@ -78,6 +78,7 @@ func TestDomainErrors_Error_IncludeFieldAndMessage(t *testing.T) {
 		{"AnalysisPendingError", &domain.AnalysisPendingError{Field: "analysis", Message: "still pending"}, "analysis", "still pending"},
 		{"AnalysisFailedError", &domain.AnalysisFailedError{Field: "analysis", Message: "has failed"}, "analysis", "has failed"},
 		{"LLMUnavailableError", &domain.LLMUnavailableError{Field: "llm", Message: "unavailable"}, "llm", "unavailable"},
+		{"InternalError", &domain.InternalError{Field: "db", Message: "unexpected"}, "db", "unexpected"},
 	}
 
 	for _, tc := range cases {
@@ -102,6 +103,7 @@ func TestDomainErrors_Error_WithoutField_ReturnsMessage(t *testing.T) {
 		{"AnalysisPendingError", &domain.AnalysisPendingError{Message: "still pending"}, "still pending"},
 		{"AnalysisFailedError", &domain.AnalysisFailedError{Message: "has failed"}, "has failed"},
 		{"LLMUnavailableError", &domain.LLMUnavailableError{Message: "unavailable"}, "unavailable"},
+		{"InternalError", &domain.InternalError{Message: "unexpected"}, "unexpected"},
 	}
 
 	for _, tc := range cases {
@@ -133,6 +135,10 @@ func TestDomainErrors_AsDomainError(t *testing.T) {
 		}},
 		{"LLMUnavailableError", &domain.LLMUnavailableError{Message: "unavailable"}, func(e error) bool {
 			var target *domain.LLMUnavailableError
+			return errors.As(e, &target)
+		}},
+		{"InternalError", &domain.InternalError{Message: "unexpected"}, func(e error) bool {
+			var target *domain.InternalError
 			return errors.As(e, &target)
 		}},
 	}

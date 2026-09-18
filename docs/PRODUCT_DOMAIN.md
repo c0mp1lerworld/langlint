@@ -205,6 +205,7 @@ Para mantener el proyecto acotado y evitar la parálisis por análisis (MVP acot
 | `InvalidStateError` | Operación no válida para el estado actual (editar una práctica no `draft`; borrar una `analyzing`) | 409 | `invalid_state` |
 | `AnalysisFailedError` | El análisis terminó con fallo (el cliente lo observa vía `analysis.status == "failed"`) | — (sin 4xx; ver §5.1) | `analysis_failed` (reservado) |
 | `LLMUnavailableError` | Proveedor LLM caído / timeout | 503 | `llm_unavailable` |
+| `InternalError` | Fallo de infraestructura inesperado (DB, dependencia); el adaptador envuelve el error crudo | 500 | `internal` (reservado) |
 
 > **Regla (AP3)**: nunca reutilizar `ValidationError` para un concepto distinto. Cada error con un código HTTP distinto tiene su propio tipo.
 

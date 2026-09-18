@@ -92,3 +92,19 @@ func (e *LLMUnavailableError) Error() string {
 	}
 	return fmt.Sprintf("%s: %s", e.Field, e.Message)
 }
+
+// InternalError signals an unexpected infrastructure failure (A5, HTTP 500).
+// Adapters wrap unknown database or dependency errors in this type so no
+// infrastructure detail leaks to the service.
+type InternalError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
+// Error implements the error interface.
+func (e *InternalError) Error() string {
+	if e.Field == "" {
+		return e.Message
+	}
+	return fmt.Sprintf("%s: %s", e.Field, e.Message)
+}
