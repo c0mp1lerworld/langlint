@@ -3,6 +3,8 @@ package services
 import (
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 // Redaction tokens replace PII before the text is sent to the external LLM
@@ -104,15 +106,26 @@ func redactPhones(text string) string {
 	return phonePattern.ReplaceAllString(text, phoneToken)
 }
 
-// redactNames replaces whole words that belong to the curated name list,
-// case-insensitively and accent-aware (strings.ToLower is Unicode aware).
+// redactNames replaces capitalized whole words that belong to the curated name
+// list, accent-aware (strings.ToLower is Unicode aware). Requiring the leading
+// uppercase distinguishes proper names from common words that collide with them
+// (e.g. "mark" the verb vs "Mark" the name).
 func redactNames(text string) string {
 	return wordPattern.ReplaceAllStringFunc(text, func(word string) string {
+		if !startsWithUpper(word) {
+			return word
+		}
 		if _, ok := commonNames[strings.ToLower(word)]; ok {
 			return nameToken
 		}
 		return word
 	})
+}
+
+// startsWithUpper reports whether the word begins with an uppercase letter.
+func startsWithUpper(word string) bool {
+	r, _ := utf8.DecodeRuneInString(word)
+	return unicode.IsUpper(r)
 }
 
 // redactCapitalized replaces capitalized words that appear mid-sentence (not

@@ -43,6 +43,24 @@ func TestAnonymize_KnownName_IsRedactedWholeWord(t *testing.T) {
 	}
 }
 
+func TestAnonymize_CapitalizedName_IsRedacted(t *testing.T) {
+	if got, want := Anonymize("Mark wrote a letter."), "[name] wrote a letter."; got != want {
+		t.Fatalf("Anonymize() = %q, want %q", got, want)
+	}
+}
+
+func TestAnonymize_LowercaseCommonWordsMatchingNames_AreKept(t *testing.T) {
+	for _, in := range []string{
+		"Please mark the correct answer.",
+		"Be frank with me.",
+		"They sing a carol.",
+	} {
+		if got := Anonymize(in); got != in {
+			t.Fatalf("Anonymize(%q) = %q, want unchanged", in, got)
+		}
+	}
+}
+
 func TestAnonymize_UnknownNameInList_IsNotRedactedWithoutSpanishHeuristic(t *testing.T) {
 	// Barcelona is not in the curated list; the generic path must not use the
 	// capitalization heuristic (that would corrupt the English draft).

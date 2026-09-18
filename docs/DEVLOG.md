@@ -9,7 +9,7 @@
 **Estado**: **Fase 4 completada; Gate de salida en verde.** `go build/vet/test -race` verdes (Tier 1 + Tier 3); `adapters/llm` **100%**, `services` **96.9%**, `shared/logger` **100%**; A1 en 0.
 
 **Hecho**:
-- `4.3.1` `services/anonymizer.go`: `Anonymize` redacta emails (`[email]`), teléfonos (`[phone]`) y nombres de una **lista curada ES/EN** (`[name]`); `AnonymizeSpanish` añade la **heurística de mayúsculas a mitad de frase** (solo para el source en español). `AnalysisService` anonimiza `SourceText`/`DraftText` antes de `Extract`.
+- `4.3.1` `services/anonymizer.go`: `Anonymize` redacta emails (`[email]`), teléfonos (`[phone]`) y nombres de una **lista curada ES/EN** (`[name]`; solo ocurrencias capitalizadas, para no confundir el verbo inglés *mark* con el nombre *Mark*); `AnonymizeSpanish` añade la **heurística de mayúsculas a mitad de frase** (solo para el source en español). `AnalysisService` anonimiza `SourceText`/`DraftText` antes de `Extract`.
 - `4.3.2` sin cambios: no hay goroutines propias en `internal/` (`grep "go func"` → 0); `Extract` es síncrono y propaga el `ctx` al SDK. AP6 se cumple **por construcción** (la regla de lint `goroutine_context` es de Fase 7).
 - `4.3.3` `analysis_service.go`: `context.WithTimeout` (**60s** por defecto) alrededor de la llamada al LLM; ante fallo (`Extract` o `Complete`) se hace `Analysis.Fail()`, se persiste el `Analysis` failed + `outbox.Append(AnalysisFailed{Reason genérico})` en una transacción y se **retorna `nil`** (fallo manejado). El error crudo del proveedor nunca se filtra.
 - `4.3.4` `shared/logger/pii_handler.go`: decorador de `slog.Handler` que descarta registros con texto libre >100 runas, email, teléfono, API key (`sk-`/`pk-`/`AKIA`) o JWT; `WithAttrs` elimina atributos sensibles para que `Logger.With` no filtre PII.
@@ -17,6 +17,7 @@
 **Decisiones**:
 - **Anonimizar en el service (caller), no en el adapter**: el puerto `ExtractRequest` ya documenta "anonymized input" y el adapter es provider-specific (A1/A2).
 - **Heurística de mayúsculas solo en español**: el borrador inglés usa `Anonymize` (solo lista) para no redactar palabras capitalizadas legítimas ("English", "Monday").
+- **Lista de nombres con matching capitalizado** (hallazgo de la revisión manual): distingue nombres propios de palabras homógrafas comunes (`Mark` vs el verbo `mark`, `Frank` vs `frank`), evitando corromper el análisis del borrador.
 - **Redacción con tokens, no borrado**: conserva la estructura de la frase para que el LLM analice gramática y no "corrija" huecos.
 - **Fallo manejado → retorno `nil`**: evita reintentos infinitos del `OutboxRelay` sobre un fallo terminal; el estado queda en `analysis.status == failed` + evento `AnalysisFailed`.
 - **`PIIHandler` no detecta nombres propios**: se cubren por el guard de texto libre >100 runas (la checklist 4.3.4 pide "contenido libre y patrones PII").
