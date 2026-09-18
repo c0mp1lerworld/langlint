@@ -22,6 +22,9 @@ apps/backend/bin/
 *.log
 npm-debug.log*
 
+# Templates de sesión IA (scratch local)
+docs/promnt*.txt
+
 # Sistema
 .DS_Store
 Thumbs.db
