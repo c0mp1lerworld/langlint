@@ -4,9 +4,9 @@
 
 ## Estado del proyecto
 
-- **Fase actual**: Fase 2 — Dominio puro **completada** (gate de salida en verde). Raíz del dominio (`ID` UUID v7, errores A5, `ErrorPattern` + enums, eventos `IdentityIssued`/`PracticeCreated`/`AnalysisCompleted`/`AnalysisFailed`) y bounded contexts `identity/`, `practice/`, `analysis/` y `analytics/` con **100%** de cobertura.
-- **Siguiente item**: Fase 3 — Puertos y adaptadores (`docs/checklist/03-*.md`): puertos `LLMExtractor`, repositorios, `UnitOfWork` y outbox en `internal/api/ports/` + adaptadores Postgres (testcontainers).
-- **Estado**: monorepo base, contrato OpenAPI (`apps/contracts/openapi/api.yaml`), pipeline `pnpm generate` y ahora el módulo Go (`apps/backend/go.mod`, module path `github.com/c0mp1lerworld/langlint/backend`). `gen_*.go`/`gen.ts` commiteados. Dominio puro stdlib-only; `go build/vet/test` en verde.
+- **Fase actual**: Fase 4 — Motor de IA **en curso**. Bloques `4.1` (OpenAIExtractor + prompt) y `4.2` (Structured Outputs, validación y `AnalysisService`) completados; pendiente el bloque `4.3`.
+- **Siguiente item**: Fase 4, bloque `4.3` — anonimización previa al LLM (`anonymizer.go`, 4.3.1), timeout + `AnalysisFailed` (4.3.3) y `PIIHandler` (4.3.4).
+- **Estado**: monorepo base, contrato OpenAPI (`apps/contracts/openapi/api.yaml`), pipeline `pnpm generate`, módulo Go (`apps/backend/go.mod`, module path `github.com/c0mp1lerworld/langlint/backend`), Fase 3 (puertos/adaptadores Postgres, UoW, outbox + event bus) y Fase 4.1/4.2 (Structured Outputs + `AnalysisService`). `gen_*.go`/`gen.ts` commiteados. Dominio puro stdlib-only; `go build/vet/test` en verde.
 
 ## Primeros pasos obligatorios al iniciar una sesión
 

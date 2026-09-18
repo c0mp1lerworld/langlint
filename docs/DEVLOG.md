@@ -4,6 +4,35 @@
 
 ---
 
+## 2026-09-18 — Fase 4: Structured Outputs + `AnalysisService` (4.2.1–4.2.4)
+
+**Estado**: Fase 4, items 4.2.1–4.2.4 completados. `go build/vet/test -race` verdes (Tier 1 + Tier 3); `adapters/llm` **100%**, nuevo `services` **95.2%**; A1 en 0.
+
+**Hecho**:
+- `4.2.1` `adapters/llm/schema.go`: `fragmentSchema()` (JSON Schema estricto de `Fragment[]`, espejo de §5.2) + `fragmentResponseFormat()`; `Extract` ahora envía `response_format` con `strict: true`. Los enums de `code`/`severity` se derivan de las constantes del dominio, así el schema nunca diverge de la taxonomía.
+- `4.2.2` `adapters/llm/validate.go`: `validateFragments` exige los campos de texto requeridos no vacíos y enums válidos; cualquier violación → `*domain.LLMUnavailableError` (no se persiste basura).
+- `4.2.3`/`4.2.4` `services/analysis_service.go`: `AnalysisService.RunAnalysis` carga la práctica, llama al LLM **fuera** de la transacción, completa el `Analysis` y persiste `Analysis.Save` + `outbox.Append(AnalysisCompleted)` en una única `InTransaction` (COMMIT atómico).
+- `ports.LLMExtractor` ampliado con `Model()`/`ModelVersion()` para que el service persista la trazabilidad del proveedor; mocks regenerados con `make mocks`.
+
+**Decisiones**:
+- **`Message.Parsed` no existe en openai-go v1.12.0**: se corrige la nota aspiracional del DEVLOG de 4.1.x. El adapter parsea `message.content` como JSON (ya constreñido por el schema estricto) y lo valida en Go.
+- **Validación sin librería externa de JSON Schema** (manifiesto §2.1: "sin paquetes externos de validación"): validación semántica en Go (campos requeridos no vacíos + enums). El schema estricto enviado al proveedor es la primera línea; la validación local es el guardrail.
+- **`note` requerido en el schema LLM** (`additionalProperties: false` y todos los campos en `required`) porque OpenAI strict mode lo exige; el contrato wire conserva `note` opcional.
+- **Puerto `LLMExtractor` con `Model()`/`ModelVersion()`**: única vía limpia para persistir `Analysis.model`/`model_version` sin acoplar el service a OpenAI (A1/A2).
+- **Camino de fallo diferido a 4.3.3**: un error del extractor se propaga; no se persiste `Analysis` fallido ni se emite `AnalysisFailed` en este bloque (scope de 4.3.x).
+- **Test "fuera de tx"**: el mock del `UnitOfWork` inyecta un context con marker; se asserta que `Extract` lo recibe **sin** marker y `Save`/`Append` **con** marker (prueba directa de 4.2.3/4.2.4).
+
+**Verificación**:
+- `go build ./...` · `go vet ./...` · `go vet -tags=integration ./...` · `go test -race -count=1 ./...` · `go test -race -count=1 -tags=integration ./...` → OK.
+- `go test -cover ./internal/api/adapters/llm/` → **100.0%**; `./internal/api/services/` → **95.2%**.
+- A1: `go list -deps ./internal/domain/... | grep -c openai` → `0`. `gofmt -l` limpio. Sin `t.Skip()`.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 4, bloque `4.3` — anonimización previa al LLM (`anonymizer.go`, 4.3.1), timeout + `AnalysisFailed` (4.3.3) y `PIIHandler` (4.3.4).
+
+---
+
 ## 2026-09-18 — Fase 4: nuevo `ErrorPatternCode` `lexical_choice` (cambio A12, previo a 4.2.1)
 
 **Estado**: contrato, dominio, prompt y docs alineados. `adapters/llm` 100%; `go build/vet/test -race` verdes; `pnpm generate` idempotente; `pnpm lint` / `pnpm build` OK.
