@@ -4,6 +4,34 @@
 
 ---
 
+## 2026-09-18 — Fase 4: verificación manual del prompt + runner `cmd/llmcheck` (sobre 4.1.x)
+
+**Estado**: Fase 4, items 4.1.x. Verificación real contra OpenAI (`gpt-4o-mini`) exitosa. `go build/vet/test -race` en verde; `adapters/llm` 100%, `shared/config` 88.9%; A1 sigue en 0.
+
+**Hecho**:
+- `internal/shared/config/` (`dotenv.go`, `config.go`): loader `.env` solo-stdlib (`ParseDotEnv`/`LoadDotEnv`; **no** sobreescribe variables ya presentes) + `LoadOpenAIConfig` (`OPENAI_API_KEY`/`OPENAI_MODEL` requeridos; `OPENAI_MODEL_VERSION` cae al alias si falta; `OPENAI_BASE_URL` opcional).
+- `cmd/llmcheck/main.go`: runner manual. Lee `.env`, construye `OpenAIExtractor` a través del puerto, envía una práctica (sample embebido o `-input` JSON), imprime `Fragment[]` como JSON. `-show-prompt` imprime el prompt exacto; `-timeout` (60s por defecto).
+- `adapters/llm/prompt.go`: `PromptText` exportado (auditoría del prompt sin llamar a la API); prompt reforzado — fragmentos **verbatim**, cobertura total del texto, explicaciones en **español** (la `correction` sigue en inglés), **glosario** de la taxonomía derivado de las constantes del dominio e instrucción de no forzar códigos.
+- `apps/backend/.env.example` (tracked) documenta las 4 variables; `.env` sigue gitignoreado.
+- **modelVersion**: `OPENAI_MODEL` = alias (`Analysis.model`) + `OPENAI_MODEL_VERSION` = snapshot fechado (`Analysis.model_version`). Añadido al `.env` local (`gpt-4o-mini-2024-07-18`).
+
+**Verificación real**: `go run ./cmd/llmcheck` con `gpt-4o-mini` → `Fragment[]` válido: `source_es`/`user_draft` verbatim, `correction` en inglés, explicaciones en español, `tense_agreement` para "we run" → "we ran".
+
+**Hallazgo (decisión de producto pendiente)**: los problemas de colocación/léxico ("all the park" → "the whole park") se clasifican como `word_order`, porque la taxonomía de §4.6 **no tiene** un código léxico/colocación. El glosario lo excluye explícitamente y aun así el modelo fuerza el código más cercano. Opciones: (a) aceptarlo como limitación conocida; (b) añadir un código `lexical_choice` al contrato (cambio A12: `api.yaml` + enum del dominio + docs). **No se toca el contrato sin aprobación.**
+
+**Decisiones**:
+- Env vars con el prefijo estándar `OPENAI_*` (convención del SDK) en lugar del `APP_` de AP-MR4, para que el mismo `.env` alimente al cliente oficial; anotado como desviación.
+- `cmd/llmcheck` es una herramienta de desarrollo (no parte de la HTTP API); se commitea según lo acordado.
+- Sin `t.Skip`: el runner no es un test; los tests del `cmd` cubren solo el parseo del input.
+
+**Verificación estática**: `go build ./...` · `go vet ./...` · `go test -race -count=1 ./...` → OK. `gofmt -l` limpio. A1: `go list -deps ./internal/domain/... | grep -c openai` → `0`.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 4, bloque `4.2` — Structured Outputs con el JSON Schema de `Fragment[]` (4.2.1) y validación del output antes de persistir (4.2.2).
+
+---
+
 ## 2026-09-18 — Fase 4 (inicio): `OpenAIExtractor` + prompt builder (4.1.1–4.1.3)
 
 **Estado**: Fase 4 en curso. `go build/vet/test -race` en verde; nuevo paquete `adapters/llm` al **100%** de cobertura; dominio sigue 100%; A1 verificado.

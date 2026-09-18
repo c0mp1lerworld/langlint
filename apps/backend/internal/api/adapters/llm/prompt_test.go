@@ -85,3 +85,25 @@ func TestBuildPrompt_SystemPromptListsErrorTaxonomy(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildPrompt_RequiresVerbatimFragmentsAndSpanishExplanations(t *testing.T) {
+	p := buildPrompt(ports.ExtractRequest{})
+
+	if !strings.Contains(p.System, "verbatim") {
+		t.Fatalf("system prompt must require verbatim fragments:\n%s", p.System)
+	}
+	if !strings.Contains(p.System, "Spanish") {
+		t.Fatalf("system prompt must state the explanation language:\n%s", p.System)
+	}
+}
+
+func TestPromptText_MatchesBuildPrompt(t *testing.T) {
+	req := ports.ExtractRequest{SourceText: "fuente", DraftText: "draft"}
+
+	system, user := PromptText(req)
+	p := buildPrompt(req)
+
+	if system != p.System || user != p.User {
+		t.Fatal("PromptText() diverges from buildPrompt()")
+	}
+}
