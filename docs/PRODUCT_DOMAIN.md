@@ -370,7 +370,7 @@ components:
 // apps/backend/internal/api/ports/llm_extractor.go (conceptual)
 type LLMExtractor interface {
     // Extract devuelve el análisis estructurado de la práctica.
-    Extract(ctx context.Context, req ExtractRequest) ([]domain.Fragment, error)
+    Extract(ctx context.Context, req ExtractRequest) ([]analysis.Fragment, error)
 }
 ```
 
