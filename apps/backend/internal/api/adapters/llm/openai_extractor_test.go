@@ -191,6 +191,48 @@ func TestOpenAIExtractor_Extract_NoChoices_ReturnsLLMUnavailableError(t *testing
 	assertLLMUnavailable(t, err)
 }
 
+func TestOpenAIExtractor_Extract_InvalidErrorCode_ReturnsLLMUnavailableError(t *testing.T) {
+	content := `[{"source_es":"El perro corre.","user_draft":"The dog run.","correction":"The dog runs.","target_verb_review":"run","lexical_clarification":"correr = to run","grammar_explanation":"third person -s","error_patterns":[{"code":"invented_code","severity":"minor","note":"x"}]}]`
+	extractor := newExtractorForHandler(t, func(w http.ResponseWriter, _ *http.Request) {
+		writeChatCompletion(t, w, content)
+	})
+
+	_, err := extractor.Extract(context.Background(), ports.ExtractRequest{})
+	assertLLMUnavailable(t, err)
+}
+
+func TestOpenAIExtractor_Extract_RequestsStrictFragmentSchema(t *testing.T) {
+	captured := make(chan map[string]any, 1)
+	extractor := newExtractorForHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode request body: %v", err)
+		}
+		captured <- body
+		writeChatCompletion(t, w, "[]")
+	})
+
+	if _, err := extractor.Extract(context.Background(), ports.ExtractRequest{}); err != nil {
+		t.Fatalf("Extract() error = %v", err)
+	}
+
+	body := <-captured
+	responseFormat, ok := body["response_format"].(map[string]any)
+	if !ok {
+		t.Fatalf("response_format = %v, want object", body["response_format"])
+	}
+	if responseFormat["type"] != "json_schema" {
+		t.Fatalf("response_format.type = %v, want json_schema", responseFormat["type"])
+	}
+	jsonSchema, ok := responseFormat["json_schema"].(map[string]any)
+	if !ok {
+		t.Fatalf("json_schema = %v, want object", responseFormat["json_schema"])
+	}
+	if jsonSchema["strict"] != true {
+		t.Fatalf("json_schema.strict = %v, want true", jsonSchema["strict"])
+	}
+}
+
 func TestNewOpenAIExtractor_ModelMetadata(t *testing.T) {
 	extractor := NewOpenAIExtractor(openai.Client{}, "gpt-4o-mini", "2024-07-18")
 

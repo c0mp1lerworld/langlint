@@ -57,6 +57,7 @@ func (e *OpenAIExtractor) Extract(ctx context.Context, req ports.ExtractRequest)
 			openai.SystemMessage(p.System),
 			openai.UserMessage(p.User),
 		},
+		ResponseFormat: fragmentResponseFormat(),
 	})
 	if err != nil {
 		return nil, &domain.LLMUnavailableError{Message: "llm unavailable"}
@@ -68,6 +69,9 @@ func (e *OpenAIExtractor) Extract(ctx context.Context, req ports.ExtractRequest)
 	var fragments []analysis.Fragment
 	if err := json.Unmarshal([]byte(strings.TrimSpace(completion.Choices[0].Message.Content)), &fragments); err != nil {
 		return nil, &domain.LLMUnavailableError{Message: "llm unavailable"}
+	}
+	if err := validateFragments(fragments); err != nil {
+		return nil, err
 	}
 
 	return fragments, nil
