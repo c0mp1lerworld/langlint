@@ -258,7 +258,7 @@ export interface components {
          * @description Taxonomía de errores (PRODUCT_DOMAIN §4.6).
          * @enum {string}
          */
-        ErrorPatternCode: "infinitive_conjugation" | "passive_voice_misuse" | "idiom_literal_translation" | "preposition_infinitive" | "pronoun_possession" | "false_friend" | "word_order" | "tense_agreement";
+        ErrorPatternCode: "infinitive_conjugation" | "passive_voice_misuse" | "idiom_literal_translation" | "preposition_infinitive" | "pronoun_possession" | "false_friend" | "lexical_choice" | "word_order" | "tense_agreement";
         /** @enum {string} */
         ErrorPatternSeverity: "minor" | "moderate" | "critical";
         ErrorPattern: {

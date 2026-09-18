@@ -4,6 +4,33 @@
 
 ---
 
+## 2026-09-18 — Fase 4: nuevo `ErrorPatternCode` `lexical_choice` (cambio A12, previo a 4.2.1)
+
+**Estado**: contrato, dominio, prompt y docs alineados. `adapters/llm` 100%; `go build/vet/test -race` verdes; `pnpm generate` idempotente; `pnpm lint` / `pnpm build` OK.
+
+**Contexto**: la verificación manual con `gpt-4o-mini` mostró que el modelo mapeaba colocaciones/léxico ("all the park" → "the whole park") a `word_order`, porque la taxonomía de §4.6 no tenía un código léxico. Decisión del humano: **Opción (b)**, añadir `lexical_choice`.
+
+**Hecho (A12: contrato → `pnpm generate` → código)**:
+- `apps/contracts/openapi/api.yaml`: `ErrorPatternCode` enum + `lexical_choice` (tras `false_friend`).
+- `pnpm generate` → `gen_types.go` (`LexicalChoice ErrorPatternCode = "lexical_choice"`) y `gen.ts` actualizados; `gen_server.go` sin cambios. Idempotente (sha256 estable en pasadas sucesivas).
+- Dominio: constante `ErrorPatternCodeLexicalChoice` + `IsValid()`; test de valores conocidos ampliado.
+- Prompt: glosario `lexical_choice: wrong vocabulary choice or collocation that is not a false friend`; `word_order` recortado a "wrong syntactic order"; instrucción explícita de usar `lexical_choice` para vocabulario/colocación.
+- Docs: `PRODUCT_DOMAIN §4.6` (nueva fila) y §5.2 (bloque YAML conceptual).
+
+**Verificación real**: `go run ./cmd/llmcheck` → "all the park" ahora se clasifica como **`lexical_choice`** (minor), no `word_order`. ✓
+
+**Verificación estática**: `pnpm generate` idempotente · `pnpm lint` OK (6 warnings conocidos de `operation-4xx-response`) · `pnpm build` 2 successful · `go build/vet/test -race` OK · `gofmt -l` limpio.
+
+**Decisiones**:
+- Nombre `lexical_choice` (cubre elección léxica y colocación, sin ambigüedad con `false_friend`).
+- **Versionado**: se mantiene `apps/contracts@1.0.0`. El cambio es aditivo y no hay consumidores publicados (misma decisión documentada para `invalid_state` en Fase 1); AP-MR6 (bump minor + tag) se aplicará cuando exista un release real.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 4, bloque `4.2` — Structured Outputs con el JSON Schema de `Fragment[]` (4.2.1), que ya incluye el enum completo con `lexical_choice`, y validación del output (4.2.2).
+
+---
+
 ## 2026-09-18 — Fase 4: verificación manual del prompt + runner `cmd/llmcheck` (sobre 4.1.x)
 
 **Estado**: Fase 4, items 4.1.x. Verificación real contra OpenAI (`gpt-4o-mini`) exitosa. `go build/vet/test -race` en verde; `adapters/llm` 100%, `shared/config` 88.9%; A1 sigue en 0.

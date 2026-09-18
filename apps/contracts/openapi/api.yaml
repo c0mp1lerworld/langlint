@@ -485,6 +485,7 @@ components:
         - preposition_infinitive
         - pronoun_possession
         - false_friend
+        - lexical_choice
         - word_order
         - tense_agreement
 

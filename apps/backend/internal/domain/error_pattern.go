@@ -15,6 +15,7 @@ const (
 	ErrorPatternCodePrepositionInfinitive   ErrorPatternCode = "preposition_infinitive"
 	ErrorPatternCodePronounPossession       ErrorPatternCode = "pronoun_possession"
 	ErrorPatternCodeFalseFriend             ErrorPatternCode = "false_friend"
+	ErrorPatternCodeLexicalChoice           ErrorPatternCode = "lexical_choice"
 	ErrorPatternCodeWordOrder               ErrorPatternCode = "word_order"
 	ErrorPatternCodeTenseAgreement          ErrorPatternCode = "tense_agreement"
 )
@@ -28,6 +29,7 @@ func (c ErrorPatternCode) IsValid() bool {
 		ErrorPatternCodePrepositionInfinitive,
 		ErrorPatternCodePronounPossession,
 		ErrorPatternCodeFalseFriend,
+		ErrorPatternCodeLexicalChoice,
 		ErrorPatternCodeWordOrder,
 		ErrorPatternCodeTenseAgreement:
 		return true

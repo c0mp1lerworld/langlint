@@ -71,6 +71,7 @@ func TestBuildPrompt_SystemPromptListsErrorTaxonomy(t *testing.T) {
 		"preposition_infinitive",
 		"pronoun_possession",
 		"false_friend",
+		"lexical_choice",
 		"word_order",
 		"tense_agreement",
 	} {

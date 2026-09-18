@@ -16,6 +16,7 @@ func TestErrorPatternCode_IsValid_KnownValues_ReturnsTrue(t *testing.T) {
 		domain.ErrorPatternCodePrepositionInfinitive,
 		domain.ErrorPatternCodePronounPossession,
 		domain.ErrorPatternCodeFalseFriend,
+		domain.ErrorPatternCodeLexicalChoice,
 		domain.ErrorPatternCodeWordOrder,
 		domain.ErrorPatternCodeTenseAgreement,
 	} {

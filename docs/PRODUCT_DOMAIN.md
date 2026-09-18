@@ -221,6 +221,7 @@ Para mantener el proyecto acotado y evitar la parálisis por análisis (MVP acot
 | `preposition_infinitive` | Preposición + infinitivo mal formado. |
 | `pronoun_possession` | Confusión pronombre / posesivo. |
 | `false_friend` | Falso amigo léxico. |
+| `lexical_choice` | Elección de vocabulario o colocación incorrecta (no un falso amigo). |
 | `word_order` | Orden sintáctico incorrecto. |
 | `tense_agreement` | Concordancia de tiempos verbales. |
 
@@ -331,6 +332,7 @@ components:
             - preposition_infinitive
             - pronoun_possession
             - false_friend
+            - lexical_choice
             - word_order
             - tense_agreement
         severity:

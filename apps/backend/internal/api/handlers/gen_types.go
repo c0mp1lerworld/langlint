@@ -35,6 +35,7 @@ const (
 	FalseFriend             ErrorPatternCode = "false_friend"
 	IdiomLiteralTranslation ErrorPatternCode = "idiom_literal_translation"
 	InfinitiveConjugation   ErrorPatternCode = "infinitive_conjugation"
+	LexicalChoice           ErrorPatternCode = "lexical_choice"
 	PassiveVoiceMisuse      ErrorPatternCode = "passive_voice_misuse"
 	PrepositionInfinitive   ErrorPatternCode = "preposition_infinitive"
 	PronounPossession       ErrorPatternCode = "pronoun_possession"
@@ -50,6 +51,8 @@ func (e ErrorPatternCode) Valid() bool {
 	case IdiomLiteralTranslation:
 		return true
 	case InfinitiveConjugation:
+		return true
+	case LexicalChoice:
 		return true
 	case PassiveVoiceMisuse:
 		return true

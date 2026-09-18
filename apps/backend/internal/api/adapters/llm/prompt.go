@@ -29,7 +29,8 @@ var errorPatternDescriptions = []struct {
 	{domain.ErrorPatternCodePrepositionInfinitive, "malformed preposition + infinitive"},
 	{domain.ErrorPatternCodePronounPossession, "confusion between pronoun and possessive"},
 	{domain.ErrorPatternCodeFalseFriend, "lexical false friend"},
-	{domain.ErrorPatternCodeWordOrder, "wrong syntactic order (not a vocabulary or collocation choice)"},
+	{domain.ErrorPatternCodeLexicalChoice, "wrong vocabulary choice or collocation that is not a false friend"},
+	{domain.ErrorPatternCodeWordOrder, "wrong syntactic order"},
 	{domain.ErrorPatternCodeTenseAgreement, "verb tense agreement"},
 }
 
@@ -46,7 +47,7 @@ For every fragment return the exact original Spanish sentence, the exact origina
 
 The correction is in English. Write target_verb_review, lexical_clarification, grammar_explanation and the error notes in Spanish (the learner's native language).
 Classify every mistake with the error pattern taxonomy below.
-Use ONLY the codes below; never invent new ones. For vocabulary or collocation choices, explain them in lexical_clarification and do not force a code.
+Use ONLY the codes below; never invent new ones. Use lexical_choice for vocabulary or collocation choices (including non-idiomatic collocations), and word_order only for genuinely reordered words.
 
 Error pattern codes (code: meaning):%s
 
