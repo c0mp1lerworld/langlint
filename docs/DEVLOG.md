@@ -4,6 +4,38 @@
 
 ---
 
+## 2026-09-18 — Fase 3 (cierre de implementación): Outbox + Event Bus (3.3.3 · 3.4.1–3.4.4)
+
+**Estado**: Tier 1 y Tier 3 en verde. Adaptadores ≥70% (`events` 86.2%, `postgres` 74.1%, `repositories` 75.7%); dominio 100%. `3.3.3` y `3.4.x` marcados con nota: el **enforce en services y la cobertura de services** quedan pendientes de que existan services (Fase 4).
+
+**Hecho**:
+- Dominio (`events.go`, aditivo): `OutboxEvent{ID, EventType, Payload []byte, CreatedAt, PublishedAt *time.Time, Attempts}` + registro `NewEvent(eventType) (DomainEvent, bool)` (única fuente de los 4 tipos). Tests al 100%.
+- `adapters/events/codec.go`: `MarshalEvent`/`UnmarshalEvent` (JSON + `domain.NewEvent`).
+- `3.4.1` `adapters/events/in_memory_dispatcher.go`: `InMemoryEventDispatcher` (canal buffered, worker pool, **drop policy** para backpressure, `Run(ctx)`); implementa `ports/events.EventDispatcher`. Tests Tier 1: entrega, sin suscriptores, drop (buffer=1), defaults.
+- `3.4.3` (mecanismo) `adapters/postgres/outbox.go`: `PostgresOutbox` implementa `ports/events.Outbox`; `INSERT` en `outbox_events` vía `txctx` (une la tx del UoW, o pool si no hay).
+- `3.4.2` `adapters/events/outbox_relay.go`: `Tick(ctx)` (tx con `FOR UPDATE SKIP LOCKED`, `dispatch`, marca `published_at`; no decodificables/fallidos incrementan `attempts`) y `Run(ctx, intervalo)`.
+- Tests Tier 3 (`adapters/events`): commit→entrega al handler + `published_at` marcado; rollback→nada; event-type desconocido→`attempts+1`; `Run` publica. `adapters/postgres`: `PostgresOutbox` fuera y dentro de tx.
+- `3.3.3` check con `go list`: `pgx` solo en `adapters/*` y `migrations/`; dominio sin `pgx`.
+
+**Decisiones**:
+- **`NewEvent` (registro) en el dominio**: única lista de eventos concretos; el codec (adapter) solo hace JSON. Evita duplicar el catálogo en cada adapter.
+- **Codec en `adapters/events`; `PostgresOutbox` (en `adapters/postgres`) lo importa** → dirección `adapters/postgres → adapters/events`, sin ciclo (eventos no importa postgres).
+- **`Tick` en transacción con `FOR UPDATE SKIP LOCKED`**: evita doble publicación y bloquea filas mientras se marcan.
+- **Idempotencia de handlers diferida a Fase 4**: aquí se entrega el mecanismo (entrega at-least-once vía outbox; `published_at` evita reenvío). Los handlers reales (p. ej. `AnalysisCompleted`→`analytics`, ya con `Upsert` absoluto) llegan con los services.
+- **3.4.3/3.4.4 y gate "services ≥90%"**: no aplicables sin services (Fase 4). Se documenta en el checklist en lugar de adelantar Fase 4.
+- **Test directo de `PostgresOutbox` en su paquete**: la cobertura de `postgres` bajó a 29.6% al añadir `outbox.go` (se ejercía solo desde el test de `events`); el test propio la devuelve a 74.1%.
+
+**Verificación**:
+- `go build ./...` · `go vet ./...` (`-tags=integration`) · `go test -race -count=1 ./...` → OK.
+- `pnpm test-integration` → 1 successful. Sin `t.Skip`. `gofmt -l` limpio.
+- Cobertura: adapters `events` 86.2% / `postgres` 74.1% / `repositories` 75.7%; dominio 100%.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 4 — Motor de IA (`docs/checklist/04-*.md`): `OpenAIExtractor` (Structured Outputs) + anonimización + timeouts, y los services/event_handlers que cierran `3.4.3`/`3.4.4` y la cobertura de services.
+
+---
+
 ## 2026-09-18 — Fase 3: repositorios Postgres + UoW + migraciones (3.2.1–3.2.4 · 3.3.1–3.3.2)
 
 **Estado**: Tier 1 y Tier 3 en verde. Cobertura adapters: `postgres` 72.7%, `repositories` 75.7% (gate ≥70%). Dominio sigue 100%.

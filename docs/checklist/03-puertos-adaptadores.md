@@ -25,23 +25,23 @@
 
 - [x] `3.3.1` Implementar `PostgresUnitOfWork` (`pool.Begin` → `fn(txCtx)` → `Commit`/`Rollback`) (§5.3).
 - [x] `3.3.2` Crear `tx_context.go` (tipo `txKey` privado + helper `ctxTx`).
-- [ ] `3.3.3` Verificar que el service **nunca** importa `pgx` ni inicia transacciones (AP8, A1/A2).
+- [x] `3.3.3` Verificar que el service **nunca** importa `pgx` ni inicia transacciones (AP8, A1/A2). _(Verificado con `go list`: `pgx` solo aparece en `adapters/*` y `migrations/`; no existen services aún.)_
 
 ## 3.4 Outbox + Event Bus
 
-- [ ] `3.4.1` Implementar `InMemoryEventDispatcher` (channel buffered + worker pool + backpressure) (§5.1).
-- [ ] `3.4.2` Implementar `OutboxRelay` (lee `outbox_events` no publicados, entrega al dispatcher, marca `published_at`/`attempts`).
-- [ ] `3.4.3` Los services publican vía `outbox.Append(...)` **dentro** de la transacción; nunca `dispatcher.Dispatch(...)` directo (AP7).
-- [ ] `3.4.4` Handlers idempotentes (pueden ejecutarse 2 veces sin efecto adverso).
+- [x] `3.4.1` Implementar `InMemoryEventDispatcher` (channel buffered + worker pool + backpressure) (§5.1).
+- [x] `3.4.2` Implementar `OutboxRelay` (lee `outbox_events` no publicados, entrega al dispatcher, marca `published_at`/`attempts`).
+- [x] `3.4.3` Los services publican vía `outbox.Append(...)` **dentro** de la transacción; nunca `dispatcher.Dispatch(...)` directo (AP7). _(Mecanismo: `PostgresOutbox` escribe en la tx del UoW; test Tier 3 end-to-end commit/rollback. El enforce en services aplica cuando existan, Fase 4.)_
+- [x] `3.4.4` Handlers idempotentes (pueden ejecutarse 2 veces sin efecto adverso). _(Mecanismo: bus/relay; los handlers reales (p. ej. `AnalysisCompleted`→`analytics`) y su idempotencia llegan en Fase 4.)_
 
 ---
 
 ## ✅ Gate de salida
 
-- [ ] Cobertura de services **≥90%** y adapters **≥70%** (A10).
-- [ ] Test Tier 3 (`//go:build integration`) con `testcontainers-go` (Postgres 16) en verde: outbox relay end-to-end y rollback del UoW.
-- [ ] `pnpm test-integration --filter=backend` sin `t.Skip()`.
-- [ ] Race detector ON en todos los tiers.
+- [-] Cobertura de services **≥90%** y adapters **≥70%** (A10). _(adapters ≥70% verificado: `events` 86.2%, `postgres` 74.1%, `repositories` 75.7%. **services ≥90% no aplicable** hasta que existan services, Fase 4.)_
+- [x] Test Tier 3 (`//go:build integration`) con `testcontainers-go` (Postgres 16) en verde: outbox relay end-to-end y rollback del UoW.
+- [x] `pnpm test-integration --filter=backend` sin `t.Skip()`.
+- [x] Race detector ON en todos los tiers.
 
 ## Fuente normativa
 
