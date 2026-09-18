@@ -18,12 +18,29 @@ func TestFragmentSchema_MirrorsFragmentContract(t *testing.T) {
 		t.Fatalf("unmarshal schema: %v", err)
 	}
 
-	if schema["type"] != "array" {
-		t.Fatalf("schema.type = %v, want array", schema["type"])
+	if schema["type"] != "object" {
+		t.Fatalf("schema.type = %v, want object", schema["type"])
 	}
-	items, ok := schema["items"].(map[string]any)
+	if schema["additionalProperties"] != false {
+		t.Fatalf("schema.additionalProperties = %v, want false", schema["additionalProperties"])
+	}
+	assertStringList(t, schema["required"], []string{fragmentEnvelopeKey})
+
+	properties, ok := schema["properties"].(map[string]any)
 	if !ok {
-		t.Fatalf("schema.items = %v, want object", schema["items"])
+		t.Fatalf("schema.properties = %v, want object", schema["properties"])
+	}
+	fragments, ok := properties[fragmentEnvelopeKey].(map[string]any)
+	if !ok {
+		t.Fatalf("properties.fragments = %v, want object", properties[fragmentEnvelopeKey])
+	}
+	if fragments["type"] != "array" {
+		t.Fatalf("fragments.type = %v, want array", fragments["type"])
+	}
+
+	items, ok := fragments["items"].(map[string]any)
+	if !ok {
+		t.Fatalf("fragments.items = %v, want object", fragments["items"])
 	}
 	if items["additionalProperties"] != false {
 		t.Fatalf("items.additionalProperties = %v, want false", items["additionalProperties"])
@@ -38,13 +55,13 @@ func TestFragmentSchema_MirrorsFragmentContract(t *testing.T) {
 		"error_patterns",
 	})
 
-	properties, ok := items["properties"].(map[string]any)
+	itemProperties, ok := items["properties"].(map[string]any)
 	if !ok {
 		t.Fatalf("items.properties = %v, want object", items["properties"])
 	}
-	patterns, ok := properties["error_patterns"].(map[string]any)
+	patterns, ok := itemProperties["error_patterns"].(map[string]any)
 	if !ok {
-		t.Fatalf("error_patterns = %v, want object", properties["error_patterns"])
+		t.Fatalf("error_patterns = %v, want object", itemProperties["error_patterns"])
 	}
 	patternItems, ok := patterns["items"].(map[string]any)
 	if !ok {

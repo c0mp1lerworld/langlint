@@ -81,7 +81,7 @@ func TestOpenAIExtractor_Extract_ValidResponse_ReturnsFragments(t *testing.T) {
 			},
 		},
 	}
-	content, err := json.Marshal(want)
+	content, err := json.Marshal(map[string]any{fragmentEnvelopeKey: want})
 	if err != nil {
 		t.Fatalf("marshal fragments: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestOpenAIExtractor_Extract_SendsAnonymizedPromptAndModel(t *testing.T) {
 			t.Errorf("decode request body: %v", err)
 		}
 		captured <- body
-		writeChatCompletion(t, w, "[]")
+		writeChatCompletion(t, w, `{"fragments":[]}`)
 	})
 
 	if _, err := extractor.Extract(context.Background(), ports.ExtractRequest{
@@ -192,7 +192,7 @@ func TestOpenAIExtractor_Extract_NoChoices_ReturnsLLMUnavailableError(t *testing
 }
 
 func TestOpenAIExtractor_Extract_InvalidErrorCode_ReturnsLLMUnavailableError(t *testing.T) {
-	content := `[{"source_es":"El perro corre.","user_draft":"The dog run.","correction":"The dog runs.","target_verb_review":"run","lexical_clarification":"correr = to run","grammar_explanation":"third person -s","error_patterns":[{"code":"invented_code","severity":"minor","note":"x"}]}]`
+	content := `{"fragments":[{"source_es":"El perro corre.","user_draft":"The dog run.","correction":"The dog runs.","target_verb_review":"run","lexical_clarification":"correr = to run","grammar_explanation":"third person -s","error_patterns":[{"code":"invented_code","severity":"minor","note":"x"}]}]}`
 	extractor := newExtractorForHandler(t, func(w http.ResponseWriter, _ *http.Request) {
 		writeChatCompletion(t, w, content)
 	})
@@ -209,7 +209,7 @@ func TestOpenAIExtractor_Extract_RequestsStrictFragmentSchema(t *testing.T) {
 			t.Errorf("decode request body: %v", err)
 		}
 		captured <- body
-		writeChatCompletion(t, w, "[]")
+		writeChatCompletion(t, w, `{"fragments":[]}`)
 	})
 
 	if _, err := extractor.Extract(context.Background(), ports.ExtractRequest{}); err != nil {

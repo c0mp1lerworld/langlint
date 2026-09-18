@@ -66,13 +66,13 @@ func (e *OpenAIExtractor) Extract(ctx context.Context, req ports.ExtractRequest)
 		return nil, &domain.LLMUnavailableError{Message: "llm unavailable"}
 	}
 
-	var fragments []analysis.Fragment
-	if err := json.Unmarshal([]byte(strings.TrimSpace(completion.Choices[0].Message.Content)), &fragments); err != nil {
+	var envelope fragmentEnvelope
+	if err := json.Unmarshal([]byte(strings.TrimSpace(completion.Choices[0].Message.Content)), &envelope); err != nil {
 		return nil, &domain.LLMUnavailableError{Message: "llm unavailable"}
 	}
-	if err := validateFragments(fragments); err != nil {
+	if err := validateFragments(envelope.Fragments); err != nil {
 		return nil, err
 	}
 
-	return fragments, nil
+	return envelope.Fragments, nil
 }

@@ -14,7 +14,7 @@
 
 ## 4.2 Structured Outputs (JSON Mode)
 
-- [x] `4.2.1` Configurar Structured Outputs con el JSON Schema de `Fragment[]` (PRODUCT_DOMAIN §5.2). _(`adapters/llm/schema.go`: `fragmentSchema()` espejo de §5.2 + `fragmentResponseFormat()` con `strict: true`; enums de `code`/`severity` derivados de las constantes del dominio. Nota: openai-go v1.12.0 no expone `Message.Parsed`, el adapter parsea `message.content`.)_
+- [x] `4.2.1` Configurar Structured Outputs con el JSON Schema de `Fragment[]` (PRODUCT_DOMAIN §5.2). _(`adapters/llm/schema.go`: `fragmentSchema()` espejo de §5.2 + `fragmentResponseFormat()` con `strict: true`; enums de `code`/`severity` derivados de las constantes del dominio. Nota: Structured Outputs exige raíz `type: "object"`, así que `Fragment[]` se envuelve como `{"fragments":[...]}` y el adapter lo desenvuelve; openai-go v1.12.0 no expone `Message.Parsed`.)_
 - [x] `4.2.2` Validar el JSON del LLM contra el schema **antes** de persistir; output inválido → `LLMUnavailableError`. _(`adapters/llm/validate.go`: campos de texto requeridos no vacíos + enums válidos → `*domain.LLMUnavailableError`. Sin librería externa de JSON Schema, manifiesto §2.1.)_
 - [x] `4.2.3` La llamada al LLM se ejecuta **fuera** de la transacción (fuera del `UnitOfWork`). _(`services/analysis_service.go`: `Extract` antes de `InTransaction`; test con context marker prueba que corre fuera de la tx.)_
 - [x] `4.2.4` Persistir `Analysis` + outbox `AnalysisCompleted` atómicamente tras recibir el resultado (PRODUCT_DOMAIN §4.7 Flujo 2). _(`Analysis` completed + `outbox.Append(AnalysisCompleted)` en la misma `InTransaction`; el camino de fallo (`AnalysisFailed`) queda para 4.3.3.)_

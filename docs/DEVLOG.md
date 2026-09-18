@@ -4,6 +4,31 @@
 
 ---
 
+## 2026-09-18 — Fase 4: corrección del schema de Structured Outputs (raíz `object`) tras verificación real
+
+**Estado**: Fase 4.2 corregida y verificada contra la API real. `go build/vet/test -race` verdes; `adapters/llm` **100%**. `go run ./cmd/llmcheck` con `gpt-4o-mini` OK.
+
+**Contexto**: la verificación manual del bloque 4.2 falló con `llm unavailable`. Como el adapter oculta el error crudo del proveedor (A5/A8), se expuso temporalmente para diagnosticar: la API devolvió `400 Bad Request` — `Invalid schema for response_format 'fragment_analysis': schema must be a JSON Schema of 'type: "object"', got 'type: "array"'`.
+
+**Causa**: OpenAI Structured Outputs **no acepta un array en la raíz** del schema de `response_format`; exige `type: "object"`. El schema de `Fragment[]` era un array raíz.
+
+**Fix**:
+- `adapters/llm/schema.go`: el schema raíz pasa a `{"type":"object","properties":{"fragments":{"type":"array","items":<Fragment>}},"required":["fragments"],"additionalProperties":false}`; se extrae `fragmentItemSchema()` para el fragmento individual.
+- `adapters/llm/openai_extractor.go`: el adapter desenvuelve `fragmentEnvelope{Fragments []analysis.Fragment}` y sigue validando con `validateFragments` (4.2.2). El contrato wire (`Fragment[]`) **no** cambia: la envoltura es interna al schema del prompt.
+- Tests actualizados (`schema_test.go`, `openai_extractor_test.go`) al formato `{"fragments":[...]}`.
+
+**Verificación real**: `go run ./cmd/llmcheck` → `Fragment[]` válido (`tense_agreement` para "we run" → "we ran"; `lexical_clarification` para "all the park" → "the whole park").
+
+**Verificación estática**: `go build/vet/test -race ./...` + `-tags=integration` OK; `adapters/llm` 100%; `gofmt -l` limpio; sin `t.Skip()`.
+
+**Decisión**: el adapter mantiene el error genérico `LLMUnavailableError` (no filtra el error crudo del proveedor); el diagnóstico se hizo con un cambio temporal, no commiteado.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 4, bloque `4.3` — anonimización previa al LLM (`anonymizer.go`, 4.3.1), timeout + `AnalysisFailed` (4.3.3) y `PIIHandler` (4.3.4).
+
+---
+
 ## 2026-09-18 — Fase 4: Structured Outputs + `AnalysisService` (4.2.1–4.2.4)
 
 **Estado**: Fase 4, items 4.2.1–4.2.4 completados. `go build/vet/test -race` verdes (Tier 1 + Tier 3); `adapters/llm` **100%**, nuevo `services` **95.2%**; A1 en 0.
