@@ -1,0 +1,13 @@
+{
+  "name": "backend",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "go build ./...",
+    "lint": "go vet ./...",
+    "test": "go test -race -count=1 ./...",
+    "test-integration": "go test -race -count=1 -tags=integration ./...",
+    "generate": "make generate",
+    "mocks": "make mocks"
+  }
+}
