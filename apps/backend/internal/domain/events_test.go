@@ -62,6 +62,44 @@ func TestPracticeCreated_MarshalJSON_UsesSnakeCase(t *testing.T) {
 	}
 }
 
+func TestAnalysisRequested_EventName_ReturnsConstant(t *testing.T) {
+	event := domain.AnalysisRequested{PracticeID: domain.MustNewID(), UserID: domain.MustNewID(), Version: 1}
+
+	if got := event.EventName(); got != domain.EventNameAnalysisRequested {
+		t.Fatalf("EventName() = %q, want %q", got, domain.EventNameAnalysisRequested)
+	}
+}
+
+func TestAnalysisRequested_ImplementsDomainEvent(t *testing.T) {
+	var event domain.DomainEvent = domain.AnalysisRequested{PracticeID: domain.MustNewID(), UserID: domain.MustNewID(), Version: 1}
+
+	if event.EventName() == "" {
+		t.Fatal("AnalysisRequested must satisfy DomainEvent with a non-empty name")
+	}
+}
+
+func TestAnalysisRequested_MarshalJSON_UsesSnakeCase(t *testing.T) {
+	event := domain.AnalysisRequested{PracticeID: domain.MustNewID(), UserID: domain.MustNewID(), Version: 1}
+
+	raw, err := json.Marshal(event)
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	for _, key := range []string{"practice_id", "user_id", "version"} {
+		if _, ok := got[key]; !ok {
+			t.Fatalf("payload %s missing snake_case key %q", raw, key)
+		}
+	}
+	if _, ok := got["PracticeID"]; ok {
+		t.Fatalf("payload %s leaked Go field name %q", raw, "PracticeID")
+	}
+}
+
 func TestAnalysisCompleted_EventName_ReturnsConstant(t *testing.T) {
 	event := domain.AnalysisCompleted{AnalysisID: domain.MustNewID(), PracticeID: domain.MustNewID(), UserID: domain.MustNewID(), Version: 1}
 
@@ -160,6 +198,7 @@ func TestNewEvent_KnownType_ReturnsConcreteEvent(t *testing.T) {
 	for _, name := range []string{
 		domain.EventNameIdentityIssued,
 		domain.EventNamePracticeCreated,
+		domain.EventNameAnalysisRequested,
 		domain.EventNameAnalysisCompleted,
 		domain.EventNameAnalysisFailed,
 	} {

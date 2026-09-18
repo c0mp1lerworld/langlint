@@ -207,6 +207,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataExport'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
 
   /me/data:
     delete:
@@ -220,6 +222,8 @@ paths:
       responses:
         '202':
           description: Solicitud de borrado aceptada (gracia de 30 días).
+        '501':
+          $ref: '#/components/responses/NotImplemented'
 
   /me/access-log:
     get:
@@ -237,6 +241,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccessLog'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
 
 components:
   parameters:
@@ -312,10 +318,18 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    NotImplemented:
+      description: |
+        Endpoint reservado a una fase posterior (Fase 6: provisioner y
+        privacidad) todavía no implementado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
 
   schemas:
     # --- Errores de wire (PRODUCT_DOMAIN §4.5) ---
-    # Nota: `ErrorResponse.code` (5 códigos de error) es distinto de
+    # Nota: `ErrorResponse.code` (códigos de error) es distinto de
     # `ErrorPatternCode` (taxonomía gramatical de 8 códigos, §4.6).
     ErrorResponse:
       type: object
@@ -330,6 +344,7 @@ components:
             - analysis_failed
             - invalid_state
             - llm_unavailable
+            - not_implemented
         message:
           type: string
 

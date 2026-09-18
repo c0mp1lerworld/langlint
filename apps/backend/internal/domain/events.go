@@ -34,6 +34,21 @@ type PracticeCreated struct {
 // EventName returns the stable wire name of the event.
 func (PracticeCreated) EventName() string { return EventNamePracticeCreated }
 
+// EventNameAnalysisRequested is the wire name of AnalysisRequested.
+const EventNameAnalysisRequested = "analysis.requested"
+
+// AnalysisRequested is emitted when the user asks to analyze a practice
+// (triggers the asynchronous analysis). It is distinct from PracticeCreated:
+// creating a practice leaves it in draft and does not start the LLM.
+type AnalysisRequested struct {
+	PracticeID ID  `json:"practice_id"`
+	UserID     ID  `json:"user_id"`
+	Version    int `json:"version"`
+}
+
+// EventName returns the stable wire name of the event.
+func (AnalysisRequested) EventName() string { return EventNameAnalysisRequested }
+
 // EventNameAnalysisCompleted is the wire name of AnalysisCompleted.
 const EventNameAnalysisCompleted = "analysis.completed"
 
@@ -85,6 +100,8 @@ func NewEvent(eventType string) (DomainEvent, bool) {
 		return &IdentityIssued{}, true
 	case EventNamePracticeCreated:
 		return &PracticeCreated{}, true
+	case EventNameAnalysisRequested:
+		return &AnalysisRequested{}, true
 	case EventNameAnalysisCompleted:
 		return &AnalysisCompleted{}, true
 	case EventNameAnalysisFailed:

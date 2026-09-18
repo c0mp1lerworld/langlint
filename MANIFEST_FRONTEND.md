@@ -192,9 +192,11 @@ app/ (rutas y páginas) → features/ (casos de uso) → components/ (UI) → li
 /** @type {import('next').NextConfig} */
 module.exports = {
   reactStrictMode: true,
-  experimental: { typedRoutes: true }
+  typedRoutes: true
 };
 ```
+
+> **Nota (Next.js 15.5+)**: `typedRoutes` dejó de ser experimental y se configura en la raíz de `next.config.js`. La ubicación `experimental.typedRoutes` sigue funcionando pero emite un warning de deprecación; en este monorepo se usa la forma estable.
 
 ### 2.3 Variables de entorno
 
@@ -218,8 +220,7 @@ apps/frontend/
 ├── package.json
 ├── next.config.js
 ├── tsconfig.json
-├── tailwind.config.ts
-├── postcss.config.js
+├── postcss.config.mjs               # Tailwind v4 vía @tailwindcss/postcss (sin tailwind.config)
 ├── playwright.config.ts
 ├── vitest.config.ts
 ├── .eslintrc.json / eslint.config.mjs

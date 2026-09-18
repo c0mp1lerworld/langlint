@@ -193,7 +193,7 @@ export interface components {
     schemas: {
         ErrorResponse: {
             /** @enum {string} */
-            code: "validation_error" | "not_found" | "analysis_pending" | "analysis_failed" | "invalid_state" | "llm_unavailable";
+            code: "validation_error" | "not_found" | "analysis_pending" | "analysis_failed" | "invalid_state" | "llm_unavailable" | "not_implemented";
             message: string;
         };
         CreatePracticeRequest: {
@@ -386,6 +386,18 @@ export interface components {
         };
         /** @description El proveedor LLM está caído o excedió el timeout. */
         LLMUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /**
+         * @description Endpoint reservado a una fase posterior (Fase 6: provisioner y
+         *     privacidad) todavía no implementado.
+         */
+        NotImplemented: {
             headers: {
                 [name: string]: unknown;
             };
@@ -631,6 +643,7 @@ export interface operations {
                     "application/json": components["schemas"]["DataExport"];
                 };
             };
+            501: components["responses"]["NotImplemented"];
         };
     };
     delete_data: {
@@ -649,6 +662,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            501: components["responses"]["NotImplemented"];
         };
     };
     get_access_log: {
@@ -674,6 +688,7 @@ export interface operations {
                     "application/json": components["schemas"]["AccessLog"];
                 };
             };
+            501: components["responses"]["NotImplemented"];
         };
     };
 }

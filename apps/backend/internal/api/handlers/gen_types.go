@@ -97,6 +97,7 @@ const (
 	ErrorResponseCodeInvalidState    ErrorResponseCode = "invalid_state"
 	ErrorResponseCodeLlmUnavailable  ErrorResponseCode = "llm_unavailable"
 	ErrorResponseCodeNotFound        ErrorResponseCode = "not_found"
+	ErrorResponseCodeNotImplemented  ErrorResponseCode = "not_implemented"
 	ErrorResponseCodeValidationError ErrorResponseCode = "validation_error"
 )
 
@@ -112,6 +113,8 @@ func (e ErrorResponseCode) Valid() bool {
 	case ErrorResponseCodeLlmUnavailable:
 		return true
 	case ErrorResponseCodeNotFound:
+		return true
+	case ErrorResponseCodeNotImplemented:
 		return true
 	case ErrorResponseCodeValidationError:
 		return true
@@ -371,6 +374,9 @@ type LLMUnavailable = ErrorResponse
 
 // NotFound defines model for NotFound.
 type NotFound = ErrorResponse
+
+// NotImplemented defines model for NotImplemented.
+type NotImplemented = ErrorResponse
 
 // ValidationError defines model for ValidationError.
 type ValidationError = ErrorResponse
