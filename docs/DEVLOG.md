@@ -4,6 +4,41 @@
 
 ---
 
+## 2026-09-18 — Fase 3: repositorios Postgres + UoW + migraciones (3.2.1–3.2.4 · 3.3.1–3.3.2)
+
+**Estado**: Tier 1 y Tier 3 en verde. Cobertura adapters: `postgres` 72.7%, `repositories` 75.7% (gate ≥70%). Dominio sigue 100%.
+
+**Hecho**:
+- Deps (pins del manifiesto §2.1): `jackc/pgx/v5 v5.10.0`, `pressly/goose/v3 v3.27.2`, `stretchr/testify v1.11.1`, `testcontainers/testcontainers-go v0.44.0` (+ `modules/postgres`).
+- `domain.InternalError` (A5, 500 `internal` reservado) + tests; `PRODUCT_DOMAIN §4.5` actualizado.
+- `3.2.3` `apps/backend/migrations/000001_init.sql` (goose Up/Down): `practices`, `analyses` (FK 1:1 a practices), `error_metrics`, `outbox_events` + índices (incl. parcial `outbox_events WHERE published_at IS NULL`). `migrations.go` con `embed.FS` + `goose.Up` (vía `stdlib.OpenDBFromPool`).
+- `3.3.2` `adapters/postgres/txctx/tx_context.go`: `txKey{}` privado + `With`/`From`. `3.3.1` `adapters/postgres/unit_of_work.go`: `PostgresUnitOfWork` con `Begin` → `With` → `Commit`/`Rollback`.
+- `3.2.1`/`3.2.2` `adapters/postgres/repositories/`: interfaz privada `querier` (la satisfacen `pgx.Tx` y `*pgxpool.Pool`) + `conn(ctx)` tx-o-pool; `PostgresPracticeRepository`, `PostgresAnalysisRepository`, `PostgresErrorMetricRepository`.
+- `3.2.4` `repositories/errors.go`: `pgx.ErrNoRows → *domain.NotFoundError`; `23505 → *domain.ValidationError`; resto → `*domain.InternalError`.
+- Tests Tier 3 (`//go:build integration`) con `postgres:16-alpine`: roundtrip/actualización/soft-delete/paginación/aislamiento por usuario; análisis (roundtrip/completado/not-found); métricas (Upsert absoluto/filtro por ventana); UoW commit y **rollback**. Helper compartido `testsupport.Start()` (un contenedor por suite, `TestMain`).
+
+**Decisiones**:
+- **Goose no soporta `.up.sql`/`.down.sql` separados** (v3.27 los colecciona como dos migraciones de la misma versión → `duplicate version 1`). Se usa el formato nativo de goose: un archivo `000001_init.sql` con `-- +goose Up`/`-- +goose Down`. **Desviación del nombre literal del checklist** (documentada en el propio checklist).
+- **`window` es palabra reservada en Postgres**: la columna se cita como `"window"` en DDL y queries.
+- **Sin `tenant_id`/RLS** (single-user MVP; el dominio no tiene `TenantID`). Scoping por `user_id`. A6 se añadirá de forma aditiva con multi-usuario.
+- **`tx_context` en subpaquete `txctx`**: `repositories/` es un paquete Go distinto; un helper privado en `postgres` no sería accesible. `txctx` mantiene la clave privada y compartida por UoW y repos (satisface 3.3.2: `tx_context.go`, `txKey` privado, helper).
+- **Frontera SQL explícita**: `domain.ID` (`[16]byte`) se convierte a/desde `string` (`String()`/`ParseID`); JSONB con `json.Marshal` + cast `$n::jsonb` y `json.Unmarshal` al leer (pgx no usa `encoding/json`).
+- **`Upsert` de `ErrorMetric` absoluto** (`count = EXCLUDED.count`), no incremental, para no romper la idempotencia del handler (AP7).
+- **`cmd/migrate` y `shared/db` diferidos** (no están en 3.2); el runner embebido ya sirve a tests y futuro CLI.
+- Errores inesperados de DB → `*domain.InternalError` con mensaje genérico (sin filtrar pgx/PgError al service).
+
+**Verificación**:
+- `go build ./...` OK · `go vet ./...` OK · `go test -race -count=1 ./...` OK.
+- `go test -race -count=1 -tags=integration ./...` / `pnpm test-integration` → OK (1 successful).
+- `go test -tags=integration -cover ./internal/api/adapters/...` → `postgres` 72.7%, `repositories` 75.7%.
+- `go test -cover ./internal/domain/...` → 100% en los 5 paquetes. `gofmt -l` limpio. Sin `t.Skip()`.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 3, `3.3.3` (verificar que los services no importan `pgx`; quedará significativo cuando existan services) y bloque `3.4` — `InMemoryEventDispatcher` + `OutboxRelay` (publicación vía `outbox.Append` dentro de la tx, handlers idempotentes).
+
+---
+
 ## 2026-09-18 — Fase 3: integración del backend en turbo + cierre de drift (seguimiento de 3.1)
 
 **Estado**: gate de 3.1 sigue en verde; además quedan operativos los comandos canónicos del monorepo sobre el backend Go.

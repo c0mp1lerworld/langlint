@@ -16,15 +16,15 @@
 
 ## 3.2 Repositorios Postgres
 
-- [ ] `3.2.1` Implementar `PostgresPracticeRepository`, `PostgresAnalysisRepository`, `PostgresErrorMetricRepository` en `adapters/postgres/repositories/`.
-- [ ] `3.2.2` Cada método detecta la transacción vía helper `ctxTx(ctx)` (usa tx si existe, o conexión del pool) (§5.3).
-- [ ] `3.2.3` Crear migraciones `goose` (`migrations/NNNNNN_<slug>.up.sql`/`.down.sql`) para `practices`, `analyses`, `error_metrics`, `outbox_events`.
-- [ ] `3.2.4` Mapear errores de infraestructura (`pgx.ErrNoRows`) a errores de dominio (A5). **Sin** filtrar `pgx` al service.
+- [x] `3.2.1` Implementar `PostgresPracticeRepository`, `PostgresAnalysisRepository`, `PostgresErrorMetricRepository` en `adapters/postgres/repositories/`.
+- [x] `3.2.2` Cada método detecta la transacción vía helper `ctxTx(ctx)` (usa tx si existe, o conexión del pool) (§5.3).
+- [x] `3.2.3` Crear migraciones `goose` (`migrations/000001_init.sql`; goose v3 no soporta el split `.up.sql`/`.down.sql`) para `practices`, `analyses`, `error_metrics`, `outbox_events`.
+- [x] `3.2.4` Mapear errores de infraestructura (`pgx.ErrNoRows`) a errores de dominio (A5). **Sin** filtrar `pgx` al service.
 
 ## 3.3 Unit of Work
 
-- [ ] `3.3.1` Implementar `PostgresUnitOfWork` (`pool.Begin` → `fn(txCtx)` → `Commit`/`Rollback`) (§5.3).
-- [ ] `3.3.2` Crear `tx_context.go` (tipo `txKey` privado + helper `ctxTx`).
+- [x] `3.3.1` Implementar `PostgresUnitOfWork` (`pool.Begin` → `fn(txCtx)` → `Commit`/`Rollback`) (§5.3).
+- [x] `3.3.2` Crear `tx_context.go` (tipo `txKey` privado + helper `ctxTx`).
 - [ ] `3.3.3` Verificar que el service **nunca** importa `pgx` ni inicia transacciones (AP8, A1/A2).
 
 ## 3.4 Outbox + Event Bus
