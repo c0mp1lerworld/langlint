@@ -4,6 +4,23 @@
 
 ---
 
+## 2026-09-17 — Docs: guía didáctica de Fase 2 (`docs/explains/fase-2-dominio-puro.md`)
+
+**Estado**: documentación. Sin cambios de código; gate de Fase 2 sigue en verde.
+
+**Hecho**: creado `docs/explains/fase-2-dominio-puro.md` con la misma estructura que `fase-1-fundaciones.md`:
+1. Explicación para no técnicos (analogía del "reglamento y las piezas de un juego de mesa").
+2. Guía de estudio por bloques (dominio puro/DDD, raíz `domain/`, `identity/`, `practice/`, `analysis/`, `analytics/`, verificación/gate) con snippets reales y notas de concepto.
+3. Resumen de cambios en 3 viñetas.
+
+**Decisión**: `ErrorPattern` se documenta en la raíz `domain/` (no en `analysis/`) explicando el porqué A2/A3.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 3 — Puertos y adaptadores (`docs/checklist/03-puertos-adaptadores.md`).
+
+---
+
 ## 2026-09-17 — Fase 2 (cierre): `analytics/`, errores A5 y Gate de salida (items 2.4.1–2.5.6)
 
 **Estado**: **Fase 2 completada y Gate de salida en verde.** `go test -race -count=1 ./...` OK; `internal/domain/...` con **100%** de cobertura en los 5 paquetes; `go build ./...` y `go vet ./...` OK.
