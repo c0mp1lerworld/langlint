@@ -42,7 +42,7 @@ var (
 var commonNames = func() map[string]struct{} {
 	names := []string{
 		// Spanish
-		"maría", "jose", "josé", "juan", "ana", "luis", "carlos", "laura", "carmen",
+		"maría", "maria", "jose", "josé", "juan", "ana", "luis", "carlos", "laura", "carmen",
 		"javier", "miguel", "sofía", "sofia", "lucía", "lucia", "pedro", "pablo",
 		"marta", "elena", "david", "daniel", "sara", "paula", "andrés", "andres",
 		"diego", "isabel", "rosa", "antonio", "manuel", "francisco", "teresa",

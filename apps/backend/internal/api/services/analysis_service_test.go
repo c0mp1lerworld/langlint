@@ -209,33 +209,168 @@ func TestAnalysisService_RunAnalysis_PracticeNotFound_ReturnsErrorWithoutCalling
 	}
 }
 
-func TestAnalysisService_RunAnalysis_ExtractorError_ReturnsErrorWithoutPersisting(t *testing.T) {
+func TestAnalysisService_RunAnalysis_ExtractorError_PersistsFailedAnalysisAndEmitsAnalysisFailed(t *testing.T) {
 	fixture := newServiceFixture(t)
 	p := testPractice()
 
 	fixture.practices.EXPECT().GetByID(gomock.Any(), p.ID).Return(p, nil)
+	fixture.extractor.EXPECT().Model().Return("gpt-4o-mini")
+	fixture.extractor.EXPECT().ModelVersion().Return("2024-07-18")
 	fixture.extractor.EXPECT().Extract(gomock.Any(), gomock.Any()).Return(nil, &domain.LLMUnavailableError{Message: "llm unavailable"})
+	fixture.expectTransaction()
 
-	err := fixture.svc.RunAnalysis(context.Background(), p.ID)
-	var target *domain.LLMUnavailableError
-	if !errors.As(err, &target) {
-		t.Fatalf("RunAnalysis() error = %v, want *domain.LLMUnavailableError", err)
+	var saved *analysis.Analysis
+	var dispatched domain.DomainEvent
+	fixture.analyses.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, result *analysis.Analysis) error {
+			saved = result
+			return nil
+		},
+	)
+	fixture.outbox.EXPECT().Append(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, event domain.DomainEvent) error {
+			dispatched = event
+			return nil
+		},
+	)
+
+	if err := fixture.svc.RunAnalysis(context.Background(), p.ID); err != nil {
+		t.Fatalf("RunAnalysis() error = %v, want nil (handled failure)", err)
+	}
+	if saved == nil {
+		t.Fatal("failed Analysis was not saved")
+	}
+	if saved.Status != analysis.AnalysisStatusFailed {
+		t.Fatalf("saved.Status = %q, want failed", saved.Status)
+	}
+
+	event, ok := dispatched.(domain.AnalysisFailed)
+	if !ok {
+		t.Fatalf("dispatched event = %T, want domain.AnalysisFailed", dispatched)
+	}
+	if event.AnalysisID != saved.ID || event.PracticeID != p.ID {
+		t.Fatalf("event ids = %+v, want analysis %v practice %v", event, saved.ID, p.ID)
+	}
+	if event.Reason != reasonLLMUnavailable {
+		t.Fatalf("event.Reason = %q, want %q", event.Reason, reasonLLMUnavailable)
+	}
+	if event.Version != analysisEventVersion {
+		t.Fatalf("event.Version = %d, want %d", event.Version, analysisEventVersion)
 	}
 }
 
-func TestAnalysisService_RunAnalysis_EmptyFragments_ReturnsErrorWithoutPersisting(t *testing.T) {
+func TestAnalysisService_RunAnalysis_EmptyFragments_PersistsFailedAnalysis(t *testing.T) {
 	fixture := newServiceFixture(t)
 	p := testPractice()
 
 	fixture.practices.EXPECT().GetByID(gomock.Any(), p.ID).Return(p, nil)
-	fixture.extractor.EXPECT().Extract(gomock.Any(), gomock.Any()).Return([]analysis.Fragment{}, nil)
 	fixture.extractor.EXPECT().Model().Return("gpt-4o-mini")
 	fixture.extractor.EXPECT().ModelVersion().Return("2024-07-18")
+	fixture.extractor.EXPECT().Extract(gomock.Any(), gomock.Any()).Return([]analysis.Fragment{}, nil)
+	fixture.expectTransaction()
+
+	var saved *analysis.Analysis
+	var dispatched domain.DomainEvent
+	fixture.analyses.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, result *analysis.Analysis) error {
+			saved = result
+			return nil
+		},
+	)
+	fixture.outbox.EXPECT().Append(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, event domain.DomainEvent) error {
+			dispatched = event
+			return nil
+		},
+	)
+
+	if err := fixture.svc.RunAnalysis(context.Background(), p.ID); err != nil {
+		t.Fatalf("RunAnalysis() error = %v, want nil (handled failure)", err)
+	}
+
+	event, ok := dispatched.(domain.AnalysisFailed)
+	if !ok {
+		t.Fatalf("dispatched event = %T, want domain.AnalysisFailed", dispatched)
+	}
+	if event.Reason != reasonInvalidResult {
+		t.Fatalf("event.Reason = %q, want %q", event.Reason, reasonInvalidResult)
+	}
+	if saved == nil || saved.Status != analysis.AnalysisStatusFailed {
+		t.Fatalf("saved.Status = %v, want failed", saved)
+	}
+}
+
+func TestAnalysisService_RunAnalysis_AnonymizesInputBeforeLLM(t *testing.T) {
+	fixture := newServiceFixture(t)
+	p := testPractice()
+	p.SourceText = practice.SourceText("Ayer María me escribió a maria@example.com desde Barcelona.")
+	p.DraftText = practice.DraftText("Yesterday Maria wrote me at maria@example.com from Barcelona.")
+
+	fixture.practices.EXPECT().GetByID(gomock.Any(), p.ID).Return(p, nil)
+	fixture.extractor.EXPECT().Model().Return("gpt-4o-mini")
+	fixture.extractor.EXPECT().ModelVersion().Return("2024-07-18")
+	fixture.extractor.EXPECT().Extract(gomock.Any(), ports.ExtractRequest{
+		PracticeID:  p.ID,
+		SourceText:  "Ayer [name] me escribió a [email] desde [name].",
+		DraftText:   "Yesterday [name] wrote me at [email] from Barcelona.",
+		TargetRules: p.TargetRules,
+	}).Return(testFragments(), nil)
+	fixture.expectTransaction()
+	fixture.analyses.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+	fixture.outbox.EXPECT().Append(gomock.Any(), gomock.Any()).Return(nil)
+
+	if err := fixture.svc.RunAnalysis(context.Background(), p.ID); err != nil {
+		t.Fatalf("RunAnalysis() error = %v, want nil", err)
+	}
+}
+
+func TestAnalysisService_RunAnalysis_ConfiguresLLMDeadline(t *testing.T) {
+	fixture := newServiceFixture(t)
+	p := testPractice()
+	fixture.svc.llmTimeout = 5 * time.Second
+
+	var extractCtx context.Context
+	fixture.practices.EXPECT().GetByID(gomock.Any(), p.ID).Return(p, nil)
+	fixture.extractor.EXPECT().Model().Return("gpt-4o-mini")
+	fixture.extractor.EXPECT().ModelVersion().Return("2024-07-18")
+	fixture.extractor.EXPECT().Extract(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, _ ports.ExtractRequest) ([]analysis.Fragment, error) {
+			extractCtx = ctx
+			return testFragments(), nil
+		},
+	)
+	fixture.expectTransaction()
+	fixture.analyses.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+	fixture.outbox.EXPECT().Append(gomock.Any(), gomock.Any()).Return(nil)
+
+	if err := fixture.svc.RunAnalysis(context.Background(), p.ID); err != nil {
+		t.Fatalf("RunAnalysis() error = %v, want nil", err)
+	}
+
+	deadline, ok := extractCtx.Deadline()
+	if !ok {
+		t.Fatal("Extract context has no deadline, want one (4.3.3)")
+	}
+	if remaining := time.Until(deadline); remaining <= 0 || remaining > 5*time.Second {
+		t.Fatalf("deadline remaining = %v, want within (0, 5s]", remaining)
+	}
+}
+
+func TestAnalysisService_RunAnalysis_FailurePersistFails_ReturnsError(t *testing.T) {
+	fixture := newServiceFixture(t)
+	p := testPractice()
+
+	fixture.practices.EXPECT().GetByID(gomock.Any(), p.ID).Return(p, nil)
+	fixture.extractor.EXPECT().Model().Return("gpt-4o-mini")
+	fixture.extractor.EXPECT().ModelVersion().Return("2024-07-18")
+	fixture.extractor.EXPECT().Extract(gomock.Any(), gomock.Any()).Return(nil, &domain.LLMUnavailableError{Message: "llm unavailable"})
+	fixture.expectTransaction()
+	fixture.analyses.EXPECT().Save(gomock.Any(), gomock.Any()).Return(&domain.InternalError{Message: "internal"})
 
 	err := fixture.svc.RunAnalysis(context.Background(), p.ID)
-	var target *domain.ValidationError
+	var target *domain.InternalError
 	if !errors.As(err, &target) {
-		t.Fatalf("RunAnalysis() error = %v, want *domain.ValidationError", err)
+		t.Fatalf("RunAnalysis() error = %v, want *domain.InternalError", err)
 	}
 }
 
