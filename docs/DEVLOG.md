@@ -4,6 +4,21 @@
 
 ---
 
+## 2026-09-18 — Docs: guía didáctica de Fase 4 (`docs/explains/fase-4-motor-ia.md`)
+
+**Estado**: documentación. Sin cambios de código; el Gate de Fase 4 sigue en verde.
+
+**Hecho**: creado `docs/explains/fase-4-motor-ia.md` con la misma estructura que `fase-2-dominio-puro.md` y `fase-3-puertos-adaptadores.md`:
+1. Explicación para no técnicos (analogía de la "academia con tutor externo": el LLM en otro edificio, el secretario con rotulador = anonymizer, el formulario con casillas = JSON Schema, el revisor = validación, el cajón abierto = transacción, el aviso de fallo = `AnalysisFailed`, la trituradora de papel = `PIIHandler`).
+2. Guía de estudio por 9 bloques: puerto `LLMExtractor` (A1), prompt, Structured Outputs + JSON Schema (incluida la lección del *root object*), validación, `AnalysisService` (LLM fuera de tx + outbox + fallo como estado terminal), anonimización, timeout/`AnalysisFailed`, `PIIHandler` y verificación/gate. Con snippets reales y 33 callouts `> Concepto —`.
+3. Resumen de cambios en 3 viñetas (motor IA, `AnalysisService`, privacidad + gate).
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 5 según roadmap (Frontend). Pendiente de decisión: el cableado HTTP (`cmd/api`, handlers, `CreatePracticeService`, handler de `PracticeCreated`) no está cubierto por el checklist de Fase 4.
+
+---
+
 ## 2026-09-18 — Fase 4 (cierre): anonimización, timeout/`AnalysisFailed` y `PIIHandler` (4.3.1–4.3.4)
 
 **Estado**: **Fase 4 completada; Gate de salida en verde.** `go build/vet/test -race` verdes (Tier 1 + Tier 3); `adapters/llm` **100%**, `services` **96.9%**, `shared/logger` **100%**; A1 en 0.
