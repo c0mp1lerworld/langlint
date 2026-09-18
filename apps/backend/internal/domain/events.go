@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 // DomainEvent is a pure, immutable business fact (A4). Concrete events live in
 // the root domain package so bounded contexts never import each other (A3).
 type DomainEvent interface {
@@ -61,3 +63,33 @@ type AnalysisFailed struct {
 
 // EventName returns the stable wire name of the event.
 func (AnalysisFailed) EventName() string { return EventNameAnalysisFailed }
+
+// OutboxEvent is a persisted domain event awaiting publication (§5.1). Payload
+// holds the JSON encoding of the concrete event; the relay marks PublishedAt
+// once dispatched and counts failed Attempts.
+type OutboxEvent struct {
+	ID          ID         `json:"id"`
+	EventType   string     `json:"event_type"`
+	Payload     []byte     `json:"payload"`
+	CreatedAt   time.Time  `json:"created_at"`
+	PublishedAt *time.Time `json:"published_at"`
+	Attempts    int        `json:"attempts"`
+}
+
+// NewEvent returns an empty event of the given wire name, or false when the
+// name is unknown. It is the single registry of concrete domain events and lets
+// adapters rebuild an event from the outbox payload (§5.1).
+func NewEvent(eventType string) (DomainEvent, bool) {
+	switch eventType {
+	case EventNameIdentityIssued:
+		return &IdentityIssued{}, true
+	case EventNamePracticeCreated:
+		return &PracticeCreated{}, true
+	case EventNameAnalysisCompleted:
+		return &AnalysisCompleted{}, true
+	case EventNameAnalysisFailed:
+		return &AnalysisFailed{}, true
+	default:
+		return nil, false
+	}
+}

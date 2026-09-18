@@ -3,6 +3,7 @@ package domain_test
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
 )
@@ -152,5 +153,65 @@ func TestIdentityIssued_MarshalJSON_UsesSnakeCase(t *testing.T) {
 	}
 	if _, ok := got["UserID"]; ok {
 		t.Fatalf("payload %s leaked Go field name %q", raw, "UserID")
+	}
+}
+
+func TestNewEvent_KnownType_ReturnsConcreteEvent(t *testing.T) {
+	for _, name := range []string{
+		domain.EventNameIdentityIssued,
+		domain.EventNamePracticeCreated,
+		domain.EventNameAnalysisCompleted,
+		domain.EventNameAnalysisFailed,
+	} {
+		t.Run(name, func(t *testing.T) {
+			event, ok := domain.NewEvent(name)
+			if !ok {
+				t.Fatalf("NewEvent(%q) ok = false, want true", name)
+			}
+			if got := event.EventName(); got != name {
+				t.Fatalf("NewEvent(%q).EventName() = %q, want %q", name, got, name)
+			}
+		})
+	}
+}
+
+func TestNewEvent_UnknownType_ReturnsFalse(t *testing.T) {
+	event, ok := domain.NewEvent("unknown.event")
+
+	if ok {
+		t.Fatal("NewEvent(unknown) ok = true, want false")
+	}
+	if event != nil {
+		t.Fatalf("NewEvent(unknown) = %v, want nil", event)
+	}
+}
+
+func TestOutboxEvent_MarshalJSON_UsesSnakeCase(t *testing.T) {
+	published := time.Unix(0, 0).UTC()
+	event := domain.OutboxEvent{
+		ID:          domain.MustNewID(),
+		EventType:   domain.EventNamePracticeCreated,
+		Payload:     []byte(`{}`),
+		CreatedAt:   published,
+		PublishedAt: &published,
+		Attempts:    2,
+	}
+
+	raw, err := json.Marshal(event)
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	for _, key := range []string{"id", "event_type", "payload", "created_at", "published_at", "attempts"} {
+		if _, ok := got[key]; !ok {
+			t.Fatalf("payload %s missing snake_case key %q", raw, key)
+		}
+	}
+	if _, ok := got["EventType"]; ok {
+		t.Fatalf("payload %s leaked Go field name %q", raw, "EventType")
 	}
 }
