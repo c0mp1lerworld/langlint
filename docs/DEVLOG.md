@@ -4,6 +4,30 @@
 
 ---
 
+## 2026-09-18 — Fase 3: integración del backend en turbo + cierre de drift (seguimiento de 3.1)
+
+**Estado**: gate de 3.1 sigue en verde; además quedan operativos los comandos canónicos del monorepo sobre el backend Go.
+
+**Hecho**:
+- **Doc drift cerrado**: `PRODUCT_DOMAIN §6.1` pasa de `[]domain.Fragment` a `[]analysis.Fragment` (alineado con el puerto real, 3.1.3).
+- **`apps/backend/package.json`** (`"name": "backend"`): scripts `build`/`lint`/`test`/`test-integration`/`generate`/`mocks`. `pnpm-lock.yaml` actualizado con el importer del workspace. Ahora `pnpm test-integration --filter=backend` (gate de Fase 3), `pnpm build`, `pnpm test` y `pnpm lint` orquestan el módulo Go.
+
+**Decisiones**:
+- **`ProgressMetric` no se materializa ni se porta (por ahora)**: el checklist `3.2.3` **no** incluye tabla `progress_metrics` (solo `practices`, `analyses`, `error_metrics`, `outbox_events`), así que `GET /analytics/progress` se resolverá **derivando** de `analyses`/`error_metrics` en la capa de consulta. Si el job `refresh-aggregates` (Fase 6) exige persistirlo, se añadirá entonces el puerto + tabla (aditivo).
+- **Naming**: se usa `"backend"` (sin scope) para coincidir con los scripts raíz ya commiteados (`--filter=backend`) y con el gate de Fase 3 literal. Nota (no bloqueante): `apps/frontend` es `@langlint/frontend`, por lo que `pnpm dev:frontend` (`--filter=frontend`) no resuelve; se corregirá al cablear el frontend (Fase 5).
+
+**Verificación**:
+- `pnpm test-integration` → `backend:test-integration` OK (1 successful); `pnpm build` → 2 successful (contracts + backend); `pnpm test` → backend OK; `pnpm lint` → contracts valid + backend `go vet` OK.
+- Warnings cosméticos de turbo (`no output files found for backend#build/test/test-integration`): los scripts Go no emiten artefactos a `coverage/**`/`bin/**`. Inofensivos.
+
+**Bloqueos**: ninguno.
+
+**Pendiente de decisión del humano**: `docs/promnt.txt` (template de sesión, tracked) quedó modificado (Fase 1 → Fase 3) sin commitear. Opciones: commitear el template, o `git rm --cached` + `.gitignore` (junto con `docs/promnt2.txt`).
+
+**Próximo paso**: Fase 3, bloque `3.2` — repositorios Postgres + migraciones `goose`.
+
+---
+
 ## 2026-09-18 — Fase 3 (inicio): puertos e interfaces + mocks (items 3.1.1–3.1.5)
 
 **Estado**: Fase 3 en curso. `go build ./...`, `go vet ./...` y `go test -race -count=1 ./...` en verde; mocks idempotentes; `gofmt -l` sin diferencias.
