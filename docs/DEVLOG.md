@@ -4,6 +4,37 @@
 
 ---
 
+## 2026-09-18 — Fase 4 (inicio): `OpenAIExtractor` + prompt builder (4.1.1–4.1.3)
+
+**Estado**: Fase 4 en curso. `go build/vet/test -race` en verde; nuevo paquete `adapters/llm` al **100%** de cobertura; dominio sigue 100%; A1 verificado.
+
+**Hecho**:
+- Dependencia `github.com/openai/openai-go v1.12.0` (pin del manifiesto §2.1). `go mod tidy` la deja como directa.
+- `4.1.1` `internal/api/adapters/llm/openai_extractor.go`: `OpenAIExtractor{client openai.Client, model, modelVersion}` + `NewOpenAIExtractor` + `Extract` en modo JSON simple (`Chat.Completions.New` → `Choices[0].Message.Content` → `json.Unmarshal` a `[]analysis.Fragment`). Getters `Model()`/`ModelVersion()` para que el service futuro persista la trazabilidad en `Analysis`.
+- `4.1.2` `internal/api/adapters/llm/prompt.go`: `buildPrompt` puro (system con el contrato de salida + taxonomía de `ErrorPattern` derivada de las constantes del dominio; user con source/draft/target rules). Consume el input **ya anonimizado** de `ExtractRequest` (A8).
+- `4.1.3` `var _ ports.LLMExtractor = (*OpenAIExtractor)(nil)`; el proveedor se inyecta por el puerto y el dominio no lo conoce (A1).
+- Mapeo de errores: fallo del proveedor, transporte, respuesta vacía o JSON no parseable → `*domain.LLMUnavailableError{Message:"llm unavailable"}` (sin filtrar el error crudo).
+- Tests con `httptest.Server` + `openai.WithBaseURL` (sin `mockgen`): contrato y taxonomía del prompt, request enviado (model + prompt), respuesta válida, error 5xx, JSON inválido, sin `choices` y metadata del modelo.
+
+**Decisiones**:
+- **JSON-mode simple ahora; Structured Outputs estricto diferido a 4.2.1** (confirmado con el humano): 4.1.1 solo parsea `message.content`. El JSON Schema estricto (`response_format` + `Message.Parsed`) y la validación contra schema (4.2.2) llegan en su item, evitando encadenar trabajo no aprobado.
+- **Paquete `adapters/llm`** (no `openai`): evita la colisión de nombre con el paquete del SDK y mantiene el adaptador provider-agnóstico a nivel de paquete.
+- `openai.Client` se guarda **por valor** (lo que devuelve `NewClient`), no como puntero.
+- **Timeout (4.3.3) y `PIIHandler` (4.3.4) no se adelantan**: `Extract` recibe y propaga `ctx` (AP6) y no lanza goroutines propias, por lo que la regla `goroutine_context` se cumple por construcción.
+- `go mod tidy` promovió `stretchr/testify` de indirect a **direct**: lo importan los tests de integración ya existentes (Fase 3). Corrección legítima de `tidy`, sin cambio funcional.
+
+**Verificación**:
+- `go build ./...` · `go vet ./...` · `go vet -tags=integration ./...` · `go test -race -count=1 ./...` → OK.
+- `go test -cover ./internal/api/adapters/llm/` → **100.0%**.
+- A1: `go list -deps ./internal/domain/... | grep -c openai` → `0`.
+- `gofmt -l .` limpio. Sin `t.Skip()`.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 4, bloque `4.2` — Structured Outputs con el JSON Schema de `Fragment[]` (4.2.1), validación del output antes de persistir (4.2.2) y orquestación `AnalysisService` (LLM fuera de la transacción, 4.2.3/4.2.4).
+
+---
+
 ## 2026-09-18 — Fase 3 (cierre de implementación): Outbox + Event Bus (3.3.3 · 3.4.1–3.4.4)
 
 **Estado**: Tier 1 y Tier 3 en verde. Adaptadores ≥70% (`events` 86.2%, `postgres` 74.1%, `repositories` 75.7%); dominio 100%. `3.3.3` y `3.4.x` marcados con nota: el **enforce en services y la cobertura de services** quedan pendientes de que existan services (Fase 4).

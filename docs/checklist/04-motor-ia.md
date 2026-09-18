@@ -8,9 +8,9 @@
 
 ## 4.1 Puerto `LLMExtractor` (OpenAI)
 
-- [ ] `4.1.1` Implementar `OpenAIExtractor` (adapter) con `openai-go` v1.12.0.
-- [ ] `4.1.2` Construir el prompt desde `Practice` (source + draft + target rules) anonimizado.
-- [ ] `4.1.3` Inyectar el adapter vía el puerto `LLMExtractor`; el dominio **no** conoce al proveedor (A1).
+- [x] `4.1.1` Implementar `OpenAIExtractor` (adapter) con `openai-go` v1.12.0. _(En `adapters/llm/`; `Extract` en modo JSON simple (parsea `message.content`). El JSON Schema estricto de Structured Outputs se añade en 4.2.1.)_
+- [x] `4.1.2` Construir el prompt desde `Practice` (source + draft + target rules) anonimizado. _(`buildPrompt` puro en `prompt.go`; consume el input ya anonimizado de `ExtractRequest`, A8. La anonimización en sí es 4.3.1.)_
+- [x] `4.1.3` Inyectar el adapter vía el puerto `LLMExtractor`; el dominio **no** conoce al proveedor (A1). _(Constructor + `var _ ports.LLMExtractor`; verificado con `go list`: `openai` no aparece en `internal/domain/...`.)_
 
 ## 4.2 Structured Outputs (JSON Mode)
 
