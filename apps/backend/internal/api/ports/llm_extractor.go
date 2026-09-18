@@ -18,7 +18,10 @@ type ExtractRequest struct {
 }
 
 // LLMExtractor is the port over the LLM provider (PRODUCT_DOMAIN §6.1). The
-// domain stays provider-agnostic (A1).
+// domain stays provider-agnostic (A1). Model and ModelVersion expose the
+// provider traceability the Analysis aggregate persists (PRODUCT_DOMAIN §4.2.3).
 type LLMExtractor interface {
 	Extract(ctx context.Context, req ExtractRequest) ([]analysis.Fragment, error)
+	Model() string
+	ModelVersion() string
 }

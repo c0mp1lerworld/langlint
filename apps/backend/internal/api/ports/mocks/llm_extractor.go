@@ -56,3 +56,31 @@ func (mr *MockLLMExtractorMockRecorder) Extract(ctx, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Extract", reflect.TypeOf((*MockLLMExtractor)(nil).Extract), ctx, req)
 }
+
+// Model mocks base method.
+func (m *MockLLMExtractor) Model() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Model")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Model indicates an expected call of Model.
+func (mr *MockLLMExtractorMockRecorder) Model() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Model", reflect.TypeOf((*MockLLMExtractor)(nil).Model))
+}
+
+// ModelVersion mocks base method.
+func (m *MockLLMExtractor) ModelVersion() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ModelVersion")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// ModelVersion indicates an expected call of ModelVersion.
+func (mr *MockLLMExtractorMockRecorder) ModelVersion() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ModelVersion", reflect.TypeOf((*MockLLMExtractor)(nil).ModelVersion))
+}
