@@ -8,11 +8,11 @@
 
 ## 3.1 Puertos (interfaces)
 
-- [ ] `3.1.1` Crear puertos de repositorio en `internal/api/ports/storage/` (`PracticeRepository`, `AnalysisRepository`, `ErrorMetricRepository`).
-- [ ] `3.1.2` Crear puerto `UnitOfWork` (`InTransaction(ctx, fn) error`) en `ports/storage/unit_of_work.go`.
-- [ ] `3.1.3` Crear puerto `LLMExtractor` (`Extract(ctx, req) ([]domain.Fragment, error)`) en `ports/`.
-- [ ] `3.1.4` Crear puertos de eventos en `ports/events/`: `EventDispatcher`, `EventHandler`, `Outbox`.
-- [ ] `3.1.5` Generar mocks con `mockgen` en `ports/mocks/` (A10).
+- [x] `3.1.1` Crear puertos de repositorio en `internal/api/ports/storage/` (`PracticeRepository`, `AnalysisRepository`, `ErrorMetricRepository`).
+- [x] `3.1.2` Crear puerto `UnitOfWork` (`InTransaction(ctx, fn) error`) en `ports/storage/unit_of_work.go`.
+- [x] `3.1.3` Crear puerto `LLMExtractor` (`Extract(ctx, req) ([]analysis.Fragment, error)`) en `ports/` (`Fragment` vive en el BC `analysis/`, no en la raíz `domain`).
+- [x] `3.1.4` Crear puertos de eventos en `ports/events/`: `EventDispatcher`, `EventHandler`, `Outbox`.
+- [x] `3.1.5` Generar mocks con `mockgen` en `ports/mocks/` (A10).
 
 ## 3.2 Repositorios Postgres
 

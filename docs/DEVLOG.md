@@ -4,6 +4,38 @@
 
 ---
 
+## 2026-09-18 — Fase 3 (inicio): puertos e interfaces + mocks (items 3.1.1–3.1.5)
+
+**Estado**: Fase 3 en curso. `go build ./...`, `go vet ./...` y `go test -race -count=1 ./...` en verde; mocks idempotentes; `gofmt -l` sin diferencias.
+
+**Hecho** (creado `apps/backend/internal/api/ports/`, solo `context` + raíz `domain` + BCs, A2):
+- `3.1.1` puertos de repositorio en `ports/storage/`:
+  - `PracticeRepository{Save, GetByID, ListByUser}`.
+  - `AnalysisRepository{Save, GetByPracticeID}`.
+  - `ErrorMetricRepository{Upsert, ListByUser(window)}`.
+- `3.1.2` `ports/storage/unit_of_work.go`: `UnitOfWork{InTransaction(ctx, func(ctx) error) error}` (AP8).
+- `3.1.3` `ports/llm_extractor.go` (package `ports`): `ExtractRequest{PracticeID, SourceText, DraftText, TargetRules []practice.TargetRule}` + `LLMExtractor.Extract(ctx, ExtractRequest) ([]analysis.Fragment, error)`.
+- `3.1.4` `ports/events/`: `EventDispatcher{Dispatch, Subscribe}`, `EventHandler{Handle}`, `Outbox{Append}`, todos sobre `domain.DomainEvent`.
+- `3.1.5` `go.uber.org/mock v0.6.0` añadido a `go.mod`; target `mocks` en `apps/backend/Makefile` (mockgen reflect-mode, pineado, agrupado por paquete) → `ports/mocks/{storage,events,llm_extractor}.go` generados y commiteados.
+
+**Decisiones**:
+- **3.1.3 devuelve `[]analysis.Fragment`**: el checklist y `PRODUCT_DOMAIN §6.1` dicen `[]domain.Fragment`, pero `Fragment` vive en `internal/domain/analysis/` (`fragment.go:7`). El puerto importa el BC `analysis` (permitido por A2); se corrige la redacción del checklist (documentado como drift, sin cambiar el modelo).
+- **Set de métodos mínimo y orientado a los flujos de §4.7 y a los endpoints de §5.1**: `ListByUser` con `limit/offset` + total para la paginación; `GetByPracticeID` como único acceso a `Analysis` (invariante 1:1 práctica↔análisis). **`ProgressMetric` no tiene puerto** en 3.1.1; su persistencia/derivación se difiere (no se amplía el alcance del checklist).
+- **mockgen en reflect-mode** (no `-source`): un archivo por paquete de puertos, con `-package mocks`. La dependencia `go.uber.org/mock` queda **directa** en `go.mod` porque el código generado importa `gomock` (se ejecutó `go mod tidy`).
+- **`make mocks` depende de `tools`**: se añade la instalación pineada de `mockgen@v0.6.0` junto a `oapi-codegen`, reproduciable en CI.
+
+**Verificación**:
+- `go build ./...` → OK · `go vet ./...` → OK · `go test -race -count=1 ./...` → OK (5 paquetes de dominio; puertos/mocks sin tests, compilan).
+- `make mocks` ×2 + `sha256sum` antes/después → idénticos (idempotencia).
+- `gofmt -l internal/api/ports/` → sin diferencias.
+- A2: imports de `ports/` = `context` + `internal/domain` + BCs (`analysis`, `analytics`, `practice`); sin `pgx` ni infra (la mención a pgx en `unit_of_work.go` es solo comentario).
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 3, bloque `3.2` — repositorios Postgres en `adapters/postgres/repositories/` + migraciones `goose` (items 3.2.1–3.2.4). Antes/después: `3.3` (`PostgresUnitOfWork` + `ctxTx`) y `3.4` (dispatcher + relay). Requiere `testcontainers-go` (AP-MR8) y el `apps/backend/package.json` para `pnpm test-integration --filter=backend` (hoy inexistente).
+
+---
+
 ## 2026-09-17 — Docs: guía didáctica de Fase 2 (`docs/explains/fase-2-dominio-puro.md`)
 
 **Estado**: documentación. Sin cambios de código; gate de Fase 2 sigue en verde.

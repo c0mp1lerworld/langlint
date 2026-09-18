@@ -5,6 +5,7 @@ go 1.26
 require (
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/oapi-codegen/runtime v1.7.0
+	go.uber.org/mock v0.6.0
 )
 
 require (
