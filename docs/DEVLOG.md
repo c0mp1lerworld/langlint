@@ -4,6 +4,39 @@
 
 ---
 
+## 2026-09-18 — Fase 5 (inicio): base Next.js 15 + Tailwind v4 (5.1.1–5.1.5)
+
+**Estado**: Fase 5 en curso. Items `5.1.1`–`5.1.5` completados; `pnpm build` (3 successful), `pnpm lint` (3 successful) y `pnpm typecheck --filter=frontend` en verde.
+
+**Hecho**:
+- `5.1.1` `apps/frontend/`: Next.js **15.5.25** (App Router) + React **19.3.0** + TypeScript **5.9.3** `strict` + Tailwind **v4.3** (CSS-first). Scripts `dev`/`build`/`start`/`lint`/`typecheck`/`generate`; se conserva el `generate` de `openapi-typescript` (lo invoca `contracts/scripts/generate.sh`). `src/app/{layout.tsx,page.tsx,globals.css}` con `@import "tailwindcss"`.
+- `5.1.2` Estructura canónica `src/{app,components,features,lib,types}` (MANIFEST_FRONTEND §3.1): `components/{ui,feature}`, `lib/{api,query,store,utils}`, `types/` con re-export de `components`/`paths`/`operations` desde `lib/api/gen.ts` (F1). Subcarpetas vacías con `.gitkeep`.
+- `5.1.3` `tsconfig.json`: `strict`, `target ES2022`, `moduleResolution bundler`, `jsx preserve`, `paths @/* → ./src/*`, `noUncheckedIndexedAccess`, `noFallthroughCasesInSwitch`, plugin `next`.
+- `5.1.4` `next.config.js`: `reactStrictMode: true` + `typedRoutes: true`.
+- `5.1.5` `apps/frontend/.env.example`: `NEXT_PUBLIC_API_URL` (única expuesta al navegador) + prefijo server-only `FRONTEND_*` documentado (AP-F8).
+- ESLint 9 flat config (`eslint.config.mjs`, `eslint-config-next`) con `ignores` de `.next/**` y `next-env.d.ts`; `*.tsbuildinfo` añadido a `.gitignore`.
+
+**Decisiones**:
+- **Next 15.5 (no 14) y Tailwind v4** (confirmado con el humano): "última" del manifiesto §2.1; React 19. La checklist dice "14+".
+- **`typedRoutes` top-level, no `experimental`**: Next 15.5 lo promovió a estable; en `experimental` emite warning de deprecación. Se documenta la desviación del snippet §2.2 del manifiesto (que aún lo muestra experimental).
+- **Renombrar el paquete `@langlint/frontend` → `frontend`**: cierra el drift anotado en el DEVLOG de Fase 3 ("se corregirá al cablear el frontend"); el gate exige literalmente `--filter=frontend` y el backend ya es `backend` sin scope. `contracts/scripts/generate.sh` invoca por directorio (`cd apps/frontend`), así que no se ve afectado.
+- **Scaffold manual (no `create-next-app`)**: para respetar el árbol exacto del manifiesto §3.1 y controlar versiones/config.
+- **Tailwind v4 CSS-first**: sin `tailwind.config.ts` (postcss plugin `@tailwindcss/postcss`), coherente con la elección de "última".
+- **`tsc --noEmit` con `incremental` genera `tsconfig.tsbuildinfo`**: se ignora en git (artefacto) y ESLint no lintea `.next/` ni `next-env.d.ts` (generados; `next build` añade ahí la referencia a `.next/types/routes.d.ts`).
+
+**Verificación**:
+- `pnpm build --filter=frontend` → `next build` OK (compila, lintea y valida tipos; 4 páginas estáticas).
+- `pnpm build` (monorepo) → 3 successful; `pnpm lint` → 3 successful; `pnpm typecheck --filter=frontend` → OK.
+- Sin cambio de wire: `api.yaml` y `gen.ts` intactos (A12). ESLint sin errores/warnings.
+
+**Bloqueos**: ninguno.
+
+**Pendiente de decisión del humano** (heredado de Fase 4): el cableado HTTP del backend (`cmd/api`, handlers chi, `CreatePracticeService`, handler de `PracticeCreated`, `PIIHandler` y timeout por config) sigue sin cubrirse en ningún checklist. No bloquea 5.1 (scaffolding), pero es prerequisito real para `5.3` (polling contra el API).
+
+**Próximo paso**: Fase 5, bloque `5.2` — regenerar/committear `lib/api/gen.ts` (`5.2.1`, ya existe y se regenera con `pnpm generate`), `lib/api/client.ts` + `lib/api/errors.ts` (`5.2.2`), idempotencia `409 analysis_pending` (`5.2.3`), TanStack Query (`5.2.4`), Zustand (`5.2.5`) y schemas Zod (`5.2.6`).
+
+---
+
 ## 2026-09-18 — Docs: guía didáctica de Fase 4 (`docs/explains/fase-4-motor-ia.md`)
 
 **Estado**: documentación. Sin cambios de código; el Gate de Fase 4 sigue en verde.

@@ -8,11 +8,11 @@
 
 ## 5.1 Base Next.js
 
-- [ ] `5.1.1` Inicializar `apps/frontend/` con Next.js 14+ (App Router), TypeScript `strict: true`, Tailwind CSS.
-- [ ] `5.1.2` Crear estructura canónica `src/{app,components,features,lib,types}` (MANIFEST_FRONTEND §3.1).
-- [ ] `5.1.3` Configurar `tsconfig.json` con `paths` `@/* → ./src/*`, `noUncheckedIndexedAccess`, `noFallthroughCasesInSwitch`.
-- [ ] `5.1.4` Configurar `next.config.js` con `reactStrictMode` y `typedRoutes`.
-- [ ] `5.1.5` Env vars: solo `NEXT_PUBLIC_*` expuestas al cliente; secretos server-only (AP-F8).
+- [x] `5.1.1` Inicializar `apps/frontend/` con Next.js 14+ (App Router), TypeScript `strict: true`, Tailwind CSS. _(Next 15.5.25 (App Router), React 19.3, TypeScript 5.9.3 strict y Tailwind v4.3 (CSS-first vía `@tailwindcss/postcss`). Se renombra el paquete `@langlint/frontend` → `frontend` para que `--filter=frontend` (gate) resuelva, alineado con `backend`. `src/app/{layout,page,globals.css}` + `pnpm build` en verde.)_
+- [x] `5.1.2` Crear estructura canónica `src/{app,components,features,lib,types}` (MANIFEST_FRONTEND §3.1). _(`src/app`, `src/components/{ui,feature}`, `src/features`, `src/lib{/api(gen.ts),/query,/store,/utils}`, `src/types`. Subcarpetas vacías con `.gitkeep`; `src/types/index.ts` re-exporta `components`/`paths`/`operations` desde `lib/api/gen.ts` (F1).)_
+- [x] `5.1.3` Configurar `tsconfig.json` con `paths` `@/* → ./src/*`, `noUncheckedIndexedAccess`, `noFallthroughCasesInSwitch`. _(`strict: true`, `target: ES2022`, `moduleResolution: bundler`, `jsx: preserve`, plugin `next`; `pnpm typecheck --filter=frontend` en verde.)_
+- [x] `5.1.4` Configurar `next.config.js` con `reactStrictMode` y `typedRoutes`. _(`reactStrictMode: true` + `typedRoutes: true` **top-level**: Next 15.5 promovió typedRoutes a estable (en `experimental` emite warning de deprecación).)_
+- [x] `5.1.5` Env vars: solo `NEXT_PUBLIC_*` expuestas al cliente; secretos server-only (AP-F8). _(`apps/frontend/.env.example` documenta `NEXT_PUBLIC_API_URL` (única expuesta) y el prefijo server-only `FRONTEND_*`; `.env.example` sigue trackeable por `.gitignore`.)_
 
 ## 5.2 Cliente, queries y store
 
