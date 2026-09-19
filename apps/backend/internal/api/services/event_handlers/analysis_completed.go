@@ -65,7 +65,7 @@ func (h *AnalysisCompletedHandler) upsertMetrics(ctx context.Context, event doma
 		return nil
 	}
 
-	for _, window := range []analytics.Window{analytics.WindowDay, analytics.WindowWeek, analytics.WindowMonth} {
+	for _, window := range analytics.AllWindows {
 		current, err := h.metrics.ListByUser(ctx, event.UserID, window)
 		if err != nil {
 			return err

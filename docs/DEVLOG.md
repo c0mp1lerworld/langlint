@@ -4,6 +4,39 @@
 
 ---
 
+## 2026-09-19 — Fase 6.1: jobs batch del provisioner (6.1.1–6.1.5)
+
+**Estado**: bloque `6.1` completado. `go build/vet` y `go test -race` (Tier 1+2) en verde; `pnpm test-integration --filter=backend` (Tier 3 con testcontainers) en verde; `pnpm lint` (3/3), `pnpm test` (backend + frontend 88), `pnpm build` (3/3), `pnpm typecheck --filter=frontend` y `pnpm generate` idempotente. Sin cambio de wire (A12).
+
+**Hecho**:
+- `6.1.1` `cmd/provisioner/main.go` con los subcomandos `refresh-aggregates`, `purge-raw-data` y `execute-deletions`; el despacho vive en `internal/provisioner/handlers/jobs.go` (ejecuta el service y loguea `affected`). Config `APP_DATABASE_URL` + `APP_RAW_RETENTION_DAYS`/`APP_DELETION_GRACE_DAYS` (default 30) en `shared/config/provisioner.go`.
+- `6.1.2` `RefreshAggregatesService`: reconstruye `error_metrics` desde las `analyses` completadas (join con `practices` no borradas) con un `ReplaceAll` transaccional. `last_seen_at` = análisis más reciente; una métrica por `(user, code, window)`. Se añade `analytics.AllWindows` como fuente única de ventanas (el handler del API pasa a usarlo).
+- `6.1.3` `PurgeRawDataService` + `RawDataRepository.PurgePracticesDeletedBefore`: borrado físico de prácticas `deleted_at < cutoff` y sus `analyses` en una transacción; idempotente.
+- `6.1.4` Dominio `identity.DeletionRequest` (`Due`, `MarkExecuted`), migración `000002_deletion_requests.sql` y `ExecuteDeletionsService` (gracia configurable). Consumer-first: la tabla y el job existen antes del endpoint `DELETE /me/data` (6.2.2).
+- `6.1.5` `internal/provisioner/di/module.go` con Fx propio (pool + repos + services + runner), sin compartir módulos con `api/`. El harness Tier 3 se movió de `internal/api/adapters/postgres/testsupport` a `internal/shared/testdb` (5 imports actualizados) para que provisioner lo reuse sin importar `api/`.
+- Puertos `internal/provisioner/ports/storage/` (`AnalyticsSourceRepository`, `ErrorMetricRepository`, `RawDataRepository`, `DeletionRepository`) + mocks (`mockgen`, target nuevo en `Makefile`) + adaptadores Postgres propios.
+- Tests: dominio `identity` 100%; services provisioner 98.1%; handlers provisioner 100%; adaptadores cubiertos con Tier 3; e2e de jobs (`test/e2e/provisioner_jobs_integration_test.go`) y smoke del grafo Fx (`provisioner_di_integration_test.go`).
+
+**Decisiones**:
+- **La transacción vive en el adaptador, no en el service** (AP8): los jobs son batch, así que los repos encapsulan la atomicidad (`ReplaceAll`, `PurgePracticesDeletedBefore`, `Execute`) y los services no necesitan `UnitOfWork` ni `txctx` propio. Se evita duplicar el UoW del API.
+- **`refresh-aggregates` solo reconstruye `error_metrics`**: `progress_metrics`/`/analytics/progress` no tienen tabla ni item en el checklist 06 (el endpoint sigue en `501`); se documenta como gap para una fase posterior.
+- **`execute-deletions` consumer-first**: se construye la tabla `deletion_requests`, el dominio y el job ahora; el productor (`DELETE /me/data`, 6.2.2) llegará después y solo insertará solicitudes.
+- **`testsupport` → `shared/testdb`**: `api/` y `provisioner/` no pueden importarse (A2/A3) y el harness de testcontainers es genuinamente transversal. `txctx` se queda en `api/` porque los repos del provisioner no lo usan.
+- **El provisioner aplica migraciones al arrancar** (`migrations.Up` en `newPool`), igual que `cmd/api`; goose es idempotente y usa advisory locks.
+- **CLI sin dependencias**: subcomando posicional parseado de `os.Args` (stdlib); no se añade librería de CLI.
+
+**Verificación**:
+- `go build ./...` · `go vet ./...` · `go test -race -count=1 ./...` · `go test -race -count=1 -tags=integration ./...` → OK.
+- `pnpm lint` (3/3) · `pnpm test` (backend + frontend 88 tests) · `pnpm typecheck --filter=frontend` · `pnpm build` (3/3) → OK.
+- `pnpm test-integration --filter=backend` → OK (Tier 3; `purge-raw-data` y `execute-deletions` cubiertos como exige el gate).
+- `pnpm generate` idempotente; `api.yaml`/`gen.*` sin drift (A12).
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 6.2 — endpoints A9 (`GET /me/data/export`, `DELETE /me/data`, `GET /me/access-log`), hoy `501 not_implemented`. `DELETE /me/data` insertará una `deletion_request` (ya existen tabla y job). El `email` de `DataExport` obliga a decidir su origen: no hay tabla `users` en el MVP.
+
+---
+
 ## 2026-09-19 — Docs: guía didáctica de Fase 5 (`docs/explains/fase-5-frontend.md`)
 
 **Estado**: documentación. Sin cambios de código; el Gate de Fase 5 sigue en verde.

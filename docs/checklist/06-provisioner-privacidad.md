@@ -8,11 +8,11 @@
 
 ## 6.1 Jobs batch (provisioner)
 
-- [ ] `6.1.1` Crear `cmd/provisioner/main.go` con subcomandos CLI (PRODUCT_DOMAIN §7.2).
-- [ ] `6.1.2` Implementar `refresh-aggregates` (reconstruir métricas de analytics desde la fuente de verdad, A4).
-- [ ] `6.1.3` Implementar `purge-raw-data` (purga programada de datos crudos, A8 retención limitada).
-- [ ] `6.1.4` Implementar `execute-deletions` (ejecuta derecho al olvido tras gracia de 30 días, A9).
-- [ ] `6.1.5` Crear `internal/provisioner/di/` (fx.Module propio, sin compartir módulos con `api/`).
+- [x] `6.1.1` Crear `cmd/provisioner/main.go` con subcomandos CLI (PRODUCT_DOMAIN §7.2). _(Composición Fx vía `fx.Populate`; el despacho de `refresh-aggregates`/`purge-raw-data`/`execute-deletions` vive en `internal/provisioner/handlers/jobs.go`. Config propia `LoadProvisionerConfig`; sin deps nuevas (stdlib).)_
+- [x] `6.1.2` Implementar `refresh-aggregates` (reconstruir métricas de analytics desde la fuente de verdad, A4). _(`RefreshAggregatesService` cuenta los `error_patterns` de las `analyses` completadas (join con `practices` no borradas) y hace `ReplaceAll` transaccional de `error_metrics`; una tabla derivada se reconstruye, no se parchea. La serie de progreso (`/analytics/progress`) queda fuera: no tiene tabla ni item en este checklist.)_
+- [x] `6.1.3` Implementar `purge-raw-data` (purga programada de datos crudos, A8 retención limitada). _(`PurgeRawDataService` borra físicamente prácticas `deleted_at < now - APP_RAW_RETENTION_DAYS` (default 30) y sus `analyses` en una transacción; idempotente.)_
+- [x] `6.1.4` Implementar `execute-deletions` (ejecuta derecho al olvido tras gracia de 30 días, A9). _(`identity.DeletionRequest` + tabla `deletion_requests` (migración `000002`); `ExecuteDeletionsService` ejecuta las solicitudes vencidas (`APP_DELETION_GRACE_DAYS`, default 30) purgando prácticas/analyses/error_metrics del usuario y marcando la solicitud. Consumer-first: el endpoint `DELETE /me/data` (6.2.2) llega después.)_
+- [x] `6.1.5` Crear `internal/provisioner/di/` (fx.Module propio, sin compartir módulos con `api/`). _(`Module()` cablea repos + services + runner; `api/` y `provisioner/` no se importan (A2/A3). El harness Tier 3 `testsupport` se movió a `internal/shared/testdb` para que ambas entry points lo reusen sin import cruzado.)_
 
 ## 6.2 Endpoints A9 (portabilidad, olvido, auditoría)
 

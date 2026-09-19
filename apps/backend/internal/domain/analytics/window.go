@@ -10,6 +10,10 @@ const (
 	WindowMonth Window = "month"
 )
 
+// AllWindows lists the known windows in canonical order. It is the single
+// source of the windows to aggregate over.
+var AllWindows = []Window{WindowDay, WindowWeek, WindowMonth}
+
 // IsValid reports whether the window is one of the known values.
 func (w Window) IsValid() bool {
 	switch w {

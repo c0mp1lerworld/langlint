@@ -20,7 +20,6 @@ import (
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/events"
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/postgres"
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/postgres/repositories"
-	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/postgres/testsupport"
 	httpapi "github.com/c0mp1lerworld/langlint/backend/internal/api/handlers"
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/ports"
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/services"
@@ -28,6 +27,7 @@ import (
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/analysis"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/httpx"
+	"github.com/c0mp1lerworld/langlint/backend/internal/shared/testdb"
 )
 
 // fakeExtractor returns a deterministic analysis without calling the LLM.
@@ -94,9 +94,9 @@ func newRouter(t *testing.T, pool *pgxpool.Pool, userID domain.ID) http.Handler 
 }
 
 func TestHTTPFlow_CreateAnalyzePollAnalytics(t *testing.T) {
-	pool, cleanup, err := testsupport.Start()
+	pool, cleanup, err := testdb.Start()
 	if err != nil {
-		t.Fatalf("testsupport.Start() error = %v", err)
+		t.Fatalf("testdb.Start() error = %v", err)
 	}
 	defer cleanup()
 

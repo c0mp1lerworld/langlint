@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/postgres/repositories"
-	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/postgres/testsupport"
+	"github.com/c0mp1lerworld/langlint/backend/internal/shared/testdb"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/practice"
 )
@@ -20,7 +20,7 @@ import (
 var pool *pgxpool.Pool
 
 func TestMain(m *testing.M) {
-	p, cleanup, err := testsupport.Start()
+	p, cleanup, err := testdb.Start()
 	if err != nil {
 		panic(err)
 	}

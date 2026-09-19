@@ -11,16 +11,16 @@ import (
 
 	"go.uber.org/fx"
 
-	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/postgres/testsupport"
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/di"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/config"
+	"github.com/c0mp1lerworld/langlint/backend/internal/shared/testdb"
 )
 
 func TestDI_ModuleStartsAndStops(t *testing.T) {
-	pool, cleanup, err := testsupport.Start()
+	pool, cleanup, err := testdb.Start()
 	if err != nil {
-		t.Fatalf("testsupport.Start() error = %v", err)
+		t.Fatalf("testdb.Start() error = %v", err)
 	}
 	defer cleanup()
 

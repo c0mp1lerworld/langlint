@@ -1,9 +1,10 @@
 //go:build integration
 
-// Package testsupport boots an ephemeral Postgres 16 for Tier 3 tests and
-// applies the embedded migrations. It is compiled only with -tags=integration
-// (AP-MR8).
-package testsupport
+// Package testdb boots an ephemeral Postgres 16 for Tier 3 tests and applies the
+// embedded migrations. It lives in shared/ because both entry points (api and
+// provisioner) need it and must not import each other (A2/A3). It is compiled
+// only with -tags=integration (AP-MR8).
+package testdb
 
 import (
 	"context"

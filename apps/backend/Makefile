@@ -6,6 +6,7 @@ SPEC := ../contracts/openapi/api.yaml
 HANDLERS_DIR := internal/api/handlers
 MODULE := github.com/c0mp1lerworld/langlint/backend
 MOCKS_DIR := internal/api/ports/mocks
+PROVISIONER_MOCKS_DIR := internal/provisioner/ports/mocks
 
 .PHONY: tools generate mocks
 
@@ -23,3 +24,5 @@ mocks: tools
 	$(MOCKGEN) -package mocks -destination $(MOCKS_DIR)/storage.go $(MODULE)/internal/api/ports/storage PracticeRepository,AnalysisRepository,ErrorMetricRepository,UnitOfWork
 	$(MOCKGEN) -package mocks -destination $(MOCKS_DIR)/events.go $(MODULE)/internal/api/ports/events EventDispatcher,EventHandler,Outbox
 	$(MOCKGEN) -package mocks -destination $(MOCKS_DIR)/llm_extractor.go $(MODULE)/internal/api/ports LLMExtractor
+	mkdir -p $(PROVISIONER_MOCKS_DIR)
+	$(MOCKGEN) -package mocks -destination $(PROVISIONER_MOCKS_DIR)/storage.go $(MODULE)/internal/provisioner/ports/storage AnalyticsSourceRepository,ErrorMetricRepository,RawDataRepository,DeletionRepository
