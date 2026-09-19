@@ -84,9 +84,9 @@ func run(args []string, out io.Writer) error {
 		fmt.Fprintf(out, "===== SYSTEM PROMPT =====\n%s\n\n===== USER PROMPT =====\n%s\n\n", system, user)
 	}
 
-	options := []option.RequestOption{option.WithAPIKey(cfg.APIKey)}
-	if cfg.BaseURL != "" {
-		options = append(options, option.WithBaseURL(cfg.BaseURL))
+	options := []option.RequestOption{
+		option.WithAPIKey(cfg.APIKey),
+		option.WithBaseURL(llm.BaseURLOrDefault(cfg.BaseURL)),
 	}
 	extractor := llm.NewOpenAIExtractor(openai.NewClient(options...), cfg.Model, cfg.ModelVersion)
 

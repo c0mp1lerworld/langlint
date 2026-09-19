@@ -106,9 +106,9 @@ func newOutbox(pool *pgxpool.Pool) portsevents.Outbox {
 }
 
 func newExtractor(cfg config.OpenAIConfig) ports.LLMExtractor {
-	options := []option.RequestOption{option.WithAPIKey(cfg.APIKey)}
-	if cfg.BaseURL != "" {
-		options = append(options, option.WithBaseURL(cfg.BaseURL))
+	options := []option.RequestOption{
+		option.WithAPIKey(cfg.APIKey),
+		option.WithBaseURL(llm.BaseURLOrDefault(cfg.BaseURL)),
 	}
 	return llm.NewOpenAIExtractor(openai.NewClient(options...), cfg.Model, cfg.ModelVersion)
 }
