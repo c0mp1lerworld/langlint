@@ -4,6 +4,35 @@
 
 ---
 
+## 2026-09-19 — Fase 5.3.5: formulario de creación + walkthrough E2E y fix del base URL de OpenAI
+
+**Estado**: `5.3.5` completado; gap de creación cerrado. Frontend verde (typecheck/lint/build); backend verde (build/vet/test sin y con `-race`). Recorrido manual E2E verificado contra backend + OpenAI reales.
+
+**Hecho**:
+- `5.3.5` frontend: dep `react-hook-form@7.88`; `lib/utils/zod-rhf.ts` (resolver Zod→RHF propio); mensajes en español en `lib/schemas/practice.ts`; `useCreatePractice` (`onSuccess` invalida `["practices"]` y navega al detalle); `practice-form.tsx` (RHF + `useFieldArray`, `aria-invalid`/`role="alert"`); ruta `/practices/new` y enlace "Nueva práctica" en la home.
+- `apps/frontend/package.json`: el script `typecheck` pasa a `next typegen && tsc --noEmit` (genera tipos de ruta frescos; elimina el falso fallo por `.next` obsoleto).
+- **Bug backend (bloqueaba el walkthrough)**: `openai-go` lee `OPENAI_BASE_URL` del entorno (`client.go:45`, `os.LookupEnv`); el `.env` trae `OPENAI_BASE_URL=` vacío y el loader lo deja presente-pero-vacío, así que el SDK pisaba su default → `Post "/chat/completions": unsupported protocol scheme ""`. Fix: `llm.BaseURLOrDefault` (`internal/api/adapters/llm/base_url.go`) y pasar siempre `option.WithBaseURL(...)` (default `https://api.openai.com/v1`) en `cmd/llmcheck` y `di/module.go`; test `base_url_test.go`.
+- `.env.example`: `OPENAI_API_KEY=` (placeholder) tras rotar la clave real (higiene A8).
+
+**Decisiones**:
+- **RHF + resolver propio** (acordado): evita `@hookform/resolvers` y su posible desajuste con Zod 4; F8 se mantiene (RHF + Zod).
+- **`5.3.5` como item nuevo** (acordado): el checklist no cubría la creación; sin ella no había datos para el diff ni para el e2e de `5.5.3`.
+- **`next typegen` en `typecheck`**: preferido a castear `Link`/`router.push`; el Gate deja de depender de un `.next` rancio.
+- **Fix del base URL en el adapter/wiring**, no en `config`: mantiene la semántica de `OpenAIConfig` y hace explícito el default del proveedor.
+
+**Verificación**:
+- Frontend: `pnpm typecheck` (1/1) · `pnpm lint` (3/3) · `pnpm build` (3/3; rutas `/`, `ƒ /practices/[id]`, `○ /practices/new`).
+- Backend: `go build ./...` · `go vet ./...` · `go test -count=1 ./...` · `go test -race -count=1 ./...` → OK.
+- **Walkthrough E2E real** (Postgres `:5433` + `cmd/api` + OpenAI `gpt-4o-mini`): `POST /practices` 201 → `POST /analyze` 202 → polling `analyzing`→`completed` → 1 fragmento con `tense_agreement/critical`. El frontend dev sirve `/`, `/practices/new` y `/practices/{id}` (200). El render client-side del diff/polling y la a11y por teclado quedan para revisión en navegador.
+
+**Bloqueos**: ninguno.
+
+**Nota de seguridad**: la `OPENAI_API_KEY` real que estaba en `.env.example` fue rotada y sustituida por placeholder.
+
+**Próximo paso**: Fase 5, bloque `5.4` (dashboard de analíticas) o `5.5` (Vitest/RTL/Playwright, ya con el flujo de creación desbloqueado para el e2e).
+
+---
+
 ## 2026-09-19 — Fase 5.3: vista diff de 3 columnas (5.3.1–5.3.4)
 
 **Estado**: bloque completado. `pnpm typecheck` (1/1), `pnpm lint` (3/3) y `pnpm build` (3/3) en verde; ruta `ƒ /practices/[id]` generada. Sin cambio de wire (A12).
