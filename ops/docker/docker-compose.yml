@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: langlint-postgres
+    environment:
+      POSTGRES_USER: langlint
+      POSTGRES_PASSWORD: langlint
+      POSTGRES_DB: langlint
+    ports:
+      - "5433:5432"
+    volumes:
+      - langlint_pgdata:/var/lib/postgresql/data
+
+volumes:
+  langlint_pgdata:

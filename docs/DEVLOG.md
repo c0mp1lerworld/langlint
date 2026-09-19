@@ -4,6 +4,22 @@
 
 ---
 
+## 2026-09-18 — Dev: Postgres de desarrollo (docker-compose) + fix de `APP_LLM_TIMEOUT`
+
+**Estado**: sin cambios de lógica; desbloqueo del arranque local del backend. Verificado en vivo: `docker compose up` → `go run ./cmd/migrate` → `go run ./cmd/api` → `POST /practices` 201 y `GET /practices` 200.
+
+**Hecho**:
+- `ops/docker/docker-compose.yml`: Postgres 16 dev con credenciales `langlint`/`langlint`/`langlint` (las mismas de testcontainers), expuesto en el puerto host **5433** (el 5432 ya estaba ocupado por un Postgres local ajeno). Volumen persistente.
+- `.env.example`: `APP_DATABASE_URL` apunta a `localhost:5433`; **fix** `APP_LLM_TIMEOUT=60s` (estaba `60` sin unidad → `time.ParseDuration` fallaba).
+
+**Decisiones**: puerto **5433** en el host para no colisionar con el Postgres existente del equipo; el puerto interno del contenedor sigue siendo 5432.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 5, bloque `5.2` (cliente HTTP del frontend). Para desarrollo: `docker compose -f ops/docker/docker-compose.yml up -d` y asegurarse de que `.env` tenga `APP_DATABASE_URL` en `:5433` y `APP_LLM_TIMEOUT=60s`.
+
+---
+
 ## 2026-09-18 — Fase 5.0: cableado HTTP del backend (5.0.1–5.0.11)
 
 **Estado**: bloque completado; Gate en verde. `go build/vet/test -race` (+ `-tags=integration`) OK; dominio 100%, services **97.5%**, event_handlers **91.4%**; e2e Tier 3 del flujo HTTP completo. `pnpm build`/`pnpm lint`/`pnpm typecheck` (3 apps) OK; `pnpm generate` idempotente.
