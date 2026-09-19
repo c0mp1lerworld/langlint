@@ -40,25 +40,25 @@ export function FragmentDiff({ fragment }: { fragment: Fragment }) {
     <li className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <section aria-label="Español" className="min-w-0">
-          <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
             Español
-          </h3>
+          </h2>
           <p className="whitespace-pre-wrap break-words text-gray-900">{fragment.source_es}</p>
         </section>
 
         <section aria-label="Tu borrador" className="min-w-0">
-          <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
             Tu borrador
-          </h3>
+          </h2>
           <p className="whitespace-pre-wrap break-words text-gray-900">
             <DiffText tokens={tokens} variant="draft" />
           </p>
         </section>
 
         <section aria-label="Corrección IA" className="min-w-0">
-          <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
             Corrección IA
-          </h3>
+          </h2>
           <p className="whitespace-pre-wrap break-words text-gray-900">
             <DiffText tokens={tokens} variant="correction" />
           </p>

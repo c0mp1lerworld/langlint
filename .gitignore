@@ -14,6 +14,12 @@ coverage/
 *.tsbuildinfo
 apps/backend/bin/
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
 # Entorno
 .env
 .env.*
