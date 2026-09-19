@@ -209,8 +209,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataExport'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
 
   /me/data:
     delete:
@@ -220,12 +218,13 @@ paths:
         Derecho al olvido (A9, GDPR Art. 17). El borrado no es inmediato:
         existe una gracia de 30 días tras la cual el job `execute-deletions`
         del provisioner lo materializa. Por eso responde `202`.
+
+        Idempotencia (AP4): si ya existe una solicitud pendiente, el servidor
+        responde `202` de nuevo sin crear otra (es un ÉXITO IDEMPOTENTE).
       tags: [identity]
       responses:
         '202':
           description: Solicitud de borrado aceptada (gracia de 30 días).
-        '501':
-          $ref: '#/components/responses/NotImplemented'
 
   /me/access-log:
     get:
@@ -243,8 +242,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccessLog'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
 
 components:
   parameters:

@@ -160,6 +160,9 @@ export interface paths {
          * @description Derecho al olvido (A9, GDPR Art. 17). El borrado no es inmediato:
          *     existe una gracia de 30 días tras la cual el job `execute-deletions`
          *     del provisioner lo materializa. Por eso responde `202`.
+         *
+         *     Idempotencia (AP4): si ya existe una solicitud pendiente, el servidor
+         *     responde `202` de nuevo sin crear otra (es un ÉXITO IDEMPOTENTE).
          */
         delete: operations["delete_data"];
         options?: never;
@@ -644,7 +647,6 @@ export interface operations {
                     "application/json": components["schemas"]["DataExport"];
                 };
             };
-            501: components["responses"]["NotImplemented"];
         };
     };
     delete_data: {
@@ -663,7 +665,6 @@ export interface operations {
                 };
                 content?: never;
             };
-            501: components["responses"]["NotImplemented"];
         };
     };
     get_access_log: {
@@ -689,7 +690,6 @@ export interface operations {
                     "application/json": components["schemas"]["AccessLog"];
                 };
             };
-            501: components["responses"]["NotImplemented"];
         };
     };
 }

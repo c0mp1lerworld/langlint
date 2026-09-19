@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/postgres/repositories"
-	"github.com/c0mp1lerworld/langlint/backend/internal/shared/testdb"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/practice"
+	"github.com/c0mp1lerworld/langlint/backend/internal/shared/testdb"
 )
 
 var pool *pgxpool.Pool
@@ -32,7 +32,8 @@ func TestMain(m *testing.M) {
 
 func resetDB(t *testing.T) {
 	t.Helper()
-	_, err := pool.Exec(context.Background(), "TRUNCATE practices, analyses, error_metrics, outbox_events")
+	_, err := pool.Exec(context.Background(),
+		"TRUNCATE practices, analyses, error_metrics, outbox_events, deletion_requests, access_events")
 	require.NoError(t, err)
 }
 

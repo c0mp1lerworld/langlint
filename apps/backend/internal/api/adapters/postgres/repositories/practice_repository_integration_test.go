@@ -125,3 +125,30 @@ func TestPostgresPracticeRepository_ListByUser_IsolatesUsers(t *testing.T) {
 	require.Len(t, items, 1)
 	require.Equal(t, owner, items[0].UserID)
 }
+
+func TestPostgresPracticeRepository_ListAllByUser_ReturnsAllNonDeleted(t *testing.T) {
+	resetDB(t)
+	repo := repositories.NewPracticeRepository(pool)
+	ctx := context.Background()
+	userID := domain.MustNewID()
+	base := time.Now().UTC()
+
+	for i := 0; i < 3; i++ {
+		require.NoError(t, repo.Save(ctx, mustPractice(t, userID, base.Add(time.Duration(i)*time.Second))))
+	}
+
+	deleted := mustPractice(t, userID, base.Add(time.Hour))
+	require.NoError(t, repo.Save(ctx, deleted))
+	require.NoError(t, deleted.Delete(base.Add(2*time.Hour)))
+	require.NoError(t, repo.Save(ctx, deleted))
+
+	require.NoError(t, repo.Save(ctx, mustPractice(t, domain.MustNewID(), base)))
+
+	all, err := repo.ListAllByUser(ctx, userID)
+	require.NoError(t, err)
+	require.Len(t, all, 3)
+	for _, p := range all {
+		require.Equal(t, userID, p.UserID)
+		require.Nil(t, p.DeletedAt)
+	}
+}

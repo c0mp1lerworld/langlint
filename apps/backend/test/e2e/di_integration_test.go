@@ -13,6 +13,7 @@ import (
 
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/di"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
+	"github.com/c0mp1lerworld/langlint/backend/internal/domain/identity"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/config"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/testdb"
 )
@@ -24,10 +25,15 @@ func TestDI_ModuleStartsAndStops(t *testing.T) {
 	}
 	defer cleanup()
 
+	email, err := identity.NewEmail("student@example.com")
+	if err != nil {
+		t.Fatalf("NewEmail() error = %v", err)
+	}
 	serverCfg := config.ServerConfig{
 		DatabaseURL: pool.Config().ConnString(),
 		HTTPAddr:    "127.0.0.1:0",
 		UserID:      domain.MustNewID(),
+		UserEmail:   email,
 		LLMTimeout:  time.Second,
 	}
 	openaiCfg := config.OpenAIConfig{APIKey: "test-key", Model: "test-model", ModelVersion: "test-version"}

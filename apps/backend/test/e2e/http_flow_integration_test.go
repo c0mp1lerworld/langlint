@@ -17,6 +17,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/c0mp1lerworld/langlint/backend/internal/api/accesslog"
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/events"
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/postgres"
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/postgres/repositories"
@@ -26,6 +27,7 @@ import (
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/services/event_handlers"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/analysis"
+	"github.com/c0mp1lerworld/langlint/backend/internal/domain/identity"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/httpx"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/testdb"
 )
@@ -58,12 +60,19 @@ func newRouter(t *testing.T, pool *pgxpool.Pool, userID domain.ID) http.Handler 
 	practices := repositories.NewPracticeRepository(pool)
 	analyses := repositories.NewAnalysisRepository(pool)
 	metrics := repositories.NewErrorMetricRepository(pool)
+	deletions := repositories.NewDeletionRequestRepository(pool)
+	accessLog := repositories.NewAccessLogRepository(pool)
 	uow := postgres.NewUnitOfWork(pool)
 	outbox := postgres.NewOutbox(pool)
 
 	analysisSvc := services.NewAnalysisService(fakeExtractor{}, uow, practices, analyses, outbox)
 	practiceSvc := services.NewPracticeService(uow, practices, analyses, outbox)
 	analyticsSvc := services.NewAnalyticsService(metrics)
+	email, err := identity.NewEmail("student@example.com")
+	if err != nil {
+		t.Fatalf("NewEmail() error = %v", err)
+	}
+	identitySvc := services.NewIdentityService(email, practices, deletions, accessLog)
 
 	dispatcher := events.NewInMemoryEventDispatcher(events.DefaultBufferSize, events.DefaultWorkers)
 	relay := events.NewOutboxRelay(pool, dispatcher, events.DefaultRelayBatch)
@@ -86,9 +95,11 @@ func newRouter(t *testing.T, pool *pgxpool.Pool, userID domain.ID) http.Handler 
 	dispatcher.Run(ctx)
 	go relay.Run(ctx, 25*time.Millisecond)
 
-	server := httpapi.NewServer(practiceSvc, analyticsSvc)
-	router := httpx.NewRouter(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	server := httpapi.NewServer(practiceSvc, analyticsSvc, identitySvc)
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	router := httpx.NewRouter(log)
 	router.Use(httpx.UserResolver(userID))
+	router.Use(accesslog.NewMiddleware(accessLog, log).Wrap)
 	httpapi.HandlerFromMux(server, router)
 	return router
 }

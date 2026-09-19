@@ -4,6 +4,37 @@
 
 ---
 
+## 2026-09-19 — Fase 6.2: endpoints A9 (export, olvido, access-log) (6.2.1–6.2.3)
+
+**Estado**: bloque `6.2` completado. `go build/vet/test -race` (Tier 1+2+3) en verde; `pnpm test-integration --filter=backend` OK; `pnpm lint` (3/3), `pnpm test`, `pnpm typecheck --filter=frontend` y `pnpm build` (3/3) en verde. Cambio de contrato A12 (se quitó el `501` de los 3 endpoints) con `pnpm generate` idempotente.
+
+**Hecho**:
+- A12: `api.yaml` deja de documentar `501` en `/me/data/export`, `/me/data` y `/me/access-log` (`/analytics/progress` lo conserva); `pnpm generate` (solo cambia `gen.ts`; las firmas Go no dependen de la respuesta).
+- `6.2.1`: `IdentityService.Export` + `PracticeRepository.ListAllByUser` (sin paginar). El email viene de `APP_USER_EMAIL` (nuevo, validado con `identity.NewEmail` en `LoadServerConfig`), coherente con `APP_USER_ID` (single-user, sin tabla `users`).
+- `6.2.2`: `IdentityService.RequestDeletion` inserta una `deletion_request` pendiente y responde `202`; si ya hay una pendiente es idempotente (`HasPending`, AP4).
+- `6.2.3`: dominio `identity.AccessEvent`, tabla `access_events` (migración `000003`, append-only) + `AccessLogRepository` (`Append`/`ListByUser`, sin Update/Delete); middleware `internal/api/accesslog` que registra cada petición autenticada (`action`=método, `resource_type`=path), best-effort.
+- Handlers `ExportData`/`DeleteData`/`GetAccessLog`; `NewServer` recibe `*IdentityService`. Mocks regenerados (`DeletionRequestRepository`, `AccessLogRepository`, `ListAllByUser`).
+- Tests: dominio `identity` 100%; `accesslog` 100%; services 97.1%; handlers con casos de éxito/error/idempotencia; Tier 3 de repos (`access_events`, `deletion_requests`, `ListAllByUser`) y e2e `/me/*` (export → access-log → delete idempotente).
+
+**Decisiones**:
+- **Email en config (`APP_USER_EMAIL`)**: el MVP no persiste usuarios (identidad desde config, §3.2); añadir una tabla `users` sería alcance de un modelo multi-usuario que no existe.
+- **Middleware de auditoría en `internal/api/accesslog`** (no en `shared/httpx`): depende de un puerto storage del API y del bounded context `identity`; mantenerlo fuera de `shared/` respeta las capas (A2/A3).
+- **Auditoría best-effort post-respuesta**: el evento se escribe tras `next.ServeHTTP`; un fallo no altera la respuesta ya enviada (solo se loguea sin PII).
+- **`DELETE /me/data` idempotente**: dos llamadas con una solicitud pendiente dan `202` y una sola fila; el job `execute-deletions` (6.1) la materializa tras la gracia.
+- **A12 sin cambio de firmas Go**: quitar un `response` no altera la interfaz generada (los handlers reciben `(w, r, params)`); solo regenera `gen.ts`.
+
+**Verificación**:
+- `go build ./...` · `go vet ./...` (+ `-tags=integration`) · `go test -race -count=1 ./...` · `go test -race -count=1 -tags=integration ./...` → OK.
+- `pnpm lint` (3/3) · `pnpm test` · `pnpm typecheck --filter=frontend` · `pnpm build` (3/3) → OK.
+- `pnpm test-integration --filter=backend` → OK (Tier 3).
+- `pnpm generate` idempotente; `api.yaml`/`gen.ts` coherentes.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 6.3 — retención y pseudonimización (`pseudonymizer.go` con `APP_PSEUDONYM_SECRET` antes de analytics, separar datos crudos y verificar el `PIIHandler`) y el Gate de Fase 6 (`ops/scripts/pii_audit.sh`). Nota: `/analytics/progress` sigue en `501` (no tiene item en el checklist 06).
+
+---
+
 ## 2026-09-19 — Fase 6.1: jobs batch del provisioner (6.1.1–6.1.5)
 
 **Estado**: bloque `6.1` completado. `go build/vet` y `go test -race` (Tier 1+2) en verde; `pnpm test-integration --filter=backend` (Tier 3 con testcontainers) en verde; `pnpm lint` (3/3), `pnpm test` (backend + frontend 88), `pnpm build` (3/3), `pnpm typecheck --filter=frontend` y `pnpm generate` idempotente. Sin cambio de wire (A12).

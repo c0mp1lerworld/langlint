@@ -15,6 +15,7 @@ import (
 	"github.com/openai/openai-go/option"
 	"go.uber.org/fx"
 
+	"github.com/c0mp1lerworld/langlint/backend/internal/api/accesslog"
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/events"
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/llm"
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/postgres"
@@ -26,6 +27,7 @@ import (
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/services"
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/services/event_handlers"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
+	"github.com/c0mp1lerworld/langlint/backend/internal/domain/identity"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/config"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/db"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/httpx"
@@ -43,6 +45,9 @@ func Module() fx.Option {
 			newPracticeRepository,
 			newAnalysisRepository,
 			newErrorMetricRepository,
+			newDeletionRequestRepository,
+			newAccessLogRepository,
+			newUserEmail,
 			newUnitOfWork,
 			newOutbox,
 			newExtractor,
@@ -53,6 +58,7 @@ func Module() fx.Option {
 			services.NewAnalysisService,
 			services.NewPracticeService,
 			services.NewAnalyticsService,
+			services.NewIdentityService,
 			newAnalysisRunner,
 			event_handlers.NewAnalysisRequestedHandler,
 			event_handlers.NewAnalysisCompletedHandler,
@@ -95,6 +101,19 @@ func newAnalysisRepository(pool *pgxpool.Pool) storage.AnalysisRepository {
 
 func newErrorMetricRepository(pool *pgxpool.Pool) storage.ErrorMetricRepository {
 	return repositories.NewErrorMetricRepository(pool)
+}
+
+func newDeletionRequestRepository(pool *pgxpool.Pool) storage.DeletionRequestRepository {
+	return repositories.NewDeletionRequestRepository(pool)
+}
+
+func newAccessLogRepository(pool *pgxpool.Pool) storage.AccessLogRepository {
+	return repositories.NewAccessLogRepository(pool)
+}
+
+// newUserEmail exposes the configured single-user email as an identity value.
+func newUserEmail(cfg config.ServerConfig) identity.Email {
+	return cfg.UserEmail
 }
 
 func newUnitOfWork(pool *pgxpool.Pool) storage.UnitOfWork {
@@ -162,10 +181,11 @@ func runEventBus(lc fx.Lifecycle, dispatcher *events.InMemoryEventDispatcher, re
 
 // registerHTTP mounts the generated router and runs the HTTP server with the
 // application lifecycle.
-func registerHTTP(lc fx.Lifecycle, cfg config.ServerConfig, logger *slog.Logger, server *httpapi.Server, shutdowner fx.Shutdowner) {
+func registerHTTP(lc fx.Lifecycle, cfg config.ServerConfig, logger *slog.Logger, server *httpapi.Server, accessLog storage.AccessLogRepository, shutdowner fx.Shutdowner) {
 	router := httpx.NewRouter(logger)
 	router.Use(httpx.CORS(cfg.CORSAllowedOrigins))
 	router.Use(httpx.UserResolver(cfg.UserID))
+	router.Use(accesslog.NewMiddleware(accessLog, logger).Wrap)
 	httpapi.HandlerFromMux(server, router)
 
 	httpServer := &http.Server{

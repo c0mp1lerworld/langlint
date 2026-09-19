@@ -14,8 +14,8 @@ import (
 
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/events"
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/postgres"
-	"github.com/c0mp1lerworld/langlint/backend/internal/shared/testdb"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
+	"github.com/c0mp1lerworld/langlint/backend/internal/shared/testdb"
 )
 
 var pool *pgxpool.Pool

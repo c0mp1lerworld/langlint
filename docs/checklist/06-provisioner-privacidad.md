@@ -16,9 +16,9 @@
 
 ## 6.2 Endpoints A9 (portabilidad, olvido, auditoría)
 
-- [ ] `6.2.1` Implementar `GET /v1/me/data/export` (portabilidad, GDPR Art. 15+20).
-- [ ] `6.2.2` Implementar `DELETE /v1/me/data` (derecho al olvido con gracia de 30 días, Art. 17).
-- [ ] `6.2.3` Implementar `GET /v1/me/access-log` (auditoría del usuario, append-only).
+- [x] `6.2.1` Implementar `GET /v1/me/data/export` (portabilidad, GDPR Art. 15+20). _(`IdentityService.Export` + `PracticeRepository.ListAllByUser`; el email sale de `APP_USER_EMAIL` (identidad single-user de config: no hay tabla `users` en el MVP). `DataExport` 200 con todas las prácticas no borradas. A12: se quitó el `501` documentado.)_
+- [x] `6.2.2` Implementar `DELETE /v1/me/data` (derecho al olvido con gracia de 30 días, Art. 17). _(`IdentityService.RequestDeletion` inserta una `deletion_request` (tabla + job de 6.1) y responde `202`; idempotente si ya hay una pendiente (`HasPending`, AP4).)_
+- [x] `6.2.3` Implementar `GET /v1/me/access-log` (auditoría del usuario, append-only). _(Tabla `access_events` (migración `000003`) + `AccessLogRepository` sin Update/Delete (A4); middleware `internal/api/accesslog` registra cada petición autenticada (`action`=método, `resource_type`=path), best-effort. `GET` paginado (`limit`/`offset`).)_
 
 ## 6.3 Retención y pseudonimización
 

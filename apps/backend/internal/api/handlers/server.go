@@ -3,6 +3,7 @@ package httpapi
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/analysis"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/analytics"
+	"github.com/c0mp1lerworld/langlint/backend/internal/domain/identity"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/practice"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/httpx"
 )
@@ -22,13 +24,14 @@ const retryAfterSeconds = "2"
 type Server struct {
 	practices *services.PracticeService
 	analytics *services.AnalyticsService
+	identity  *services.IdentityService
 }
 
 var _ ServerInterface = (*Server)(nil)
 
 // NewServer wires the HTTP handlers through the application services.
-func NewServer(practices *services.PracticeService, analytics *services.AnalyticsService) *Server {
-	return &Server{practices: practices, analytics: analytics}
+func NewServer(practices *services.PracticeService, analytics *services.AnalyticsService, identity *services.IdentityService) *Server {
+	return &Server{practices: practices, analytics: analytics, identity: identity}
 }
 
 // CreatePractice handles POST /practices.
@@ -225,19 +228,68 @@ func (s *Server) GetProgressSeries(w http.ResponseWriter, _ *http.Request, _ Get
 	writeNotImplemented(w)
 }
 
-// GetAccessLog handles GET /me/access-log. Deferred to Fase 6.
-func (s *Server) GetAccessLog(w http.ResponseWriter, _ *http.Request, _ GetAccessLogParams) {
-	writeNotImplemented(w)
+// GetAccessLog handles GET /me/access-log: the user's append-only audit (A9).
+func (s *Server) GetAccessLog(w http.ResponseWriter, r *http.Request, params GetAccessLogParams) {
+	userID, ok := httpx.UserFrom(r.Context())
+	if !ok {
+		writeDomainError(w, &domain.InternalError{Field: "user", Message: "missing user context"})
+		return
+	}
+
+	limit, offset := page(params.Limit, params.Offset)
+	events, total, err := s.identity.AccessLog(r.Context(), userID, limit, offset)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+
+	items := make([]AccessLogEntry, 0, len(events))
+	for _, event := range events {
+		items = append(items, accessEventToWire(event))
+	}
+	writeJSON(w, http.StatusOK, AccessLog{Items: items, Total: total})
 }
 
-// DeleteData handles DELETE /me/data. Deferred to Fase 6.
-func (s *Server) DeleteData(w http.ResponseWriter, _ *http.Request) {
-	writeNotImplemented(w)
+// DeleteData handles DELETE /me/data: it records a deletion request with the
+// 30-day grace period (A9). A repeated call while one is pending is idempotent.
+func (s *Server) DeleteData(w http.ResponseWriter, r *http.Request) {
+	userID, ok := httpx.UserFrom(r.Context())
+	if !ok {
+		writeDomainError(w, &domain.InternalError{Field: "user", Message: "missing user context"})
+		return
+	}
+
+	if err := s.identity.RequestDeletion(r.Context(), userID); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
 }
 
-// ExportData handles GET /me/data/export. Deferred to Fase 6.
-func (s *Server) ExportData(w http.ResponseWriter, _ *http.Request) {
-	writeNotImplemented(w)
+// ExportData handles GET /me/data/export: the user's data portability (A9).
+func (s *Server) ExportData(w http.ResponseWriter, r *http.Request) {
+	userID, ok := httpx.UserFrom(r.Context())
+	if !ok {
+		writeDomainError(w, &domain.InternalError{Field: "user", Message: "missing user context"})
+		return
+	}
+
+	items, err := s.identity.Export(r.Context(), userID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+
+	practices := make([]Practice, 0, len(items))
+	for i := range items {
+		practices = append(practices, practiceToWire(&items[i]))
+	}
+	writeJSON(w, http.StatusOK, DataExport{
+		Email:       openapi_types.Email(s.identity.Email().String()),
+		GeneratedAt: time.Now().UTC(),
+		Practices:   practices,
+		UserId:      openapi_types.UUID(userID),
+	})
 }
 
 // writeJSON encodes body as the JSON response.
@@ -374,4 +426,23 @@ func errorPatternToWire(p domain.ErrorPattern) ErrorPattern {
 		wire.Note = &note
 	}
 	return wire
+}
+
+// accessEventToWire converts a domain access event to its wire representation.
+// Empty optional resource fields are omitted.
+func accessEventToWire(event identity.AccessEvent) AccessLogEntry {
+	entry := AccessLogEntry{
+		Id:         openapi_types.UUID(event.ID),
+		Action:     event.Action,
+		OccurredAt: event.OccurredAt,
+	}
+	if event.ResourceType != "" {
+		resourceType := event.ResourceType
+		entry.ResourceType = &resourceType
+	}
+	if event.ResourceID != "" {
+		resourceID := event.ResourceID
+		entry.ResourceId = &resourceID
+	}
+	return entry
 }

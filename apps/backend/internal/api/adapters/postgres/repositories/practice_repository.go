@@ -113,6 +113,34 @@ func (r *PostgresPracticeRepository) ListByUser(ctx context.Context, userID doma
 	return practices, total, nil
 }
 
+// ListAllByUser returns every non-deleted practice of the user, unpaginated, for
+// the A9 data export.
+func (r *PostgresPracticeRepository) ListAllByUser(ctx context.Context, userID domain.ID) ([]practice.Practice, error) {
+	rows, err := conn(ctx, r.pool).Query(ctx,
+		`SELECT `+practiceColumns+` FROM practices
+		 WHERE user_id = $1 AND deleted_at IS NULL
+		 ORDER BY created_at, id`,
+		userID.String(),
+	)
+	if err != nil {
+		return nil, mapError("practice", err)
+	}
+	defer rows.Close()
+
+	practices := make([]practice.Practice, 0)
+	for rows.Next() {
+		p, err := scanPractice(rows)
+		if err != nil {
+			return nil, mapError("practice", err)
+		}
+		practices = append(practices, *p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, mapError("practice", err)
+	}
+	return practices, nil
+}
+
 func scanPractice(row pgx.Row) (*practice.Practice, error) {
 	var (
 		id, userID, sourceText, draftText, status string

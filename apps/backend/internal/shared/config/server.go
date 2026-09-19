@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
+	"github.com/c0mp1lerworld/langlint/backend/internal/domain/identity"
 )
 
 // Environment variables consumed by the HTTP API entry point. They keep the
@@ -15,6 +16,7 @@ const (
 	EnvDatabaseURL        = "APP_DATABASE_URL"
 	EnvHTTPAddr           = "APP_HTTP_ADDR"
 	EnvUserID             = "APP_USER_ID"
+	EnvUserEmail          = "APP_USER_EMAIL"
 	EnvLLMTimeout         = "APP_LLM_TIMEOUT"
 	EnvCORSAllowedOrigins = "APP_CORS_ALLOWED_ORIGINS"
 )
@@ -26,13 +28,15 @@ const (
 )
 
 // ServerConfig is the configuration of the HTTP API entry point (cmd/api).
-// UserID resolves the single-user identity of the MVP: the wire contract has no
-// authentication (PRODUCT_DOMAIN §3.2), so the current user comes from config.
-// CORSAllowedOrigins lists the browser origins allowed to call the API (F3).
+// UserID and UserEmail resolve the single-user identity of the MVP: the wire
+// contract has no authentication (PRODUCT_DOMAIN §3.2), so the current user
+// comes from config. The email feeds the A9 data export. CORSAllowedOrigins
+// lists the browser origins allowed to call the API (F3).
 type ServerConfig struct {
 	DatabaseURL        string
 	HTTPAddr           string
 	UserID             domain.ID
+	UserEmail          identity.Email
 	LLMTimeout         time.Duration
 	CORSAllowedOrigins []string
 }
@@ -64,10 +68,20 @@ func LoadServerConfig() (ServerConfig, error) {
 		return ServerConfig{}, fmt.Errorf("%s is not a valid UUID: %w", EnvUserID, err)
 	}
 
+	rawEmail := os.Getenv(EnvUserEmail)
+	if rawEmail == "" {
+		return ServerConfig{}, fmt.Errorf("%s is required", EnvUserEmail)
+	}
+	userEmail, err := identity.NewEmail(rawEmail)
+	if err != nil {
+		return ServerConfig{}, fmt.Errorf("%s is not a valid email: %w", EnvUserEmail, err)
+	}
+
 	cfg := ServerConfig{
 		DatabaseURL: databaseURL,
 		HTTPAddr:    os.Getenv(EnvHTTPAddr),
 		UserID:      userID,
+		UserEmail:   userEmail,
 		LLMTimeout:  defaultLLMTimeout,
 	}
 	if cfg.HTTPAddr == "" {

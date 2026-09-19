@@ -17,6 +17,7 @@ import (
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/analysis"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/analytics"
+	"github.com/c0mp1lerworld/langlint/backend/internal/domain/identity"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/practice"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/httpx"
 )
@@ -36,7 +37,33 @@ func wireID(id domain.ID) PracticeId {
 
 func newTestServer(ctrl *gomock.Controller, practices *mocks.MockPracticeRepository, analyses *mocks.MockAnalysisRepository, metrics *mocks.MockErrorMetricRepository, outbox *mocks.MockOutbox) *Server {
 	practiceSvc := services.NewPracticeService(runUoW(ctrl), practices, analyses, outbox)
-	return NewServer(practiceSvc, services.NewAnalyticsService(metrics))
+	return NewServer(practiceSvc, services.NewAnalyticsService(metrics), testIdentityService(ctrl))
+}
+
+// testEmail is the configured single-user email used by the handler tests.
+const testEmail = "student@example.com"
+
+func mustEmail(t *testing.T, raw string) identity.Email {
+	t.Helper()
+	email, err := identity.NewEmail(raw)
+	if err != nil {
+		t.Fatalf("NewEmail(%q) error = %v", raw, err)
+	}
+	return email
+}
+
+// testIdentityService builds an IdentityService over throwaway mocks.
+func testIdentityService(ctrl *gomock.Controller) *services.IdentityService {
+	email, err := identity.NewEmail(testEmail)
+	if err != nil {
+		panic(err)
+	}
+	return services.NewIdentityService(
+		email,
+		mocks.NewMockPracticeRepository(ctrl),
+		mocks.NewMockDeletionRequestRepository(ctrl),
+		mocks.NewMockAccessLogRepository(ctrl),
+	)
 }
 
 // serve runs h with the user injected, mimicking the router middleware chain.
@@ -267,22 +294,175 @@ func TestServer_GetErrorPatternStats_ReturnsPatterns(t *testing.T) {
 	}
 }
 
-func TestServer_DeferredEndpoints_Return501(t *testing.T) {
+func TestServer_ProgressSeries_Returns501(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	srv := newTestServer(ctrl, mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockOutbox(ctrl))
+
+	rec := serve(domain.MustNewID(),
+		func(w http.ResponseWriter, r *http.Request) { srv.GetProgressSeries(w, r, GetProgressSeriesParams{}) },
+		httptest.NewRequest(http.MethodGet, "/", nil))
+	if rec.Code != http.StatusNotImplemented {
+		t.Fatalf("status = %d, want 501", rec.Code)
+	}
+}
+
+func TestServer_ExportData_ReturnsDataExport(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	userID := domain.MustNewID()
+	p := draftPractice(userID)
+
+	practices := mocks.NewMockPracticeRepository(ctrl)
+	practices.EXPECT().ListAllByUser(gomock.Any(), userID).Return([]practice.Practice{*p}, nil)
+
+	email := mustEmail(t, testEmail)
+	identitySvc := services.NewIdentityService(email,
+		practices,
+		mocks.NewMockDeletionRequestRepository(ctrl),
+		mocks.NewMockAccessLogRepository(ctrl),
+	)
+	srv := NewServer(
+		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
+		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
+		identitySvc,
+	)
+
+	rec := serve(userID, srv.ExportData, httptest.NewRequest(http.MethodGet, "/me/data/export", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %s)", rec.Code, rec.Body.String())
+	}
+
+	var body DataExport
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	if body.Email != "student@example.com" {
+		t.Fatalf("email = %q, want student@example.com", body.Email)
+	}
+	if body.UserId.String() != userID.String() {
+		t.Fatalf("user_id = %s, want %s", body.UserId, userID)
+	}
+	if body.GeneratedAt.IsZero() {
+		t.Fatal("generated_at is zero, want a timestamp")
+	}
+	if len(body.Practices) != 1 || body.Practices[0].Id.String() != p.ID.String() {
+		t.Fatalf("practices = %+v, want the user's practice", body.Practices)
+	}
+}
+
+func TestServer_ExportData_RepositoryError_Returns500(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	userID := domain.MustNewID()
+
+	practices := mocks.NewMockPracticeRepository(ctrl)
+	practices.EXPECT().ListAllByUser(gomock.Any(), userID).Return(nil, &domain.InternalError{Field: "practice"})
+
+	srv := NewServer(
+		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
+		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
+		services.NewIdentityService(mustEmail(t, testEmail), practices, mocks.NewMockDeletionRequestRepository(ctrl), mocks.NewMockAccessLogRepository(ctrl)),
+	)
+
+	rec := serve(userID, srv.ExportData, httptest.NewRequest(http.MethodGet, "/me/data/export", nil))
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rec.Code)
+	}
+}
+
+func TestServer_DeleteData_NoPending_Returns202(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	userID := domain.MustNewID()
+
+	deletions := mocks.NewMockDeletionRequestRepository(ctrl)
+	deletions.EXPECT().HasPending(gomock.Any(), userID).Return(false, nil)
+	deletions.EXPECT().Append(gomock.Any(), gomock.Any()).Return(nil)
+
+	srv := NewServer(
+		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
+		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
+		services.NewIdentityService(mustEmail(t, testEmail), mocks.NewMockPracticeRepository(ctrl), deletions, mocks.NewMockAccessLogRepository(ctrl)),
+	)
+
+	rec := serve(userID, srv.DeleteData, httptest.NewRequest(http.MethodDelete, "/me/data", nil))
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want 202", rec.Code)
+	}
+}
+
+func TestServer_DeleteData_AlreadyPending_Returns202Idempotent(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	userID := domain.MustNewID()
+
+	deletions := mocks.NewMockDeletionRequestRepository(ctrl)
+	deletions.EXPECT().HasPending(gomock.Any(), userID).Return(true, nil)
+	// No Append expected: the call is idempotent.
+
+	srv := NewServer(
+		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
+		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
+		services.NewIdentityService(mustEmail(t, testEmail), mocks.NewMockPracticeRepository(ctrl), deletions, mocks.NewMockAccessLogRepository(ctrl)),
+	)
+
+	rec := serve(userID, srv.DeleteData, httptest.NewRequest(http.MethodDelete, "/me/data", nil))
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want 202", rec.Code)
+	}
+}
+
+func TestServer_GetAccessLog_ReturnsPage(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	userID := domain.MustNewID()
+
+	event, err := identity.NewAccessEvent(userID, "GET", "/practices", "", time.Unix(0, 0).UTC())
+	if err != nil {
+		t.Fatalf("NewAccessEvent() error = %v", err)
+	}
+
+	accessLog := mocks.NewMockAccessLogRepository(ctrl)
+	accessLog.EXPECT().ListByUser(gomock.Any(), userID, 20, 0).Return([]identity.AccessEvent{*event}, 1, nil)
+
+	srv := NewServer(
+		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
+		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
+		services.NewIdentityService(mustEmail(t, testEmail), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockDeletionRequestRepository(ctrl), accessLog),
+	)
+
+	rec := serve(userID, func(w http.ResponseWriter, r *http.Request) {
+		srv.GetAccessLog(w, r, GetAccessLogParams{})
+	}, httptest.NewRequest(http.MethodGet, "/me/access-log", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %s)", rec.Code, rec.Body.String())
+	}
+
+	var body AccessLog
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	if body.Total != 1 || len(body.Items) != 1 {
+		t.Fatalf("body = %+v, want one entry", body)
+	}
+	if body.Items[0].Action != "GET" {
+		t.Fatalf("action = %q, want GET", body.Items[0].Action)
+	}
+	if body.Items[0].ResourceType == nil || *body.Items[0].ResourceType != "/practices" {
+		t.Fatalf("resource_type = %v, want /practices", body.Items[0].ResourceType)
+	}
+}
+
+func TestServer_MeEndpoints_MissingUser_Returns500(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	srv := newTestServer(ctrl, mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockOutbox(ctrl))
 
 	cases := map[string]http.HandlerFunc{
-		"progress":   func(w http.ResponseWriter, r *http.Request) { srv.GetProgressSeries(w, r, GetProgressSeriesParams{}) },
 		"access-log": func(w http.ResponseWriter, r *http.Request) { srv.GetAccessLog(w, r, GetAccessLogParams{}) },
 		"delete":     srv.DeleteData,
 		"export":     srv.ExportData,
 	}
-
 	for name, h := range cases {
 		t.Run(name, func(t *testing.T) {
-			rec := serve(domain.MustNewID(), h, httptest.NewRequest(http.MethodGet, "/", nil))
-			if rec.Code != http.StatusNotImplemented {
-				t.Fatalf("status = %d, want 501", rec.Code)
+			rec := httptest.NewRecorder()
+			h(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+			if rec.Code != http.StatusInternalServerError {
+				t.Fatalf("status = %d, want 500", rec.Code)
 			}
 		})
 	}
