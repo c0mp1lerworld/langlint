@@ -55,19 +55,19 @@
 
 ## 5.5 Tests
 
-- [ ] `5.5.1` Vitest (unit) para lógica pura (helpers, schemas, mappers) — F10.
-- [ ] `5.5.2` React Testing Library (componentes) con axe-core para accesibilidad — F6/F10.
-- [ ] `5.5.3` Playwright (e2e) cubriendo el flujo crítica: crear práctica → análisis → diff.
-- [ ] `5.5.4` Sin `skip()` en ningún tier (F10).
+- [x] `5.5.1` Vitest (unit) para lógica pura (helpers, schemas, mappers) — F10. _(Vitest 5 + jsdom: `diffWords`, `ERROR_PATTERN_LABELS`/`mostFrequentPattern`, schemas Zod, `zodResolver`, `ApiClient`/`errors` (con `fetchImpl` inyectado) y defaults de `query-client`. 47 tests.)_
+- [x] `5.5.2` React Testing Library (componentes) con axe-core para accesibilidad — F6/F10. _(RTL 16 + `axe-core` (`axe.run` en `src/test/a11y.ts`; se desactivan `region`/`color-contrast`, no aplicables en jsdom aislado). Cubre presentacionales y con estado (mocks de hooks de query). 41 tests. `jest-axe@11` se descartó: no publica tipos TS.)_
+- [x] `5.5.3` Playwright (e2e) cubriendo el flujo crítica: crear práctica → análisis → diff. _(`playwright.config.ts` con `webServer` en `:3100` y API `NEXT_PUBLIC_API_URL` same-origin; `e2e/practice-flow.spec.ts` mockea el backend con `page.route` (create 201 → analyze 202 → detail completed) y valida el diff de 3 columnas. Sin Postgres/OpenAI.)_
+- [x] `5.5.4` Sin `skip()` en ningún tier (F10). _(Verificado con `rg` en `src/` y `e2e/`: sin `.skip`/`.only`/`xit`/`xdescribe`.)_
 
 ---
 
 ## ✅ Gate de salida
 
-- [ ] `pnpm typecheck --filter=frontend` (tsc --noEmit) en verde.
-- [ ] `pnpm lint` y `pnpm test` en verde (F1–F12 satisfechos).
-- [ ] `pnpm build` (next build) en verde con dependencia de `generate`.
-- [ ] Sin imports cruzados hacia `apps/backend/` (F3, AP-F2); sin `useEffect` para fetching (AP-F3).
+- [x] `pnpm typecheck --filter=frontend` (tsc --noEmit) en verde.
+- [x] `pnpm lint` y `pnpm test` en verde (F1–F12 satisfechos). _(`pnpm test` = backend (`go test -race`) + frontend (`vitest run`, 88 tests). `pnpm test:e2e` = Playwright, 2 tests.)_
+- [x] `pnpm build` (next build) en verde con dependencia de `generate`.
+- [x] Sin imports cruzados hacia `apps/backend/` (F3, AP-F2); sin `useEffect` para fetching (AP-F3).
 
 ## Fuente normativa
 

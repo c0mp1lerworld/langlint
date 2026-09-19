@@ -4,6 +4,39 @@
 
 ---
 
+## 2026-09-19 — Fase 5.5: tests frontend (Vitest, RTL + axe, Playwright e2e) — Gate de Fase 5
+
+**Estado**: bloque `5.5` completado; **Gate de salida de Fase 5 en verde**. `pnpm typecheck` (1/1), `pnpm lint` (3/3), `pnpm test` (backend + frontend **88 tests**), `pnpm test:e2e` (Playwright **2 tests**) y `pnpm build` (3/3) OK. Sin cambio de wire (A12).
+
+**Hecho**:
+- `5.5.1` unit (Vitest 5 + jsdom): `diffWords`, `mostFrequentPattern`/`errorPatternLabel`, schemas Zod, `zodResolver`, `ApiClient`/`errors` (`toApiError`, idempotencia `409 analysis_pending`, `networkError`, `userMessage`, `buildPath`, query params, auth) y defaults de `query-client`. 47 tests.
+- `5.5.2` componentes (RTL 16 + `axe-core`): presentacionales (`Tooltip`, `PracticeStatusBadge`, `ErrorPatternBadge`, `FragmentDiff`, `ErrorPatternFrequency`, `RecurringErrorAlert`) y con estado (`PracticeList`, `PracticeDiff`, `PracticeForm`, `AnalyticsDashboard`) con mocks de los hooks de query. 41 tests. `axe.run` en `src/test/a11y.ts` (reglas `region`/`color-contrast` desactivadas: no aplican a componentes aislados en jsdom).
+- `5.5.3` e2e (Playwright): `playwright.config.ts` levanta `next dev` en `:3100` con `NEXT_PUBLIC_API_URL` same-origin; `e2e/practice-flow.spec.ts` mockea el backend con `page.route` (create `201` → analyze `202` → detail `completed` con fragmentos) y cubre el flujo crítica crear→analizar→diff, más la validación del formulario. Sin Postgres ni OpenAI.
+- `5.5.4` sin `skip()`/`only` en ningún tier (verificado con `rg`).
+- Infra: `vitest.config.mts` (`@vitejs/plugin-react`, alias `@ → ./src`, setup), `src/test/{setup.ts,a11y.ts,fixtures.ts}`; scripts `test`/`test:watch`/`test:e2e`; task `test:e2e` en `turbo.json` y script `pnpm test:e2e` en la raíz. `e2e/` excluido de `tsconfig` y ESLint (Playwright transpila aparte).
+
+**Decisiones**:
+- **`axe-core` directo en vez de `jest-axe`** (desviación de lo acordado): `jest-axe@11` no publica tipos TypeScript (solo `index.js`), lo que obligaría a `@types/jest-axe` + augmentación manual para Vitest. La checklist pide "axe-core"; se usa `axe.run()` (con tipos propios) y se asserta `violations == []`.
+- **e2e con API mockeada y same-origin**: `NEXT_PUBLIC_API_URL=http://localhost:3100` evita CORS/preflight y hace la suite CI-friendly y determinista (MANIFEST_FRONTEND F10, "idealmente mockeado").
+- **`page.route` ignora documentos y payloads RSC** (`resourceType === "document"`, header `RSC`, `?_rsc`): Next sirve páginas y RSC por los mismos paths que la API.
+- **RTL mockea los hooks de query** (no HTTP): el `ApiClient` ya se testea aparte con `fetchImpl` inyectado; evita una dependencia extra (MSW).
+- **`@vitejs/plugin-react`**: Vite 8/rolldown no transformaba JSX porque el `tsconfig` tiene `jsx: "preserve"` (lo exige Next); el plugin resuelve el transform.
+- **`h3` → `h2` en las columnas del diff** (hallazgo de axe `heading-order`): `PracticeDiff` tiene `h1`, así que los encabezados de columna deben ser `h2` (antes `h1 → h3` saltaba un nivel).
+
+**Verificación**:
+- `pnpm typecheck --filter=frontend` → OK.
+- `pnpm lint` → 3 successful (6 warnings conocidos del contrato).
+- `pnpm test` → backend (`go test -race`) + frontend `Test Files 17 passed`, `Tests 88 passed`.
+- `pnpm test:e2e` → `2 passed`.
+- `pnpm build` → 3 successful (rutas `/`, `○ /analytics`, `ƒ /practices/[id]`, `○ /practices/new`).
+- `go build/vet/test` sin cambios en esta sesión; `pnpm generate` no aplica (sin cambio de contrato).
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 6 — Provisioner y privacidad (jobs `refresh-aggregates`, `purge-raw-data`, `execute-deletions` y endpoints A9: `/me/data/export`, `/me/data`, `/me/access-log`; hoy `501 not_implemented`). Los e2e de `/analytics/progress` y `/me/*` podrán ampliarse entonces.
+
+---
+
 ## 2026-09-19 — Fase 5.4: verificación manual E2E del dashboard — fix CORS + fix `fetch` del cliente
 
 **Estado**: flujo verificado end-to-end en navegador real (Chromium headless + CDP) contra Postgres y OpenAI reales. Dos bugs de cableado **preexistentes** encontrados y corregidos (uno bloqueaba todo el frontend). `go build/vet/test` y `pnpm typecheck/lint/build` en verde.
