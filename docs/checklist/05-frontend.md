@@ -41,10 +41,10 @@
 
 ## 5.3 Vista diff de 3 columnas
 
-- [ ] `5.3.1` Implementar componente de diff: columna Español | Borrador usuario | Corrección IA (PRODUCT_DOMAIN §8.1).
-- [ ] `5.3.2` Resaltar diff rojo/verde y paneles expandibles con `target_verb_review`, `lexical_clarification`, `grammar_explanation`.
-- [ ] `5.3.3` Polling del estado de análisis con TanStack Query (refetchInterval) + optimistic update con rollback — F9.
-- [ ] `5.3.4` Accesibilidad WCAG 2.2 AA: navegación por teclado, contraste, `aria` en tooltips — F6.
+- [x] `5.3.1` Implementar componente de diff: columna Español | Borrador usuario | Corrección IA (PRODUCT_DOMAIN §8.1). _(`features/practice/components/fragment-diff.tsx` (fila 3 columnas por `Fragment`) + `practice-diff.tsx` (estados `draft|analyzing|completed|failed`) + `practice-list.tsx`; rutas `app/practices/[id]/page.tsx` y home con lista.)_
+- [x] `5.3.2` Resaltar diff rojo/verde y paneles expandibles con `target_verb_review`, `lexical_clarification`, `grammar_explanation`. _(`lib/utils/diff.ts`: word-diff LCS propio (`diffWords`) sin dependencias; `del` rojo tachado en la columna del borrador, `ins` verde en la de corrección; paneles con los 3 campos y badges de `error_patterns`.)_
+- [x] `5.3.3` Polling del estado de análisis con TanStack Query (refetchInterval) + optimistic update con rollback — F9. _(`lib/query/practices.ts`: `usePractice` con `refetchInterval` (2s) mientras `status === "analyzing"`; `useAnalyzePractice` con `onMutate` (snapshot + `analyzing`), `onError` rollback salvo `409 analysis_pending` (éxito idempotente, AP-F6) y `onSettled` invalidación.)_
+- [x] `5.3.4` Accesibilidad WCAG 2.2 AA: navegación por teclado, contraste, `aria` en tooltips — F6. _(Semántica `section/h1-h3/ul`, botones nativos, `aria-expanded`/`aria-controls` en paneles, `role="status"`/`role="alert"`, tooltip accesible (`role="tooltip"` + `aria-describedby`, visible en focus/hover) y diff con doble cue (color + tachado/negrita, WCAG 1.4.1) con contraste AA.)_
 
 ## 5.4 Dashboard de analíticas
 

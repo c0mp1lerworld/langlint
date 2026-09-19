@@ -4,6 +4,37 @@
 
 ---
 
+## 2026-09-19 — Fase 5.3: vista diff de 3 columnas (5.3.1–5.3.4)
+
+**Estado**: bloque completado. `pnpm typecheck` (1/1), `pnpm lint` (3/3) y `pnpm build` (3/3) en verde; ruta `ƒ /practices/[id]` generada. Sin cambio de wire (A12).
+
+**Hecho**:
+- `5.3.2` `lib/utils/diff.ts`: `diffWords(before, after)` (LCS a nivel palabra, sin dependencias) → `DiffToken[]` (`equal|del|ins`) con tokens adyacentes fusionados. Lógica pura (presentación, F11).
+- `5.3.3` `lib/query/practices.ts`: `practiceKeys`, `useListPractices`, `usePractice(id)` (`refetchInterval` 2s mientras `status === "analyzing"`, luego `false`) y `useAnalyzePractice(id)` (optimistic: `onMutate` snapshot + `status:"analyzing"`; `onError` rollback salvo `isAnalysisPending` → éxito idempotente sin rollback; `onSettled` invalida). Consume `isAnalysisPending` de 5.2.3 (AP-F6).
+- `5.3.1`/`5.3.2` componentes: `features/practice/components/{fragment-diff,practice-diff,practice-list,status-badge,error-pattern-badge}.tsx` + `components/ui/tooltip.tsx`. Fila de 3 columnas (Español | borrador con `del` rojo tachado | corrección con `ins` verde), badges de `error_patterns` y paneles expandibles con los 3 campos. Estados de la práctica: `draft` (botón Analizar) / `analyzing` (auto-refresh) / `completed` (fragmentos) / `failed`.
+- `5.3.4` accesibilidad: semántica (`section`, `h1`–`h3`, `ul`), botones nativos con `aria-expanded`/`aria-controls`, `role="status"`/`role="alert"`, tooltip `role="tooltip"` + `aria-describedby` (focus/hover/Escape) y diff con doble cue (color + tachado/negrita — WCAG 1.4.1) con contraste AA.
+- Rutas: `app/practices/[id]/page.tsx` (server que lee `params`) y `app/page.tsx` (lista con `Link` a cada práctica). `lib/api/errors.ts`: `userMessage(error)` (mapper código → UX, F5).
+
+**Decisiones**:
+- **Word-diff propio (no `jsdiff`)** (acordado con el humano): LCS puro y testeable, sin dependencia nueva.
+- **Ruta `[id]` + lista en home** (acordado): permite navegar al diff sin depender de un formulario de creación (que no existe aún en el checklist).
+- **Sin botón de reintento tras `failed`**: `StartAnalysis` solo permite `draft → analyzing`; desde `failed` sería `invalid_state`. El dominio manda (F11); se muestra el mensaje de fallo.
+- **`userMessage` en `lib/api/errors.ts`**: el manifiesto §5.3 pide el mapper de errores centralizado ahí.
+- **`Link` con template literal** (`/practices/${id}`): el objeto con `params` no encaja con los tipos de `Link` de Next 15.5. `typedRoutes` genera los tipos en `.next/types`; un `.next` **obsoleto** (de una build anterior al alta de la ruta) hace fallar `tsc` de forma espuria — se resuelve reconstruyendo (`next build`). En checkout limpio (sin `.next`) `typecheck` pasa.
+
+**Verificación**:
+- `pnpm typecheck` · `pnpm lint` · `pnpm build` → OK (build genera `ƒ /practices/[id]`).
+- Runtime del word-diff (harness en `/tmp`, fuente compilada): **9/9** — identidad, reemplazo (`go`→`went`), inserción, eliminación, múltiples cambios (`run`→`ran` + `whole`), vacíos y puntuación; con invariante de reconstrucción (equal+del = borrador; equal+ins = corrección) y sin tokens adyacentes del mismo tipo.
+- **Hallazgo**: el harness atrapó un bug real en el backtracking (faltaba avanzar `j` en la rama `equal`, que duplicaba tokens); corregido antes del commit.
+
+**Bloqueos**: ninguno.
+
+**Gap pendiente (decisión del humano)**: el flujo de producto necesita **crear** una práctica (y editarla) para alimentar el diff, pero el checklist de Fase 5 no incluye un item de formulario/creación; solo `5.2.6` dejó los schemas Zod listos y `react-hook-form` quedó diferido. Se implementará cuando se apruebe (probablemente como item propio antes de `5.5.3`, que exige el e2e "crear práctica → análisis → diff").
+
+**Próximo paso**: Fase 5, bloque `5.4` — dashboard de analíticas (`GET /v1/analytics/error-patterns`, tipos desde `gen.ts`, sin reimplementar reglas — F11), o cerrar el gap de creación si se aprueba.
+
+---
+
 ## 2026-09-19 — Fase 5.2: cliente HTTP, TanStack Query, Zustand y Zod (5.2.1–5.2.6)
 
 **Estado**: bloque completado. `pnpm typecheck --filter=frontend`, `pnpm lint` (3 apps) y `pnpm build --filter=frontend` en verde; `pnpm generate` idempotente.
