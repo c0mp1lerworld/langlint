@@ -6,15 +6,15 @@ type Schemas = components["schemas"];
 type AssertAssignable<Actual extends Expected, Expected> = Actual;
 
 export const targetRuleSchema = z.object({
-  verb: z.string().min(1),
+  verb: z.string().min(1, "El verbo es obligatorio"),
   tense: z.string().optional(),
   note: z.string().optional(),
 });
 
 export const createPracticeSchema = z.object({
-  source_text: z.string().min(1),
-  draft_text: z.string().min(1),
-  target_rules: z.array(targetRuleSchema).min(1),
+  source_text: z.string().min(1, "El texto en español es obligatorio"),
+  draft_text: z.string().min(1, "El borrador en inglés es obligatorio"),
+  target_rules: z.array(targetRuleSchema).min(1, "Añade al menos una regla objetivo"),
 });
 
 export const updatePracticeSchema = createPracticeSchema.partial();

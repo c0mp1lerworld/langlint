@@ -1,10 +1,13 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { apiClient, buildPath } from "@/lib/api/client";
 import { isAnalysisPending } from "@/lib/api/errors";
 import type { components } from "@/lib/api/gen";
+import type { CreatePracticeInput } from "@/lib/schemas/practice";
 
+type Practice = components["schemas"]["Practice"];
 type PracticeDetail = components["schemas"]["PracticeDetail"];
 type PracticeList = components["schemas"]["PracticeList"];
 
@@ -19,6 +22,19 @@ export function useListPractices() {
   return useQuery({
     queryKey: practiceKeys.list(),
     queryFn: () => apiClient.get<PracticeList>("/practices"),
+  });
+}
+
+export function useCreatePractice() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: (input: CreatePracticeInput) => apiClient.post<Practice>("/practices", input),
+    onSuccess: (practice) => {
+      queryClient.invalidateQueries({ queryKey: practiceKeys.list() });
+      router.push(`/practices/${practice.id}`);
+    },
   });
 }
 
