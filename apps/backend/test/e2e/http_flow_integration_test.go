@@ -1,0 +1,177 @@
+//go:build integration
+
+// Package e2e exercises the HTTP API end to end against an ephemeral Postgres:
+// create -> analyze -> poll -> completed -> analytics (AP-MR8).
+package e2e
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/events"
+	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/postgres"
+	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/postgres/repositories"
+	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/postgres/testsupport"
+	httpapi "github.com/c0mp1lerworld/langlint/backend/internal/api/handlers"
+	"github.com/c0mp1lerworld/langlint/backend/internal/api/ports"
+	"github.com/c0mp1lerworld/langlint/backend/internal/api/services"
+	"github.com/c0mp1lerworld/langlint/backend/internal/api/services/event_handlers"
+	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
+	"github.com/c0mp1lerworld/langlint/backend/internal/domain/analysis"
+	"github.com/c0mp1lerworld/langlint/backend/internal/shared/httpx"
+)
+
+// fakeExtractor returns a deterministic analysis without calling the LLM.
+type fakeExtractor struct{}
+
+func (fakeExtractor) Extract(_ context.Context, req ports.ExtractRequest) ([]analysis.Fragment, error) {
+	return []analysis.Fragment{{
+		SourceES:             req.SourceText,
+		UserDraft:            req.DraftText,
+		Correction:           "corrected",
+		TargetVerbReview:     "review",
+		LexicalClarification: "lexical",
+		GrammarExplanation:   "grammar",
+		ErrorPatterns: []domain.ErrorPattern{{
+			Code:     domain.ErrorPatternCodeTenseAgreement,
+			Severity: domain.ErrorPatternSeverityMinor,
+			Note:     "tense",
+		}},
+	}}, nil
+}
+
+func (fakeExtractor) Model() string        { return "fake" }
+func (fakeExtractor) ModelVersion() string { return "test" }
+
+func newRouter(t *testing.T, pool *pgxpool.Pool, userID domain.ID) http.Handler {
+	t.Helper()
+
+	practices := repositories.NewPracticeRepository(pool)
+	analyses := repositories.NewAnalysisRepository(pool)
+	metrics := repositories.NewErrorMetricRepository(pool)
+	uow := postgres.NewUnitOfWork(pool)
+	outbox := postgres.NewOutbox(pool)
+
+	analysisSvc := services.NewAnalysisService(fakeExtractor{}, uow, practices, analyses, outbox)
+	practiceSvc := services.NewPracticeService(uow, practices, analyses, outbox)
+	analyticsSvc := services.NewAnalyticsService(metrics)
+
+	dispatcher := events.NewInMemoryEventDispatcher(events.DefaultBufferSize, events.DefaultWorkers)
+	relay := events.NewOutboxRelay(pool, dispatcher, events.DefaultRelayBatch)
+
+	if err := dispatcher.Subscribe(domain.EventNameAnalysisRequested,
+		event_handlers.NewAnalysisRequestedHandler(practices, analyses, analysisSvc)); err != nil {
+		t.Fatalf("subscribe AnalysisRequested: %v", err)
+	}
+	if err := dispatcher.Subscribe(domain.EventNameAnalysisCompleted,
+		event_handlers.NewAnalysisCompletedHandler(practices, metrics)); err != nil {
+		t.Fatalf("subscribe AnalysisCompleted: %v", err)
+	}
+	if err := dispatcher.Subscribe(domain.EventNameAnalysisFailed,
+		event_handlers.NewAnalysisFailedHandler(practices)); err != nil {
+		t.Fatalf("subscribe AnalysisFailed: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	dispatcher.Run(ctx)
+	go relay.Run(ctx, 25*time.Millisecond)
+
+	server := httpapi.NewServer(practiceSvc, analyticsSvc)
+	router := httpx.NewRouter(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	router.Use(httpx.UserResolver(userID))
+	httpapi.HandlerFromMux(server, router)
+	return router
+}
+
+func TestHTTPFlow_CreateAnalyzePollAnalytics(t *testing.T) {
+	pool, cleanup, err := testsupport.Start()
+	if err != nil {
+		t.Fatalf("testsupport.Start() error = %v", err)
+	}
+	defer cleanup()
+
+	userID := domain.MustNewID()
+	api := httptest.NewServer(newRouter(t, pool, userID))
+	defer api.Close()
+
+	// [1] Create the practice.
+	createBody := `{"source_text":"El perro escapó.","draft_text":"The dog escaped.","target_rules":[{"verb":"run","tense":"past simple"}]}`
+	resp, err := http.Post(api.URL+"/practices", "application/json", bytes.NewBufferString(createBody))
+	if err != nil {
+		t.Fatalf("POST /practices error = %v", err)
+	}
+	if resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /practices status = %d, want 201 (%s)", resp.StatusCode, body)
+	}
+	var created httpapi.Practice
+	if err := json.NewDecoder(resp.Body).Decode(&created); err != nil {
+		t.Fatalf("decode practice: %v", err)
+	}
+	resp.Body.Close()
+
+	// [2] Trigger the analysis.
+	resp, err = http.Post(api.URL+"/practices/"+created.Id.String()+"/analyze", "application/json", nil)
+	if err != nil {
+		t.Fatalf("POST analyze error = %v", err)
+	}
+	if resp.StatusCode != http.StatusAccepted {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST analyze status = %d, want 202 (%s)", resp.StatusCode, body)
+	}
+	resp.Body.Close()
+
+	// [3] Poll until the practice is completed.
+	deadline := time.Now().Add(10 * time.Second)
+	var detail httpapi.PracticeDetail
+	for time.Now().Before(deadline) {
+		resp, err := http.Get(api.URL + "/practices/" + created.Id.String())
+		if err != nil {
+			t.Fatalf("GET practice error = %v", err)
+		}
+		err = json.NewDecoder(resp.Body).Decode(&detail)
+		resp.Body.Close()
+		if err != nil {
+			t.Fatalf("decode practice detail: %v", err)
+		}
+		if detail.Status != httpapi.PracticeStatus("analyzing") {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	if detail.Status != httpapi.PracticeStatus("completed") {
+		t.Fatalf("practice status = %q, want completed", detail.Status)
+	}
+	if detail.Analysis == nil || len(detail.Analysis.Fragments) != 1 {
+		t.Fatalf("analysis = %+v, want one fragment", detail.Analysis)
+	}
+
+	// [4] The analytics endpoint reflects the completed analysis.
+	resp, err = http.Get(api.URL + "/analytics/error-patterns?window=week")
+	if err != nil {
+		t.Fatalf("GET analytics error = %v", err)
+	}
+	var stats httpapi.ErrorPatternStats
+	if err := json.NewDecoder(resp.Body).Decode(&stats); err != nil {
+		t.Fatalf("decode stats: %v", err)
+	}
+	resp.Body.Close()
+
+	if len(stats.Patterns) != 1 || stats.Patterns[0].Count != 1 {
+		t.Fatalf("patterns = %+v, want one pattern with count 1", stats.Patterns)
+	}
+	if stats.Patterns[0].Code != httpapi.ErrorPatternCode(domain.ErrorPatternCodeTenseAgreement) {
+		t.Fatalf("pattern code = %q", stats.Patterns[0].Code)
+	}
+}

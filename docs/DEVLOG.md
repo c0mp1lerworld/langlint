@@ -4,6 +4,46 @@
 
 ---
 
+## 2026-09-18 — Fase 5.0: cableado HTTP del backend (5.0.1–5.0.11)
+
+**Estado**: bloque completado; Gate en verde. `go build/vet/test -race` (+ `-tags=integration`) OK; dominio 100%, services **97.5%**, event_handlers **91.4%**; e2e Tier 3 del flujo HTTP completo. `pnpm build`/`pnpm lint`/`pnpm typecheck` (3 apps) OK; `pnpm generate` idempotente.
+
+**Contexto**: las Fases 1–4 nunca cubrieron `cmd/api`, los handlers chi, los services de práctica ni el wiring de eventos (gap ya anotado en AGENTS/DEVLOG). Se cerró como bloque propio, con las decisiones acordadas con el humano: solo la superficie que consume el frontend; `AnalysisRequested` como trigger; transición de estado en event handlers; DI con Uber Fx; `/analytics/progress` y `/me/*` diferidos a Fase 6.
+
+**Hecho (A12 primero)**:
+- `5.0.1` contrato: `ErrorResponse.code` + `not_implemented` e `internal` (este último cerraba el drift de `PRODUCT_DOMAIN §4.5`), respuestas `501` en `/me/*` y `/analytics/progress`; `pnpm generate` (Go + TS).
+- `5.0.2` dominio: evento `AnalysisRequested{PracticeID,UserID,Version}` + registro `NewEvent`.
+- `5.0.3`/`5.0.4` `shared/db` (pool + ping), `cmd/migrate` (goose embebido), `shared/config` server (`APP_DATABASE_URL`/`APP_HTTP_ADDR`/`APP_USER_ID`/`APP_LLM_TIMEOUT`) y `shared/logger.New` (cablea el `PIIHandler`, cierra 4.3.4).
+- `5.0.5` `handlers/errors.go` (map A5 → status/`ErrorResponse`) + `shared/httpx` (router chi + middlewares + resolvedor de usuario single-user).
+- `5.0.6` `PracticeService` (create/get/list/update/delete/analyze; `outbox.Append` en tx) y `AnalyticsService`.
+- `5.0.7` `handlers/server.go`: implementa `ServerInterface`, conversión dominio↔wire, `Retry-After` en el 202.
+- `5.0.8` `services/event_handlers/`: `AnalysisRequested`→`RunAnalysis`; `AnalysisCompleted`→`MarkCompleted` + `Upsert ErrorMetric` (day/week/month); `AnalysisFailed`→`MarkFailed`. Idempotentes (guard `status == analyzing`).
+- `5.0.9` analytics `error-patterns`; `501 not_implemented` en progress/access-log/export/delete.
+- `5.0.10` `di/` Fx v1.24.0 + `cmd/api` (pool migra al arrancar; dispatcher + relay con lifecycle; HTTP server).
+- `5.0.11` tests: unit de services/handlers/event_handlers + `test/e2e` Tier 3 (`create→analyze→poll→completed→analytics`) + smoke del grafo Fx.
+
+**Decisiones**:
+- **`AnalysisRequested` (dominio) en vez de reusar `PracticeCreated`**: crear deja la práctica en `draft`; el análisis lo dispara `POST /analyze`. El evento es interno (no toca el wire) y mantiene `PracticeCreated` para futuros consumidores.
+- **Transición `analyzing → completed|failed` en los event handlers**, no en `RunAnalysis`: el service del LLM queda enfocado en el agregado `Analysis`; el estado de la práctica es event-driven post-commit.
+- **`ErrorMetric` incremental leído-y-escrito**: `Upsert` es absoluto (Fase 3) y el evento trae las ocurrencias de un análisis; el handler lee el conteo actual (`ListByUser`), suma y hace `Upsert` en las 3 ventanas. Idempotencia best-effort vía guard de estado (at-least-once).
+- **Usuario único vía `APP_USER_ID`** en un middleware: el contrato no tiene auth (MVP).
+- **`/me/*` y `/analytics/progress` devuelven `501 not_implemented`**: son Fase 6 (A9 y `refresh-aggregates`); el enum del contrato y las respuestas 501 se añadieron vía A12 para no mentir en el wire.
+- **Mapper de errores en `handlers/`** (no en `internal/api/errors.go`, como sugiere el árbol del manifiesto): AP-MR2 exige que los tipos `gen_*.go` solo se importen en `handlers/`; el mapper necesita `ErrorResponse`. Desviación documentada.
+- **`AnalysisRunner` como interfaz estrecha** en `event_handlers` (la satisface `*services.AnalysisService`): desacopla y hace testeable el handler.
+- **Fx `NopLogger`**: el único logger del proyecto es `log/slog` (A8); el logger interno de Fx no se usa.
+
+**Verificación**:
+- `go build ./...` · `go vet ./...` · `go test -race -count=1 ./...` · `go test -race -count=1 -tags=integration ./...` → OK.
+- Cobertura: dominio 100%; `services` **97.5%**; `services/event_handlers` **91.4%**; `handlers` 43.2% (incluye el código generado, sin gate).
+- e2e Tier 3 (`test/e2e`): create→analyze→poll(completed)→error-patterns + arranque/parada del módulo Fx con Postgres 16 (testcontainers).
+- `pnpm build` 3/3 · `pnpm lint` 3/3 · `pnpm test` backend OK · `pnpm typecheck --filter=frontend` OK · `pnpm generate` idempotente. `gofmt -l` limpio; sin `t.Skip()`.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 5, bloque `5.2` — cliente HTTP tipado (`lib/api/client.ts`/`errors.ts`), TanStack Query, Zustand, schemas Zod. El backend ya sirve prácticas, analyze y `error-patterns` en `http://localhost:8080` (con Postgres + `cmd/migrate`).
+
+---
+
 ## 2026-09-18 — Fase 5 (inicio): base Next.js 15 + Tailwind v4 (5.1.1–5.1.5)
 
 **Estado**: Fase 5 en curso. Items `5.1.1`–`5.1.5` completados; `pnpm build` (3 successful), `pnpm lint` (3 successful) y `pnpm typecheck --filter=frontend` en verde.

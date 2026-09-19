@@ -4,9 +4,9 @@
 
 ## Estado del proyecto
 
-- **Fase actual**: Fase 5 — Frontend **en curso**. Bloque `5.1` (base Next.js) **completado**: Next.js 15.5 (App Router) + React 19 + TypeScript strict + Tailwind v4, estructura canónica, `tsconfig`/`next.config` y `.env.example`. Fase 4 (motor de IA) completada con Gate en verde.
-- **Siguiente item**: Fase 5, bloque `5.2` — cliente HTTP (`lib/api/client.ts`/`errors.ts`), TanStack Query, Zustand y schemas Zod (`docs/checklist/05-frontend.md`). **Pendiente de decisión**: el cableado HTTP del backend (`cmd/api`, handlers chi, `CreatePracticeService` y el handler de `PracticeCreated`) no está cubierto por ningún checklist y hace falta antes/además del frontend (prerequisito de `5.3`); también falta cablear `PIIHandler` y el timeout por config.
-- **Estado**: monorepo base, contrato OpenAPI (`apps/contracts/openapi/api.yaml`), pipeline `pnpm generate`, módulo Go (`apps/backend/go.mod`, module path `github.com/c0mp1lerworld/langlint/backend`), Fases 3–4 (puertos/adaptadores Postgres, UoW, outbox + event bus; motor de IA con Structured Outputs, `AnalysisService`, `anonymizer` y `PIIHandler`) y Fase 5.1 (frontend Next.js 15 + Tailwind v4; paquete renombrado `@langlint/frontend` → `frontend`). `gen_*.go`/`gen.ts` commiteados. Dominio puro stdlib-only; `go build/vet/test` en verde; `pnpm build`/`pnpm lint` (3 apps) y `pnpm typecheck --filter=frontend` en verde.
+- **Fase actual**: Fase 5 — Frontend **en curso**. Bloque `5.0` (cableado HTTP del backend) y bloque `5.1` (base Next.js) **completados**. El backend ya sirve la superficie que consume el frontend vía `cmd/api` (prácticas CRUD + analyze + `analytics/error-patterns`). Fase 4 (motor de IA) completada con Gate en verde.
+- **Siguiente item**: Fase 5, bloque `5.2` — cliente HTTP (`lib/api/client.ts`/`errors.ts`), TanStack Query, Zustand y schemas Zod (`docs/checklist/05-frontend.md`). Diferido a Fase 6: `/analytics/progress` y `/me/*` (A9), que hoy responden `501 not_implemented`.
+- **Estado**: monorepo base, contrato OpenAPI (`apps/contracts/openapi/api.yaml`), pipeline `pnpm generate`, módulo Go (`apps/backend/go.mod`, module path `github.com/c0mp1lerworld/langlint/backend`), Fases 3–4 (puertos/adaptadores Postgres, UoW, outbox + event bus; motor de IA con Structured Outputs, `AnalysisService`, `anonymizer` y `PIIHandler`), Fase 5.0 (cableado HTTP: `cmd/api` con Uber Fx, handlers chi, `PracticeService`, event handlers, `cmd/migrate`; e2e Tier 3 verde) y Fase 5.1 (frontend Next.js 15 + Tailwind v4; paquete renombrado `@langlint/frontend` → `frontend`). `gen_*.go`/`gen.ts` commiteados. Dominio puro stdlib-only; `go build/vet/test` en verde; `pnpm build`/`pnpm lint` (3 apps) y `pnpm typecheck --filter=frontend` en verde.
 
 ## Primeros pasos obligatorios al iniciar una sesión
 
@@ -30,6 +30,8 @@
 | `pnpm typecheck` | `tsc --noEmit` del frontend | Fase 5+ |
 | `make test` / `make generate` | Targets Go del backend | Fase 2+ |
 | `go test -race -count=1 ./...` | Unit Go con race detector | Fase 2+ |
+| `go run ./cmd/migrate` | Aplica las migraciones goose (backend) | Fase 5.0+ |
+| `go run ./cmd/api` | Arranca el servidor HTTP (requiere Postgres + `.env`) | Fase 5.0+ |
 
 ## Reglas inquebrantables (resumen de los manifiestos)
 
