@@ -4,6 +4,21 @@
 
 ---
 
+## 2026-09-19 — Docs: guía didáctica de Fase 5 (`docs/explains/fase-5-frontend.md`)
+
+**Estado**: documentación. Sin cambios de código; el Gate de Fase 5 sigue en verde.
+
+**Hecho**: creado `docs/explains/fase-5-frontend.md` con la misma estructura que las guías de las fases 2–4:
+1. **Explicación para no técnicos** — analogía del "restaurante que abre al público": cocina/almacenes = backend; sala/mesas = frontend; camarero = `ApiClient`; carta = contrato/`gen.ts`; libreta de pedidos = TanStack Query; post-it = Zustand; corrector de la carta = Zod; espejo de 3 columnas = vista diff; panel del jefe = dashboard; inspector de sanidad = tests.
+2. **Guía de estudio por bloques** (`5.0`–`5.5`): cableado HTTP del backend, base Next.js 15, tipos generados (F1), `ApiClient`/mapeo de errores e idempotencia, server vs client state (F7), Zod + React Hook Form (F8), word-diff LCS, polling + optimistic update/rollback (F9), accesibilidad (F6), dashboard de analíticas + fix de CORS/`fetch`, y la pirámide de tests (Vitest / RTL + axe / Playwright). Con snippets reales y callouts `> Concepto —`.
+3. **Resumen de cambios en 3 viñetas** (base y datos · interfaz · tests).
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 6 — Provisioner y privacidad.
+
+---
+
 ## 2026-09-19 — Fase 5.5: tests frontend (Vitest, RTL + axe, Playwright e2e) — Gate de Fase 5
 
 **Estado**: bloque `5.5` completado; **Gate de salida de Fase 5 en verde**. `pnpm typecheck` (1/1), `pnpm lint` (3/3), `pnpm test` (backend + frontend **88 tests**), `pnpm test:e2e` (Playwright **2 tests**) y `pnpm build` (3/3) OK. Sin cambio de wire (A12).
