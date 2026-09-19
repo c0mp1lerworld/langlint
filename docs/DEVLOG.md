@@ -4,6 +4,37 @@
 
 ---
 
+## 2026-09-19 — Fase 5.4: dashboard de analíticas (5.4.1–5.4.3)
+
+**Estado**: bloque completado. `pnpm typecheck --filter=frontend` (1/1), `pnpm lint` (3/3) y `pnpm build` (3/3) en verde; nueva ruta `○ /analytics`. `pnpm generate` idempotente; **sin cambio de wire** (A12 no aplica).
+
+**Hecho**:
+- `5.4.1` `lib/query/analytics.ts`: `analyticsKeys`, `useErrorPatternStats(window)` (`GET /analytics/error-patterns`) y `useProgressSeries(window)` (`GET /analytics/progress`), tipados desde `gen.ts` (F1). La ventana forma parte de la key de query.
+- `5.4.2` feature `features/analytics/`: `analytics-dashboard.tsx` (selector de ventana day/week/month, estados loading/error/empty), `error-pattern-frequency.tsx` (frecuencia por patrón con barras horizontales, count y `last_seen_at`; WCAG AA) y `recurring-error-alert.tsx` (banner `role="status"` del patrón más frecuente — PRODUCT_DOMAIN §8.1). Ruta `app/analytics/page.tsx` y enlace "Analíticas" en la home.
+- `5.4.3` F11: el cliente no clasifica ni calcula severidad; solo consume `count`/`last_seen_at` ya agregados por el backend.
+- `lib/store/analytics.ts`: `useAnalyticsStore` (Zustand) con la ventana seleccionada (client state, F7).
+- `lib/utils/error-patterns.ts`: se extrae `ERROR_PATTERN_LABELS` (antes duplicado en `error-pattern-badge.tsx`) + `errorPatternLabel` + `mostFrequentPattern` (puro, testable en 5.5.1).
+
+**Decisiones**:
+- **`/progress` con placeholder graceful** (acordado): el backend responde `501 not_implemented` (diferido a Fase 6, `server.go:222`). Se consume igualmente con tipos de `gen.ts` y el dashboard muestra "disponible próximamente"; así el item 5.4.1 se cumple sin tocar el backend ni encadenar Fase 6.
+- **Ventana en Zustand, no `useState`** (acordado): "preferencias locales" son client state (F7); store dedicado (`lib/store/analytics.ts`) en vez de mezclarlo con `useUiStore`.
+- **Labels compartidos extraídos a `lib/utils/`**: la feature analytics y el badge de práctica comparten el mapeo `code → label`; una sola fuente evita drift (F11). Los labels son presentación; el enum/severidad los define el backend.
+- **`retry: false` en `useProgressSeries`**: reintentar un `501` es inútil y genera ruido.
+
+**Verificación**:
+- `pnpm typecheck --filter=frontend` → OK (`next typegen && tsc --noEmit`).
+- `pnpm lint` → 3 successful (6 warnings conocidos del contrato `operation-4xx-response`).
+- `pnpm build` → 3 successful; rutas `/` y `○ /analytics` (3.54 kB).
+- `pnpm generate` idempotente: `gen.ts`/`gen_*.go` sin cambios (`git status` solo muestra fuentes propias).
+
+**Bloqueos**: ninguno.
+
+**Nota (F10)**: la infra de tests de frontend (Vitest/RTL/Playwright) es el bloque `5.5` y aún no existe; `mostFrequentPattern` queda como lógica pura lista para unit-test.
+
+**Próximo paso**: Fase 5, bloque `5.5` — Vitest (unit), React Testing Library + axe-core (componentes) y Playwright (e2e crear → analizar → diff), o `5.5.1` en particular. La serie `/analytics/progress` (con su gráfica) sigue diferida a Fase 6.
+
+---
+
 ## 2026-09-19 — Fase 5.3.5: formulario de creación + walkthrough E2E y fix del base URL de OpenAI
 
 **Estado**: `5.3.5` completado; gap de creación cerrado. Frontend verde (typecheck/lint/build); backend verde (build/vet/test sin y con `-race`). Recorrido manual E2E verificado contra backend + OpenAI reales.

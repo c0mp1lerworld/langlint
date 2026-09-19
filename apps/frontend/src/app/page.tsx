@@ -9,12 +9,20 @@ export default function HomePage() {
           <h1 className="text-2xl font-semibold text-gray-900">LangLint</h1>
           <p className="text-gray-600">Prácticas de escritura productiva con corrección de IA.</p>
         </div>
-        <Link
-          href="/practices/new"
-          className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-        >
-          Nueva práctica
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/analytics"
+            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          >
+            Analíticas
+          </Link>
+          <Link
+            href="/practices/new"
+            className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          >
+            Nueva práctica
+          </Link>
+        </div>
       </div>
       <PracticeList />
     </main>

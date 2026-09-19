@@ -49,9 +49,9 @@
 
 ## 5.4 Dashboard de analíticas
 
-- [ ] `5.4.1` Consumir `GET /v1/analytics/error-patterns` y `/progress` (tipos desde `gen.ts`).
-- [ ] `5.4.2` Visualizar frecuencia de `ErrorPattern` y alerta del error recurrente (PRODUCT_DOMAIN §8.1).
-- [ ] `5.4.3` El cliente **no** reimplementa reglas de clasificación/análisis (F11).
+- [x] `5.4.1` Consumir `GET /v1/analytics/error-patterns` y `/progress` (tipos desde `gen.ts`). _(`lib/query/analytics.ts`: `useErrorPatternStats(window)` y `useProgressSeries(window)`, tipados desde `gen.ts` (F1), con `window` en la key. `/progress` responde `501 not_implemented` (diferido a Fase 6) y el dashboard lo renderiza con un placeholder graceful; sin cambio de wire (A12).)_
+- [x] `5.4.2` Visualizar frecuencia de `ErrorPattern` y alerta del error recurrente (PRODUCT_DOMAIN §8.1). _(`features/analytics/`: `analytics-dashboard.tsx` (selector de ventana day/week/month vía Zustand), `error-pattern-frequency.tsx` (barras horizontales accesibles + count + `last_seen_at`) y `recurring-error-alert.tsx` (banner del patrón más frecuente). Ruta `/analytics` + enlace en la home.)_
+- [x] `5.4.3` El cliente **no** reimplementa reglas de clasificación/análisis (F11). _(El cliente solo consume `count`/`last_seen_at` ya agregados por el backend; "más frecuente" = `mostFrequentPattern` (max `count`, presentación) y los labels de código son UI. Las reglas de clasificación/severidad viven en el backend.)_
 
 ## 5.5 Tests
 

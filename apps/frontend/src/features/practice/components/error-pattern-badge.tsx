@@ -1,19 +1,8 @@
 import { Tooltip } from "@/components/ui/tooltip";
 import type { components } from "@/lib/api/gen";
+import { errorPatternLabel } from "@/lib/utils/error-patterns";
 
 type ErrorPattern = components["schemas"]["ErrorPattern"];
-
-const CODE_LABELS: Record<ErrorPattern["code"], string> = {
-  infinitive_conjugation: "infinitivo/conjugación",
-  passive_voice_misuse: "voz pasiva",
-  idiom_literal_translation: "modismo literal",
-  preposition_infinitive: "preposición + infinitivo",
-  pronoun_possession: "pronombre/posesión",
-  false_friend: "falso amigo",
-  lexical_choice: "elección léxica",
-  word_order: "orden de palabras",
-  tense_agreement: "tiempo/concordancia",
-};
 
 const SEVERITY_LABELS: Record<ErrorPattern["severity"], string> = {
   minor: "leve",
@@ -28,7 +17,7 @@ const SEVERITY_CLASSES: Record<ErrorPattern["severity"], string> = {
 };
 
 export function ErrorPatternBadge({ pattern }: { pattern: ErrorPattern }) {
-  const label = CODE_LABELS[pattern.code];
+  const label = errorPatternLabel(pattern.code);
   const severity = SEVERITY_LABELS[pattern.severity];
   const description =
     pattern.note !== undefined && pattern.note.length > 0
