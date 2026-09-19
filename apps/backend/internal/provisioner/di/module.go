@@ -16,6 +16,7 @@ import (
 	"github.com/c0mp1lerworld/langlint/backend/internal/provisioner/services"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/config"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/db"
+	"github.com/c0mp1lerworld/langlint/backend/internal/shared/pseudonymizer"
 	"github.com/c0mp1lerworld/langlint/backend/migrations"
 )
 
@@ -24,6 +25,7 @@ func Module() fx.Option {
 	return fx.Options(
 		fx.Provide(
 			newPool,
+			newPseudonymizer,
 			newAnalyticsSourceRepository,
 			newErrorMetricRepository,
 			newRawDataRepository,
@@ -59,16 +61,21 @@ func newAnalyticsSourceRepository(pool *pgxpool.Pool) storage.AnalyticsSourceRep
 	return repositories.NewAnalyticsSourceRepository(pool)
 }
 
-func newErrorMetricRepository(pool *pgxpool.Pool) storage.ErrorMetricRepository {
-	return repositories.NewErrorMetricRepository(pool)
+func newErrorMetricRepository(pool *pgxpool.Pool, pseudonyms *pseudonymizer.Pseudonymizer) storage.ErrorMetricRepository {
+	return repositories.NewErrorMetricRepository(pool, pseudonyms)
 }
 
 func newRawDataRepository(pool *pgxpool.Pool) storage.RawDataRepository {
 	return repositories.NewRawDataRepository(pool)
 }
 
-func newDeletionRepository(pool *pgxpool.Pool) storage.DeletionRepository {
-	return repositories.NewDeletionRepository(pool)
+func newDeletionRepository(pool *pgxpool.Pool, pseudonyms *pseudonymizer.Pseudonymizer) storage.DeletionRepository {
+	return repositories.NewDeletionRepository(pool, pseudonyms)
+}
+
+// newPseudonymizer builds the HMAC keyed with APP_PSEUDONYM_SECRET (A8).
+func newPseudonymizer(cfg config.ProvisionerConfig) (*pseudonymizer.Pseudonymizer, error) {
+	return pseudonymizer.New(cfg.PseudonymSecret)
 }
 
 func newPurgeRawDataService(raw storage.RawDataRepository, cfg config.ProvisionerConfig) *services.PurgeRawDataService {

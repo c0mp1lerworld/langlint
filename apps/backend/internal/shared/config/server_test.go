@@ -16,6 +16,7 @@ func TestLoadServerConfig_AllValues_ReturnsConfig(t *testing.T) {
 	t.Setenv(config.EnvUserEmail, "student@example.com")
 	t.Setenv(config.EnvLLMTimeout, "5s")
 	t.Setenv(config.EnvCORSAllowedOrigins, "http://localhost:3000, https://app.langlint.dev")
+	t.Setenv(config.EnvPseudonymSecret, "test-secret")
 
 	cfg, err := config.LoadServerConfig()
 	if err != nil {
@@ -42,12 +43,16 @@ func TestLoadServerConfig_AllValues_ReturnsConfig(t *testing.T) {
 		cfg.CORSAllowedOrigins[1] != "https://app.langlint.dev" {
 		t.Fatalf("CORSAllowedOrigins = %v", cfg.CORSAllowedOrigins)
 	}
+	if cfg.PseudonymSecret != "test-secret" {
+		t.Fatalf("PseudonymSecret = %q, want test-secret", cfg.PseudonymSecret)
+	}
 }
 
 func TestLoadServerConfig_Defaults_AppliesHTTPAddrAndTimeout(t *testing.T) {
 	t.Setenv(config.EnvDatabaseURL, "postgres://localhost/langlint")
 	t.Setenv(config.EnvUserID, domain.MustNewID().String())
 	t.Setenv(config.EnvUserEmail, "student@example.com")
+	t.Setenv(config.EnvPseudonymSecret, "test-secret")
 
 	cfg, err := config.LoadServerConfig()
 	if err != nil {
@@ -119,7 +124,19 @@ func TestLoadServerConfig_InvalidTimeout_ReturnsError(t *testing.T) {
 	t.Setenv(config.EnvDatabaseURL, "postgres://localhost/langlint")
 	t.Setenv(config.EnvUserID, domain.MustNewID().String())
 	t.Setenv(config.EnvUserEmail, "student@example.com")
+	t.Setenv(config.EnvPseudonymSecret, "test-secret")
 	t.Setenv(config.EnvLLMTimeout, "not-a-duration")
+
+	if _, err := config.LoadServerConfig(); err == nil {
+		t.Fatal("LoadServerConfig() error = nil, want error")
+	}
+}
+
+func TestLoadServerConfig_MissingPseudonymSecret_ReturnsError(t *testing.T) {
+	t.Setenv(config.EnvDatabaseURL, "postgres://localhost/langlint")
+	t.Setenv(config.EnvUserID, domain.MustNewID().String())
+	t.Setenv(config.EnvUserEmail, "student@example.com")
+	t.Setenv(config.EnvPseudonymSecret, "")
 
 	if _, err := config.LoadServerConfig(); err == nil {
 		t.Fatal("LoadServerConfig() error = nil, want error")

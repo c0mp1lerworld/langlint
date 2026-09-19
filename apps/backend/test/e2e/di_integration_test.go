@@ -30,11 +30,12 @@ func TestDI_ModuleStartsAndStops(t *testing.T) {
 		t.Fatalf("NewEmail() error = %v", err)
 	}
 	serverCfg := config.ServerConfig{
-		DatabaseURL: pool.Config().ConnString(),
-		HTTPAddr:    "127.0.0.1:0",
-		UserID:      domain.MustNewID(),
-		UserEmail:   email,
-		LLMTimeout:  time.Second,
+		DatabaseURL:     pool.Config().ConnString(),
+		HTTPAddr:        "127.0.0.1:0",
+		UserID:          domain.MustNewID(),
+		UserEmail:       email,
+		LLMTimeout:      time.Second,
+		PseudonymSecret: "test-secret",
 	}
 	openaiCfg := config.OpenAIConfig{APIKey: "test-key", Model: "test-model", ModelVersion: "test-version"}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))

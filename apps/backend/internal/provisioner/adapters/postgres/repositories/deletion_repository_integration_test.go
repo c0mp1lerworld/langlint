@@ -17,7 +17,7 @@ import (
 func TestPostgresDeletionRepository_ListPending_OnlyUnexecuted(t *testing.T) {
 	resetDB(t)
 	ctx := context.Background()
-	repo := repositories.NewDeletionRepository(pool)
+	repo := repositories.NewDeletionRepository(pool, testPseudonyms)
 	userID := domain.MustNewID()
 	now := time.Now().UTC()
 
@@ -37,7 +37,7 @@ func TestPostgresDeletionRepository_ListPending_OnlyUnexecuted(t *testing.T) {
 func TestPostgresDeletionRepository_Execute_PurgesUserAndMarksExecuted(t *testing.T) {
 	resetDB(t)
 	ctx := context.Background()
-	repo := repositories.NewDeletionRepository(pool)
+	repo := repositories.NewDeletionRepository(pool, testPseudonyms)
 	userID := domain.MustNewID()
 	otherUserID := domain.MustNewID()
 	now := time.Now().UTC()
@@ -67,7 +67,7 @@ func TestPostgresDeletionRepository_Execute_PurgesUserAndMarksExecuted(t *testin
 
 func TestPostgresDeletionRepository_Execute_RequiresExecutedAt(t *testing.T) {
 	resetDB(t)
-	repo := repositories.NewDeletionRepository(pool)
+	repo := repositories.NewDeletionRepository(pool, testPseudonyms)
 
 	pending, err := identity.NewDeletionRequest(domain.MustNewID(), time.Now().UTC())
 	require.NoError(t, err)

@@ -20,9 +20,10 @@ func TestProvisionerDI_ModuleStartsAndStops(t *testing.T) {
 	pool := startPool(t)
 
 	cfg := config.ProvisionerConfig{
-		DatabaseURL:   pool.Config().ConnString(),
-		RawRetention:  30 * day,
-		DeletionGrace: 30 * day,
+		DatabaseURL:     pool.Config().ConnString(),
+		RawRetention:    30 * day,
+		DeletionGrace:   30 * day,
+		PseudonymSecret: "test-secret",
 	}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 

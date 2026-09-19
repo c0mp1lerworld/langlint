@@ -22,18 +22,18 @@
 
 ## 6.3 Retención y pseudonimización
 
-- [ ] `6.3.1` Implementar `pseudonymizer.go` (HMAC-SHA256 con `APP_PSEUDONYM_SECRET` antes de analytics, A8).
-- [ ] `6.3.2` Separar datos crudos en tablas dedicadas con retención limitada (A8).
-- [ ] `6.3.3` Verificar que el `PIIHandler` es guard runtime en todos los logs (A8).
+- [x] `6.3.1` Implementar `pseudonymizer.go` (HMAC-SHA256 con `APP_PSEUDONYM_SECRET` antes de analytics, A8). _(Vive en `internal/shared/pseudonymizer/` y no en `api/services/` porque el provisioner también materializa/borra analytics y `api`↔`provisioner` no se importan (A2/A3). `error_metrics.user_id` pasa a `text` (migración `000004`) y se pseudonimiza en los **adaptadores**: `Upsert`/`ListByUser` (API), `ReplaceAll` (`refresh-aggregates`) y el `DELETE` de `error_metrics` en `Execute` (`execute-deletions`). Dominio, puertos y services intactos.)_
+- [x] `6.3.2` Separar datos crudos en tablas dedicadas con retención limitada (A8). _(Los datos crudos viven en `practices`/`analyses` (tablas dedicadas) y se purgan con `purge-raw-data`/`execute-deletions` (6.1). Se certifica con el test Tier 3 `TestPrivacy_RawDataSeparatedFromAnalytics`: analytics solo lleva la clave pseudonimizada, sin texto crudo, y la purga/olvido eliminan todo rastro (incl. `error_metrics` por pseudónimo).)_
+- [x] `6.3.3` Verificar que el `PIIHandler` es guard runtime en todos los logs (A8). _(Auditoría: los únicos loggers de producción (`cmd/api`, `cmd/provisioner`) se construyen con `logger.New`, que envuelve `PIIHandler`; el resto de `slog.New` son tests con `io.Discard`. Se añade `ops/scripts/pii_audit.sh` — grep defensivo de email/teléfono/API-key/JWT sobre logs, exit ≠0 si hay PII.)_
 
 ---
 
 ## ✅ Gate de salida
 
-- [ ] Endpoints A9 operativos y testeados (export/delete/access-log).
-- [ ] `purge-raw-data` y `execute-deletions` cubiertos por tests Tier 3 (testcontainers).
-- [ ] Ningún log contiene PII en crudo (auditoría `ops/scripts/pii_audit.sh`).
-- [ ] `pnpm test-integration --filter=backend` en verde.
+- [x] Endpoints A9 operativos y testeados (export/delete/access-log).
+- [x] `purge-raw-data` y `execute-deletions` cubiertos por tests Tier 3 (testcontainers).
+- [x] Ningún log contiene PII en crudo (auditoría `ops/scripts/pii_audit.sh`).
+- [x] `pnpm test-integration --filter=backend` en verde.
 
 ## Fuente normativa
 

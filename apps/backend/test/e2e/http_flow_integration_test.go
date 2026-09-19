@@ -59,7 +59,7 @@ func newRouter(t *testing.T, pool *pgxpool.Pool, userID domain.ID) http.Handler 
 
 	practices := repositories.NewPracticeRepository(pool)
 	analyses := repositories.NewAnalysisRepository(pool)
-	metrics := repositories.NewErrorMetricRepository(pool)
+	metrics := repositories.NewErrorMetricRepository(pool, testPseudonymizer(t))
 	deletions := repositories.NewDeletionRequestRepository(pool)
 	accessLog := repositories.NewAccessLogRepository(pool)
 	uow := postgres.NewUnitOfWork(pool)

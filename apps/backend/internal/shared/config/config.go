@@ -15,6 +15,20 @@ const (
 	EnvOpenAIBaseURL      = "OPENAI_BASE_URL"
 )
 
+// EnvPseudonymSecret keys the HMAC-SHA256 that pseudonymizes identifiers before
+// they are materialized in analytics (A8).
+const EnvPseudonymSecret = "APP_PSEUDONYM_SECRET"
+
+// LoadPseudonymSecret reads the analytics pseudonymization secret. It is
+// required and must not be empty, otherwise pseudonyms would be unkeyed.
+func LoadPseudonymSecret() (string, error) {
+	secret := os.Getenv(EnvPseudonymSecret)
+	if secret == "" {
+		return "", fmt.Errorf("%s is required", EnvPseudonymSecret)
+	}
+	return secret, nil
+}
+
 // OpenAIConfig is the configuration of the LLM adapter (PRODUCT_DOMAIN §6.1).
 type OpenAIConfig struct {
 	APIKey       string

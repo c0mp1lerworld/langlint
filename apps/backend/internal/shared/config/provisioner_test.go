@@ -11,6 +11,7 @@ func TestLoadProvisionerConfig_AllValues_ReturnsConfig(t *testing.T) {
 	t.Setenv(config.EnvDatabaseURL, "postgres://localhost/langlint")
 	t.Setenv(config.EnvRawRetentionDays, "7")
 	t.Setenv(config.EnvDeletionGraceDays, "45")
+	t.Setenv(config.EnvPseudonymSecret, "test-secret")
 
 	cfg, err := config.LoadProvisionerConfig()
 	if err != nil {
@@ -32,6 +33,7 @@ func TestLoadProvisionerConfig_Defaults_AppliesThirtyDays(t *testing.T) {
 	t.Setenv(config.EnvDatabaseURL, "postgres://localhost/langlint")
 	t.Setenv(config.EnvRawRetentionDays, "")
 	t.Setenv(config.EnvDeletionGraceDays, "")
+	t.Setenv(config.EnvPseudonymSecret, "test-secret")
 
 	cfg, err := config.LoadProvisionerConfig()
 	if err != nil {
@@ -49,6 +51,7 @@ func TestLoadProvisionerConfig_Defaults_AppliesThirtyDays(t *testing.T) {
 func TestLoadProvisionerConfig_ZeroDays_Allowed(t *testing.T) {
 	t.Setenv(config.EnvDatabaseURL, "postgres://localhost/langlint")
 	t.Setenv(config.EnvRawRetentionDays, "0")
+	t.Setenv(config.EnvPseudonymSecret, "test-secret")
 
 	cfg, err := config.LoadProvisionerConfig()
 	if err != nil {
@@ -56,6 +59,15 @@ func TestLoadProvisionerConfig_ZeroDays_Allowed(t *testing.T) {
 	}
 	if cfg.RawRetention != 0 {
 		t.Fatalf("RawRetention = %v, want 0", cfg.RawRetention)
+	}
+}
+
+func TestLoadProvisionerConfig_MissingPseudonymSecret_ReturnsError(t *testing.T) {
+	t.Setenv(config.EnvDatabaseURL, "postgres://localhost/langlint")
+	t.Setenv(config.EnvPseudonymSecret, "")
+
+	if _, err := config.LoadProvisionerConfig(); err == nil {
+		t.Fatal("LoadProvisionerConfig() error = nil, want error")
 	}
 }
 

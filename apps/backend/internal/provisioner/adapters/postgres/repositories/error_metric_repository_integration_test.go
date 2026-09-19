@@ -17,7 +17,7 @@ import (
 func TestPostgresErrorMetricRepository_ReplaceAll_RewritesTable(t *testing.T) {
 	resetDB(t)
 	ctx := context.Background()
-	repo := repositories.NewErrorMetricRepository(pool)
+	repo := repositories.NewErrorMetricRepository(pool, testPseudonyms)
 	userID := domain.MustNewID()
 	now := time.Now().UTC()
 	insertErrorMetric(t, userID, "word_order", "week", 5, now)
@@ -37,7 +37,7 @@ func TestPostgresErrorMetricRepository_ReplaceAll_RewritesTable(t *testing.T) {
 func TestPostgresErrorMetricRepository_ReplaceAll_EmptyWipesTable(t *testing.T) {
 	resetDB(t)
 	ctx := context.Background()
-	repo := repositories.NewErrorMetricRepository(pool)
+	repo := repositories.NewErrorMetricRepository(pool, testPseudonyms)
 	userID := domain.MustNewID()
 	insertErrorMetric(t, userID, "word_order", "week", 5, time.Now().UTC())
 
@@ -49,7 +49,7 @@ func TestPostgresErrorMetricRepository_ReplaceAll_EmptyWipesTable(t *testing.T) 
 func TestPostgresErrorMetricRepository_ReplaceAll_MultipleWindowsAndUsers(t *testing.T) {
 	resetDB(t)
 	ctx := context.Background()
-	repo := repositories.NewErrorMetricRepository(pool)
+	repo := repositories.NewErrorMetricRepository(pool, testPseudonyms)
 	first, second := domain.MustNewID(), domain.MustNewID()
 	now := time.Now().UTC()
 

@@ -39,6 +39,7 @@ type ServerConfig struct {
 	UserEmail          identity.Email
 	LLMTimeout         time.Duration
 	CORSAllowedOrigins []string
+	PseudonymSecret    string
 }
 
 // LoadDatabaseURL reads the Postgres connection string. It is required.
@@ -77,12 +78,18 @@ func LoadServerConfig() (ServerConfig, error) {
 		return ServerConfig{}, fmt.Errorf("%s is not a valid email: %w", EnvUserEmail, err)
 	}
 
+	pseudonymSecret, err := LoadPseudonymSecret()
+	if err != nil {
+		return ServerConfig{}, err
+	}
+
 	cfg := ServerConfig{
-		DatabaseURL: databaseURL,
-		HTTPAddr:    os.Getenv(EnvHTTPAddr),
-		UserID:      userID,
-		UserEmail:   userEmail,
-		LLMTimeout:  defaultLLMTimeout,
+		DatabaseURL:     databaseURL,
+		HTTPAddr:        os.Getenv(EnvHTTPAddr),
+		UserID:          userID,
+		UserEmail:       userEmail,
+		LLMTimeout:      defaultLLMTimeout,
+		PseudonymSecret: pseudonymSecret,
 	}
 	if cfg.HTTPAddr == "" {
 		cfg.HTTPAddr = defaultHTTPAddr

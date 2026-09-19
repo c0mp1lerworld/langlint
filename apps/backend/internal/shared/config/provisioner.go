@@ -24,9 +24,10 @@ const (
 // before purge-raw-data removes it (A8); DeletionGrace is how long a deletion
 // request waits before execute-deletions materializes it (A9).
 type ProvisionerConfig struct {
-	DatabaseURL   string
-	RawRetention  time.Duration
-	DeletionGrace time.Duration
+	DatabaseURL     string
+	RawRetention    time.Duration
+	DeletionGrace   time.Duration
+	PseudonymSecret string
 }
 
 // LoadProvisionerConfig reads the provisioner settings from the environment.
@@ -46,10 +47,16 @@ func LoadProvisionerConfig() (ProvisionerConfig, error) {
 		return ProvisionerConfig{}, err
 	}
 
+	pseudonymSecret, err := LoadPseudonymSecret()
+	if err != nil {
+		return ProvisionerConfig{}, err
+	}
+
 	return ProvisionerConfig{
-		DatabaseURL:   databaseURL,
-		RawRetention:  daysToDuration(retentionDays),
-		DeletionGrace: daysToDuration(graceDays),
+		DatabaseURL:     databaseURL,
+		RawRetention:    daysToDuration(retentionDays),
+		DeletionGrace:   daysToDuration(graceDays),
+		PseudonymSecret: pseudonymSecret,
 	}, nil
 }
 

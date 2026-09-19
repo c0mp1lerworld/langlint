@@ -14,10 +14,23 @@ import (
 
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/analysis"
+	"github.com/c0mp1lerworld/langlint/backend/internal/shared/pseudonymizer"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/testdb"
 )
 
 var pool *pgxpool.Pool
+
+// testPseudonyms keys the analytics rows the tests seed, mirroring production
+// (A8).
+var testPseudonyms = mustPseudonymizer()
+
+func mustPseudonymizer() *pseudonymizer.Pseudonymizer {
+	p, err := pseudonymizer.New("test-secret")
+	if err != nil {
+		panic(err)
+	}
+	return p
+}
 
 func TestMain(m *testing.M) {
 	p, cleanup, err := testdb.Start()
@@ -68,7 +81,7 @@ func insertErrorMetric(t *testing.T, userID domain.ID, code, window string, coun
 	t.Helper()
 	_, err := pool.Exec(context.Background(),
 		`INSERT INTO error_metrics (user_id, code, "window", count, last_seen_at) VALUES ($1, $2, $3, $4, $5)`,
-		userID.String(), code, window, count, lastSeen)
+		testPseudonyms.Pseudonymize(userID.String()), code, window, count, lastSeen)
 	require.NoError(t, err)
 }
 
@@ -114,7 +127,7 @@ type metricRow struct {
 func listErrorMetrics(t *testing.T, userID domain.ID) []metricRow {
 	t.Helper()
 	rows, err := pool.Query(context.Background(),
-		`SELECT code, count FROM error_metrics WHERE user_id = $1 ORDER BY code`, userID.String())
+		`SELECT code, count FROM error_metrics WHERE user_id = $1 ORDER BY code`, testPseudonyms.Pseudonymize(userID.String()))
 	require.NoError(t, err)
 	defer rows.Close()
 

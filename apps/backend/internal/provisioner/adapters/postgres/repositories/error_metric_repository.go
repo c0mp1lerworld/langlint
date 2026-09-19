@@ -8,18 +8,22 @@ import (
 
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/analytics"
 	"github.com/c0mp1lerworld/langlint/backend/internal/provisioner/ports/storage"
+	"github.com/c0mp1lerworld/langlint/backend/internal/shared/pseudonymizer"
 )
 
-// PostgresErrorMetricRepository implements storage.ErrorMetricRepository.
+// PostgresErrorMetricRepository implements storage.ErrorMetricRepository. It
+// materializes the user id pseudonymized, so the rebuilt metrics match the keys
+// the API reads (A8).
 type PostgresErrorMetricRepository struct {
-	pool *pgxpool.Pool
+	pool          *pgxpool.Pool
+	pseudonymizer *pseudonymizer.Pseudonymizer
 }
 
 var _ storage.ErrorMetricRepository = (*PostgresErrorMetricRepository)(nil)
 
 // NewErrorMetricRepository builds a repository over the given pool.
-func NewErrorMetricRepository(pool *pgxpool.Pool) *PostgresErrorMetricRepository {
-	return &PostgresErrorMetricRepository{pool: pool}
+func NewErrorMetricRepository(pool *pgxpool.Pool, pseudonyms *pseudonymizer.Pseudonymizer) *PostgresErrorMetricRepository {
+	return &PostgresErrorMetricRepository{pool: pool, pseudonymizer: pseudonyms}
 }
 
 // ReplaceAll wipes the materialized metrics and rewrites them from the source of
@@ -43,7 +47,7 @@ VALUES ($1, $2, $3, $4, $5)`
 	if len(metrics) > 0 {
 		batch := &pgx.Batch{}
 		for _, m := range metrics {
-			batch.Queue(insert, m.UserID.String(), string(m.Code), m.Window.String(), m.Count, m.LastSeenAt)
+			batch.Queue(insert, r.pseudonymizer.Pseudonymize(m.UserID.String()), string(m.Code), m.Window.String(), m.Count, m.LastSeenAt)
 		}
 
 		results := tx.SendBatch(ctx, batch)

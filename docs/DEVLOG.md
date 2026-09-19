@@ -4,6 +4,35 @@
 
 ---
 
+## 2026-09-19 — Fase 6.3: retención y pseudonimización — Gate de Fase 6 (6.3.1–6.3.3)
+
+**Estado**: bloque `6.3` completado y **Gate de Fase 6 en verde**. `go build/vet/test -race` (Tier 1+2+3) OK; `pnpm test-integration --filter=backend` OK; `pnpm lint` (3/3), `pnpm test`, `pnpm typecheck --filter=frontend` y `pnpm build` (3/3) en verde. Sin cambio de wire (A12; `pnpm generate` idempotente).
+
+**Hecho**:
+- `6.3.1` `internal/shared/pseudonymizer/pseudonymizer.go`: `Pseudonymize(id) = hex(HMAC-SHA256(secret, id))`, stdlib puro; config `APP_PSEUDONYM_SECRET` (requerida) en `ServerConfig` y `ProvisionerConfig` y en `.env.example`; migración `000004` (`error_metrics.user_id` `uuid → text`). La pseudonimización se aplica en los **adaptadores**: `Upsert`/`ListByUser` (API), `ReplaceAll` (`refresh-aggregates`) y el `DELETE FROM error_metrics` de `Execute` (`execute-deletions`). Dominio, puertos y services sin cambios; mocks no regenerados.
+- `6.3.2` Separación de datos crudos verificada y documentada: `practices`/`analyses` son las tablas crudas y se purgan (`purge-raw-data`/`execute-deletions`); nuevo test Tier 3 `TestPrivacy_RawDataSeparatedFromAnalytics` certifica que analytics (`error_metrics`) solo lleva la clave pseudonimizada, sin texto crudo, y que el olvido elimina todo rastro.
+- `6.3.3` Auditoría del `PIIHandler` como guard runtime: los únicos loggers de producción (`cmd/api`, `cmd/provisioner`) pasan por `logger.New` (envuelve `PIIHandler`); el resto de `slog.New` son tests con `io.Discard`. Nuevo `ops/scripts/pii_audit.sh` (grep defensivo de email/teléfono/API-key/JWT sobre logs, redacta las coincidencias y falla con exit 1).
+
+**Decisiones**:
+- **Pseudonimizador en `shared/`, no en `api/services/`** (desviación documentada del path del manifiesto A8): `refresh-aggregates` y `execute-deletions` (provisioner) también escriben/borran analytics, y `api`↔`provisioner` no se importan (A2/A3). Manifiesto §3.3 autoriza lo genuinamente transversal en `shared/`.
+- **Pseudonimización en adaptadores, no en services** (acordado): HMAC es una función pura y un detalle de keying del almacén; mantiene `analytics.ErrorMetric.UserID domain.ID` y evita tocar dominio/puertos/mocks. La lectura (`ListByUser`) deriva el mismo pseudónimo y devuelve el id crudo del caller.
+- **`error_metrics.user_id` `uuid → text`**: tabla derivada (la reconstruye `refresh-aggregates`), por lo que el cambio de tipo es seguro; el `down` trunca y revierte.
+- **`access_events`/`deletion_requests` conservan `user_id` crudo**: son identidad/auditoría (A9/A4), no analytics; la pseudonimización aplica solo a la materialización de analytics.
+- **`pii_audit.sh` espeja los patrones del `PIIHandler`** (email/teléfono/API-key/JWT) y redacta el hallazgo antes de imprimirlo, para no filtrar PII en el propio log de CI.
+
+**Verificación**:
+- `go build ./...` · `go vet ./...` (+ `-tags=integration`) · `go test -race -count=1 ./...` · `go test -race -count=1 -tags=integration ./...` → OK.
+- `pnpm test-integration --filter=backend` → OK (Tier 3; incluido el nuevo test de separación).
+- `pnpm lint` (3/3) · `pnpm test` · `pnpm typecheck --filter=frontend` · `pnpm build` (3/3) → OK.
+- `pnpm generate` idempotente; `gofmt -l` limpio.
+- `ops/scripts/pii_audit.sh` probado: log limpio → exit 0; log con email/API key → exit 1 con valores `[REDACTED]`.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 7 (Hardening/CI) o cerrar el gap de `/analytics/progress` (sigue en `501`; no tiene item en el checklist 06). El gate de Fase 6 queda íntegro en verde.
+
+---
+
 ## 2026-09-19 — Fase 6.2: endpoints A9 (export, olvido, access-log) (6.2.1–6.2.3)
 
 **Estado**: bloque `6.2` completado. `go build/vet/test -race` (Tier 1+2+3) en verde; `pnpm test-integration --filter=backend` OK; `pnpm lint` (3/3), `pnpm test`, `pnpm typecheck --filter=frontend` y `pnpm build` (3/3) en verde. Cambio de contrato A12 (se quitó el `501` de los 3 endpoints) con `pnpm generate` idempotente.

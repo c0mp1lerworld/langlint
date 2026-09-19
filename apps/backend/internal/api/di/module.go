@@ -31,6 +31,7 @@ import (
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/config"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/db"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/httpx"
+	"github.com/c0mp1lerworld/langlint/backend/internal/shared/pseudonymizer"
 	"github.com/c0mp1lerworld/langlint/backend/migrations"
 )
 
@@ -42,6 +43,7 @@ func Module() fx.Option {
 	return fx.Options(
 		fx.Provide(
 			newPool,
+			newPseudonymizer,
 			newPracticeRepository,
 			newAnalysisRepository,
 			newErrorMetricRepository,
@@ -99,8 +101,13 @@ func newAnalysisRepository(pool *pgxpool.Pool) storage.AnalysisRepository {
 	return repositories.NewAnalysisRepository(pool)
 }
 
-func newErrorMetricRepository(pool *pgxpool.Pool) storage.ErrorMetricRepository {
-	return repositories.NewErrorMetricRepository(pool)
+func newErrorMetricRepository(pool *pgxpool.Pool, pseudonyms *pseudonymizer.Pseudonymizer) storage.ErrorMetricRepository {
+	return repositories.NewErrorMetricRepository(pool, pseudonyms)
+}
+
+// newPseudonymizer builds the HMAC keyed with APP_PSEUDONYM_SECRET (A8).
+func newPseudonymizer(cfg config.ServerConfig) (*pseudonymizer.Pseudonymizer, error) {
+	return pseudonymizer.New(cfg.PseudonymSecret)
 }
 
 func newDeletionRequestRepository(pool *pgxpool.Pool) storage.DeletionRequestRepository {

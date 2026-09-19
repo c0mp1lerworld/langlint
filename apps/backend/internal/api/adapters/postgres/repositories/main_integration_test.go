@@ -14,6 +14,7 @@ import (
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/adapters/postgres/repositories"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/practice"
+	"github.com/c0mp1lerworld/langlint/backend/internal/shared/pseudonymizer"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/testdb"
 )
 
@@ -35,6 +36,23 @@ func resetDB(t *testing.T) {
 	_, err := pool.Exec(context.Background(),
 		"TRUNCATE practices, analyses, error_metrics, outbox_events, deletion_requests, access_events")
 	require.NoError(t, err)
+}
+
+// testPseudonymizer builds the HMAC the repositories use to key analytics (A8).
+func testPseudonymizer(t *testing.T) *pseudonymizer.Pseudonymizer {
+	t.Helper()
+	p, err := pseudonymizer.New("test-secret")
+	require.NoError(t, err)
+	return p
+}
+
+// storedMetricUserKey returns the analytics key of the only error metric.
+func storedMetricUserKey(t *testing.T) string {
+	t.Helper()
+	var key string
+	require.NoError(t, pool.QueryRow(context.Background(),
+		`SELECT user_id FROM error_metrics LIMIT 1`).Scan(&key))
+	return key
 }
 
 func mustPractice(t *testing.T, userID domain.ID, createdAt time.Time) *practice.Practice {

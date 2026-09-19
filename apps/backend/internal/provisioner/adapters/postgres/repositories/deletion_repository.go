@@ -10,18 +10,22 @@ import (
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/identity"
 	"github.com/c0mp1lerworld/langlint/backend/internal/provisioner/ports/storage"
+	"github.com/c0mp1lerworld/langlint/backend/internal/shared/pseudonymizer"
 )
 
-// PostgresDeletionRepository implements storage.DeletionRepository.
+// PostgresDeletionRepository implements storage.DeletionRepository. Raw tables
+// are keyed by the raw user id; analytics (error_metrics) are keyed by the
+// pseudonym, so the purge must derive it too (A8/A9).
 type PostgresDeletionRepository struct {
-	pool *pgxpool.Pool
+	pool          *pgxpool.Pool
+	pseudonymizer *pseudonymizer.Pseudonymizer
 }
 
 var _ storage.DeletionRepository = (*PostgresDeletionRepository)(nil)
 
 // NewDeletionRepository builds a repository over the given pool.
-func NewDeletionRepository(pool *pgxpool.Pool) *PostgresDeletionRepository {
-	return &PostgresDeletionRepository{pool: pool}
+func NewDeletionRepository(pool *pgxpool.Pool, pseudonyms *pseudonymizer.Pseudonymizer) *PostgresDeletionRepository {
+	return &PostgresDeletionRepository{pool: pool, pseudonymizer: pseudonyms}
 }
 
 // ListPending returns the deletion requests that have not been executed yet.
@@ -97,7 +101,7 @@ WHERE practice_id IN (SELECT id FROM practices WHERE user_id = $1)`
 		return mapError("deletion_request", err)
 	}
 
-	if _, err := tx.Exec(ctx, `DELETE FROM error_metrics WHERE user_id = $1`, req.UserID.String()); err != nil {
+	if _, err := tx.Exec(ctx, `DELETE FROM error_metrics WHERE user_id = $1`, r.pseudonymizer.Pseudonymize(req.UserID.String())); err != nil {
 		return mapError("deletion_request", err)
 	}
 

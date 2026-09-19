@@ -16,10 +16,19 @@ import (
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/identity"
 	"github.com/c0mp1lerworld/langlint/backend/internal/provisioner/adapters/postgres/repositories"
 	"github.com/c0mp1lerworld/langlint/backend/internal/provisioner/services"
+	"github.com/c0mp1lerworld/langlint/backend/internal/shared/pseudonymizer"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/testdb"
 )
 
 const day = 24 * time.Hour
+
+// testPseudonymizer builds the HMAC that keys analytics rows in the tests (A8).
+func testPseudonymizer(t *testing.T) *pseudonymizer.Pseudonymizer {
+	t.Helper()
+	p, err := pseudonymizer.New("test-secret")
+	require.NoError(t, err)
+	return p
+}
 
 func seedPractice(t *testing.T, pool *pgxpool.Pool, userID domain.ID, deletedAt *time.Time) domain.ID {
 	t.Helper()
@@ -79,7 +88,7 @@ func TestProvisionerRefreshAggregates_RebuildsFromSourceOfTruth(t *testing.T) {
 
 	svc := services.NewRefreshAggregatesService(
 		repositories.NewAnalyticsSourceRepository(pool),
-		repositories.NewErrorMetricRepository(pool),
+		repositories.NewErrorMetricRepository(pool, testPseudonymizer(t)),
 	)
 	affected, err := svc.Refresh(ctx)
 	require.NoError(t, err)
@@ -130,7 +139,7 @@ func TestProvisionerExecuteDeletions_PurgesAfterGrace(t *testing.T) {
 		req.ID.String(), userID.String(), req.RequestedAt, req.ExecutedAt)
 	require.NoError(t, err)
 
-	svc := services.NewExecuteDeletionsService(repositories.NewDeletionRepository(pool), 30*day)
+	svc := services.NewExecuteDeletionsService(repositories.NewDeletionRepository(pool, testPseudonymizer(t)), 30*day)
 	executed, err := svc.Run(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 1, executed)
@@ -156,7 +165,7 @@ func TestProvisionerExecuteDeletions_WithinGrace_KeepsData(t *testing.T) {
 		req.ID.String(), userID.String(), req.RequestedAt, req.ExecutedAt)
 	require.NoError(t, err)
 
-	svc := services.NewExecuteDeletionsService(repositories.NewDeletionRepository(pool), 30*day)
+	svc := services.NewExecuteDeletionsService(repositories.NewDeletionRepository(pool, testPseudonymizer(t)), 30*day)
 	executed, err := svc.Run(ctx)
 	require.NoError(t, err)
 	require.Zero(t, executed)
