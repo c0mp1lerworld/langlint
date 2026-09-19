@@ -4,6 +4,34 @@
 
 ---
 
+## 2026-09-19 — Fase 5.4: verificación manual E2E del dashboard — fix CORS + fix `fetch` del cliente
+
+**Estado**: flujo verificado end-to-end en navegador real (Chromium headless + CDP) contra Postgres y OpenAI reales. Dos bugs de cableado **preexistentes** encontrados y corregidos (uno bloqueaba todo el frontend). `go build/vet/test` y `pnpm typecheck/lint/build` en verde.
+
+**Contexto**: se ejecutó la verificación manual de `5.4`: crear práctica → analizar → `GET /analytics/error-patterns` → render del dashboard en `/analytics`. Al probar en navegador aparecieron fallos que el walkthrough anterior había diferido ("revisión en navegador").
+
+**Hallazgos y fixes**:
+1. **CORS ausente (bloqueante)**: el backend no emitía cabeceras CORS; el navegador (origen `:3000` → API `:8080`) no podía leer las respuestas. Fix: middleware `httpx.CORS` (`internal/shared/httpx/cors.go`, responde preflight `OPTIONS` con `204`) + config `APP_CORS_ALLOWED_ORIGINS` (default `http://localhost:3000`, `config/server.go`) cableada en `di/module.go`. Tests `cors_test.go` + `server_test.go`. Documentado en `.env.example`.
+2. **`TypeError: Illegal invocation` en `client.ts` (bloqueante, afectaba a todo el frontend)**: `this.fetchImpl = options.fetchImpl ?? fetch` guardaba el `fetch` nativo desvinculado; al invocarlo como `this.fetchImpl(...)` el `this` era la instancia de `ApiClient` y el navegador lo rechazaba. Fix: `options.fetchImpl ?? ((input, init) => fetch(input, init))`. También rompía `/` y `/practices/[id]` (nunca antes verificados en navegador).
+3. **`NEXT_PUBLIC_API_URL` sin definir**: no existía ningún `.env.local`; Next no inlinea la variable no definida y no hay `process` en el navegador → `ReferenceError`. Se crea `apps/frontend/.env.local` (gitignored) con `NEXT_PUBLIC_API_URL=http://localhost:8080`. `.env.example` ya lo documentaba (5.1.5).
+4. **Dev server corrupto por `pnpm build` concurrente**: `next build` sobrescribió `.next/` mientras `next dev` seguía vivo → chunks (`main-app.js`, `app-pages-internals.js`) daban `404` y no hidrataba. Se reinició el dev server (operativo). Cuidado: no correr `build` con `dev` en marcha.
+
+**Verificación E2E (real)**:
+- API: `POST /practices` `201` → `POST /analyze` `202` → polling `analyzing`→`completed` (fragmento `tense_agreement`) → `GET /analytics/error-patterns?window=week` pasó de `count 1` a `count 2`; `day`/`month` coherentes.
+- Navegador (CDP): `/analytics` renderiza "Tu error más frecuente es tiempo/concordancia (2 veces)", la frecuencia con `2 veces`/`Última vez: 19 sept` y "La serie de progreso estará disponible próximamente (Fase 6)"; el selector `Día` mueve `aria-pressed` y refetch con `window=day`; `/` lista las prácticas (`GET /practices` 200).
+- Estático: `go build/vet` + `go test -count=1 ./...` OK; `pnpm typecheck --filter=frontend` (1/1), `pnpm lint` (3/3) y `pnpm build` (3/3, rutas `/` y `○ /analytics`) OK.
+
+**Decisiones**:
+- **CORS en el backend (no rewrites de Next)**: las apps se despliegan por separado (F3); las rutas del API colisionan con páginas (`/analytics`, `/practices`) y un proxy no es viable. Allow-list configurable por env.
+- **`httpx.CORS` como middleware de `NewRouter` vía `di`**: no se cambia la firma de `NewRouter`; se compone junto a `UserResolver`.
+- **Verificación con Chromium de la caché de Playwright + CDP sobre Node 24** (`WebSocket` global): sin instalar dependencias; permitió ver el DOM hidratado y la red. La infra de tests formal (Vitest/RTL/Playwright) llega en `5.5`.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 5, bloque `5.5` — Vitest (unit, empezando por `diffWords`, `mostFrequentPattern`, schemas y el cliente HTTP), RTL + axe-core y Playwright e2e. Añadir un test unitario del `ApiClient` (fetch inyectado) que habría atrapado el bug #2.
+
+---
+
 ## 2026-09-19 — Fase 5.4: dashboard de analíticas (5.4.1–5.4.3)
 
 **Estado**: bloque completado. `pnpm typecheck --filter=frontend` (1/1), `pnpm lint` (3/3) y `pnpm build` (3/3) en verde; nueva ruta `○ /analytics`. `pnpm generate` idempotente; **sin cambio de wire** (A12 no aplica).

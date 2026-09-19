@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
@@ -11,25 +12,29 @@ import (
 // Environment variables consumed by the HTTP API entry point. They keep the
 // project prefix APP_ (AP-MR4).
 const (
-	EnvDatabaseURL = "APP_DATABASE_URL"
-	EnvHTTPAddr    = "APP_HTTP_ADDR"
-	EnvUserID      = "APP_USER_ID"
-	EnvLLMTimeout  = "APP_LLM_TIMEOUT"
+	EnvDatabaseURL        = "APP_DATABASE_URL"
+	EnvHTTPAddr           = "APP_HTTP_ADDR"
+	EnvUserID             = "APP_USER_ID"
+	EnvLLMTimeout         = "APP_LLM_TIMEOUT"
+	EnvCORSAllowedOrigins = "APP_CORS_ALLOWED_ORIGINS"
 )
 
 const (
 	defaultHTTPAddr   = ":8080"
 	defaultLLMTimeout = 60 * time.Second
+	defaultCORSOrigin = "http://localhost:3000"
 )
 
 // ServerConfig is the configuration of the HTTP API entry point (cmd/api).
 // UserID resolves the single-user identity of the MVP: the wire contract has no
 // authentication (PRODUCT_DOMAIN §3.2), so the current user comes from config.
+// CORSAllowedOrigins lists the browser origins allowed to call the API (F3).
 type ServerConfig struct {
-	DatabaseURL string
-	HTTPAddr    string
-	UserID      domain.ID
-	LLMTimeout  time.Duration
+	DatabaseURL        string
+	HTTPAddr           string
+	UserID             domain.ID
+	LLMTimeout         time.Duration
+	CORSAllowedOrigins []string
 }
 
 // LoadDatabaseURL reads the Postgres connection string. It is required.
@@ -77,5 +82,23 @@ func LoadServerConfig() (ServerConfig, error) {
 		cfg.LLMTimeout = timeout
 	}
 
+	cfg.CORSAllowedOrigins = parseOrigins(os.Getenv(EnvCORSAllowedOrigins))
+
 	return cfg, nil
+}
+
+// parseOrigins splits a comma-separated allow-list, trimming blanks. When raw is
+// empty the local frontend origin is used as the development default.
+func parseOrigins(raw string) []string {
+	if raw == "" {
+		return []string{defaultCORSOrigin}
+	}
+	parts := strings.Split(raw, ",")
+	origins := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if origin := strings.TrimSpace(part); origin != "" {
+			origins = append(origins, origin)
+		}
+	}
+	return origins
 }

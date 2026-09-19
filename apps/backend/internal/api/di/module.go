@@ -164,6 +164,7 @@ func runEventBus(lc fx.Lifecycle, dispatcher *events.InMemoryEventDispatcher, re
 // application lifecycle.
 func registerHTTP(lc fx.Lifecycle, cfg config.ServerConfig, logger *slog.Logger, server *httpapi.Server, shutdowner fx.Shutdowner) {
 	router := httpx.NewRouter(logger)
+	router.Use(httpx.CORS(cfg.CORSAllowedOrigins))
 	router.Use(httpx.UserResolver(cfg.UserID))
 	httpapi.HandlerFromMux(server, router)
 

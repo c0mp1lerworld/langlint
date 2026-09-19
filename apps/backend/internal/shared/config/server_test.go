@@ -14,6 +14,7 @@ func TestLoadServerConfig_AllValues_ReturnsConfig(t *testing.T) {
 	t.Setenv(config.EnvHTTPAddr, ":9999")
 	t.Setenv(config.EnvUserID, userID.String())
 	t.Setenv(config.EnvLLMTimeout, "5s")
+	t.Setenv(config.EnvCORSAllowedOrigins, "http://localhost:3000, https://app.langlint.dev")
 
 	cfg, err := config.LoadServerConfig()
 	if err != nil {
@@ -32,6 +33,11 @@ func TestLoadServerConfig_AllValues_ReturnsConfig(t *testing.T) {
 	if cfg.LLMTimeout != 5*time.Second {
 		t.Fatalf("LLMTimeout = %v, want 5s", cfg.LLMTimeout)
 	}
+	if len(cfg.CORSAllowedOrigins) != 2 ||
+		cfg.CORSAllowedOrigins[0] != "http://localhost:3000" ||
+		cfg.CORSAllowedOrigins[1] != "https://app.langlint.dev" {
+		t.Fatalf("CORSAllowedOrigins = %v", cfg.CORSAllowedOrigins)
+	}
 }
 
 func TestLoadServerConfig_Defaults_AppliesHTTPAddrAndTimeout(t *testing.T) {
@@ -48,6 +54,9 @@ func TestLoadServerConfig_Defaults_AppliesHTTPAddrAndTimeout(t *testing.T) {
 	}
 	if cfg.LLMTimeout != 60*time.Second {
 		t.Fatalf("LLMTimeout = %v, want 60s", cfg.LLMTimeout)
+	}
+	if len(cfg.CORSAllowedOrigins) != 1 || cfg.CORSAllowedOrigins[0] != "http://localhost:3000" {
+		t.Fatalf("CORSAllowedOrigins = %v, want [http://localhost:3000]", cfg.CORSAllowedOrigins)
 	}
 }
 
