@@ -94,6 +94,7 @@ func (e ErrorPatternSeverity) Valid() bool {
 const (
 	ErrorResponseCodeAnalysisFailed  ErrorResponseCode = "analysis_failed"
 	ErrorResponseCodeAnalysisPending ErrorResponseCode = "analysis_pending"
+	ErrorResponseCodeInternal        ErrorResponseCode = "internal"
 	ErrorResponseCodeInvalidState    ErrorResponseCode = "invalid_state"
 	ErrorResponseCodeLlmUnavailable  ErrorResponseCode = "llm_unavailable"
 	ErrorResponseCodeNotFound        ErrorResponseCode = "not_found"
@@ -107,6 +108,8 @@ func (e ErrorResponseCode) Valid() bool {
 	case ErrorResponseCodeAnalysisFailed:
 		return true
 	case ErrorResponseCodeAnalysisPending:
+		return true
+	case ErrorResponseCodeInternal:
 		return true
 	case ErrorResponseCodeInvalidState:
 		return true

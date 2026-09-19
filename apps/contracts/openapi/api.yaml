@@ -193,6 +193,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProgressSeries'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
 
   /me/data/export:
     get:
@@ -345,6 +347,7 @@ components:
             - invalid_state
             - llm_unavailable
             - not_implemented
+            - internal
         message:
           type: string
 

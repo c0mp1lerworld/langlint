@@ -193,7 +193,7 @@ export interface components {
     schemas: {
         ErrorResponse: {
             /** @enum {string} */
-            code: "validation_error" | "not_found" | "analysis_pending" | "analysis_failed" | "invalid_state" | "llm_unavailable" | "not_implemented";
+            code: "validation_error" | "not_found" | "analysis_pending" | "analysis_failed" | "invalid_state" | "llm_unavailable" | "not_implemented" | "internal";
             message: string;
         };
         CreatePracticeRequest: {
@@ -623,6 +623,7 @@ export interface operations {
                     "application/json": components["schemas"]["ProgressSeries"];
                 };
             };
+            501: components["responses"]["NotImplemented"];
         };
     };
     export_data: {
