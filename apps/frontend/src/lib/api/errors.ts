@@ -58,3 +58,22 @@ export async function toApiError(response: Response): Promise<ApiError> {
 export function networkError(): ApiError {
   return new ApiError({ status: 0, message: "network_error" });
 }
+
+const ERROR_MESSAGES: Record<ErrorCode, string> = {
+  validation_error: "Revisa los campos del formulario.",
+  not_found: "No encontramos este recurso.",
+  analysis_pending: "El análisis ya está en curso.",
+  analysis_failed: "El análisis no pudo completarse.",
+  invalid_state: "La práctica no está en un estado válido para esta acción.",
+  llm_unavailable: "El motor de análisis no responde. Inténtalo de nuevo.",
+  not_implemented: "Esta función aún no está disponible.",
+  internal: "Ocurrió un error inesperado.",
+};
+
+export function userMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 0) return "No hay conexión con el servidor.";
+    if (error.code !== undefined) return ERROR_MESSAGES[error.code];
+  }
+  return "Ocurrió un error inesperado.";
+}
