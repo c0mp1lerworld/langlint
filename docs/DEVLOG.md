@@ -4,6 +4,39 @@
 
 ---
 
+## 2026-09-19 — Fase 5.2: cliente HTTP, TanStack Query, Zustand y Zod (5.2.1–5.2.6)
+
+**Estado**: bloque completado. `pnpm typecheck --filter=frontend`, `pnpm lint` (3 apps) y `pnpm build --filter=frontend` en verde; `pnpm generate` idempotente.
+
+**Hecho**:
+- `5.2.1` verificado: `gen.ts` ya está commiteado y `pnpm generate` es idempotente (sha256 estable); `api.yaml` intacto (A12).
+- `5.2.2` `lib/api/errors.ts`: `ErrorCode` (union del contrato), `ApiError{status, code}`, `toApiError(Response)` (parsea `ErrorResponse` sin exponer detalle de infraestructura, F5) y `networkError()`.
+- `5.2.2` `lib/api/client.ts`: `ApiClient` tipado contra `paths` (F1) con `get/post/put/patch/delete`, base URL desde `NEXT_PUBLIC_API_URL`, query params vía `URLSearchParams`, `buildPath()` para `{param}`, `AbortSignal`, auth inyectable (`getAuthToken`, no-op en el MVP single-user) y `request<T>` con normalización de errores a `ApiError`. Singleton `apiClient`.
+- `5.2.3` `isIdempotentSuccess(409, "analysis_pending")` + flag `ApiError.isIdempotentSuccess` + guard `isAnalysisPending` (AP-F6); lo consumirá la mutación `analyze` en 5.3.3.
+- `5.2.4` `lib/query/query-client.ts`: `makeQueryClient`/`getQueryClient` (singleton SSR-safe) con defaults `staleTime` 30s, `gcTime` 5min, `retry` 1, `refetchOnWindowFocus:false`. `app/providers.tsx` (`QueryClientProvider`, client component) cableado en `layout.tsx`.
+- `5.2.5` `lib/store/ui.ts`: `useUiStore` (Zustand v5) con estado de UI efímero; sin datos del API (F7/AP-F4).
+- `5.2.6` `lib/schemas/practice.ts`: schemas Zod (`targetRule`, `createPractice`, `updatePractice.partial()`) con aserciones compile-time `AssertAssignable<z.infer<...>, components["schemas"][...]>` (F8).
+- Deps añadidas: `@tanstack/react-query@5.103.1`, `zustand@5.0.15`, `zod@4.6.5`.
+
+**Decisiones**:
+- **Cliente `fetch` manual tipado, no `openapi-fetch`** (acordado con el humano): el checklist pide "fetch wrapper"; se evita una dependencia runtime extra y se mantiene el control del mapeo de errores (F5). El tipado contra `paths`/`components` viene de `gen.ts` (F1).
+- **`react-hook-form` diferido a 5.3**: el item 5.2.6 pide solo *schemas* Zod; el hook de formulario se añade cuando exista el formulario de práctica.
+- **Idempotencia en el mapper, no en el cliente**: `ApiError.isIdempotentSuccess` clasifica `409 analysis_pending`; el tratamiento como éxito se materializa en la mutación (5.3.3, F9). No se lanza excepción de éxito en el `fetch` genérico.
+- **Sin caché de API en Zustand**: el store solo contiene UI efímera (F7/AP-F4).
+- **Assertions de contrato en Zod (`AssertAssignable`)**: verifican en compilación que `z.infer` es asignable al tipo de `gen.ts`; se exportan para que ESLint no las marque como no usadas.
+
+**Verificación**:
+- `pnpm typecheck --filter=frontend` → OK (incluye las aserciones de contrato Zod).
+- `pnpm lint` → 3 successful (6 warnings conocidos del contrato `operation-4xx-response`).
+- `pnpm build --filter=frontend` → `next build` OK (4 páginas estáticas).
+- `pnpm generate` idempotente; sin cambio de wire (A12).
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 5, bloque `5.3` — vista diff de 3 columnas: componente de diff, paneles expandibles y polling del análisis con TanStack Query + optimistic update/rollback (consumiendo `apiClient`, `ApiError.isIdempotentSuccess` y los schemas Zod).
+
+---
+
 ## 2026-09-18 — Dev: Postgres de desarrollo (docker-compose) + fix de `APP_LLM_TIMEOUT`
 
 **Estado**: sin cambios de lógica; desbloqueo del arranque local del backend. Verificado en vivo: `docker compose up` → `go run ./cmd/migrate` → `go run ./cmd/api` → `POST /practices` 201 y `GET /practices` 200.

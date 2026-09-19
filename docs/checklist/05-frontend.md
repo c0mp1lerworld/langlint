@@ -32,12 +32,12 @@
 
 ## 5.2 Cliente, queries y store
 
-- [ ] `5.2.1` Generar `src/lib/api/gen.ts` (openapi-typescript, commiteado, no editable) — F1.
-- [ ] `5.2.2` Implementar `lib/api/client.ts` (fetch wrapper con auth + base URL) y `lib/api/errors.ts` (mapper de errores → UX) — F5.
-- [ ] `5.2.3` Tratar códigos idempotentes (`409 analysis_pending`) como éxito (AP-F6).
-- [ ] `5.2.4` Configurar TanStack Query (`lib/query/`) con `queryClient` y defaults (staleTime/gcTime) — F7.
-- [ ] `5.2.5` Configurar Zustand (`lib/store/`) para client state (UI efímera), **sin** cachear datos del API — F7/AP-F4.
-- [ ] `5.2.6` Schemas Zod inferidos de los tipos del contrato (formularios) — F8.
+- [x] `5.2.1` Generar `src/lib/api/gen.ts` (openapi-typescript, commiteado, no editable) — F1. _(`pnpm generate` idempotente: sha256 de `gen.ts` estable, sin drift del contrato; `api.yaml` intacto (A12).)_
+- [x] `5.2.2` Implementar `lib/api/client.ts` (fetch wrapper con auth + base URL) y `lib/api/errors.ts` (mapper de errores → UX) — F5. _(`ApiClient` tipado contra `paths` de `gen.ts`, `NEXT_PUBLIC_API_URL`, query/path params + `buildPath`, `signal`, auth inyectable (no-op single-user). `ApiError{status, code}`; el body `ErrorResponse` se parsea sin filtrar detalle técnico (F5).)_
+- [x] `5.2.3` Tratar códigos idempotentes (`409 analysis_pending`) como éxito (AP-F6). _(`isIdempotentSuccess(status, code)` + flag `ApiError.isIdempotentSuccess` + guard `isAnalysisPending`; lo consume la mutación de `analyze` en 5.3.3.)_
+- [x] `5.2.4` Configurar TanStack Query (`lib/query/`) con `queryClient` y defaults (staleTime/gcTime) — F7. _(`@tanstack/react-query` v5.103: `makeQueryClient` + `getQueryClient` (singleton SSR-safe), `staleTime` 30s/gcTime 5min/`retry` 1/`refetchOnWindowFocus:false`; `app/providers.tsx` (`QueryClientProvider`) cableado en `layout.tsx`.)_
+- [x] `5.2.5` Configurar Zustand (`lib/store/`) para client state (UI efímera), **sin** cachear datos del API — F7/AP-F4. _(`zustand` v5: `useUiStore` (estado de UI efímero); ninguna entidad del API vive aquí.)_
+- [x] `5.2.6` Schemas Zod inferidos de los tipos del contrato (formularios) — F8. _(`zod` v4: `targetRuleSchema`/`createPracticeSchema`/`updatePracticeSchema` (`.partial()`) en `lib/schemas/practice.ts`, con aserciones compile-time `AssertAssignable` contra `components["schemas"]` de `gen.ts`. React Hook Form se difiere a 5.3, cuando exista el formulario.)_
 
 ## 5.3 Vista diff de 3 columnas
 
