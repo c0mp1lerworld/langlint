@@ -4,6 +4,35 @@
 
 ---
 
+## 2026-09-21 — Fase 7.3: Documentación (7.3.1–7.3.4)
+
+**Estado**: bloque Documentación completado; con él, **todos los items de Fase 7 (`7.1`–`7.3`) quedan hechos**. El *Gate de salida* de Fase 7 sigue pendiente únicamente del **primer run real de los workflows en GitHub** (no corren en local); `gosec`/`govulncheck` (0 hallazgos) y la documentación ya están cerrados. Sin cambios de código ni de contrato (A12).
+
+**Hecho**:
+- `7.3.1` `docs/ARCHITECTURE.md`: contrato arquitectónico global (monorepo, capas, bounded contexts, UoW/outbox, motor IA, frontend, CI/seguridad) con **§5.1 env vars** (exigido por MANIFEST_MONOREPO §8).
+- `7.3.2` `docs/RUNBOOK.md` (10 escenarios; **Escenario 5 = Postgres caído**, referenciado por el manifiesto), `docs/PRODUCTION_ENV.md` (referencia de env vars por entry point), `docs/SECRET_ROTATION.md` (**§1.1 cuándo rotar** + procedimiento por secreto) y `docs/SECURITY_DEBT.md` (SD-1..SD-6). **Extra**: `docs/API_CONTRACT.md` (gaps contrato↔dominio, AP5), que el manifiesto referencia aunque el checklist no lo listaba.
+- `7.3.3` `README.md` reescrito como **portafolio** (estado real, stack, arquitectura, métricas de rigor verificables, comandos) y `README.en.md` **alineado**.
+- `7.3.4` `docs/bugs/` con índice y 3 bugs abiertos en formato anti-patrón de los manifiestos: BUG-001 (run-ons no subdivididos), BUG-002 (`finish_reason=length` → `llm_unavailable`), BUG-003 (`/analytics/progress` 501).
+
+**Decisiones**:
+- **`API_CONTRACT.md` sí se crea** (decisión del humano): el manifiesto lo referencia en AP5 para los "gaps conocidos"; se documentan GAP-1 (`/analytics/progress` 501) y GAP-2 (origen del email del export) con plan de cierre. Se corrige la referencia: es **AP5**, no AP-MR5.
+- **Bugs en formato de manifiesto** (Qué pasó / Lección / Regla): reutiliza el lenguaje ya establecido para anti-patrones y evita inventar un formato nuevo.
+- **`ARCHITECTURE.md` numera §5.1 para env vars** para cumplir la referencia exacta de MANIFEST_MONOREPO §8.
+- **Métricas verificables, no marketing**: los números del README se midieron (`go test -cover` y Vitest), no se estimaron.
+
+**Verificación** (local):
+- Consistencia de **env vars**: todas las de `ARCHITECTURE.md`/`PRODUCTION_ENV.md` existen en `internal/shared/config/*.go` (o son prefijos/vars de CI).
+- **Enlaces locales** de README(s), los 5 docs y `docs/bugs/*`: todos resuelven (script de comprobación; sin `MISS`).
+- Estructuras exigidas por el manifiesto presentes: `ARCHITECTURE.md §5.1`, `RUNBOOK.md Escenario 5`, `SECRET_ROTATION.md §1.1`.
+- Métricas reales: dominio **100 %** (5 paquetes), services **91.4–98.1 %**, frontend **95** tests Vitest (18 ficheros), e2e **2**.
+- Sin cambios de código: `go build/vet/test` y `pnpm` no se ven afectados.
+
+**Bloqueos**: ninguno. El cierre formal del *Gate de salida* de Fase 7 requiere el primer run de CI en GitHub (los workflows no se ejecutan en local).
+
+**Próximo paso**: cerrar el Gate de Fase 7 con el primer run real de CI (o el `9.7` diferido / el tutor adaptativo post-MVP).
+
+---
+
 ## 2026-09-21 — Fase 7.2: Seguridad (7.2.1–7.2.4)
 
 **Estado**: bloque Seguridad completado. `7.2.1`–`7.2.4` implementados y verificados en local (gosec 0 hallazgos, govulncheck 0 vulnerabilidades, `security_audit.sh` limpio y probado contra una violación, tests Tier 1+2 en verde). Los workflows siguen sin ejecutarse en GitHub (no corre en local). El *Gate de salida* de Fase 7 solo espera la ejecución real y `7.3` (documentación).

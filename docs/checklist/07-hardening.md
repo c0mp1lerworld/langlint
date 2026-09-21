@@ -23,22 +23,22 @@
 
 ## 7.3 Documentación
 
-- [ ] `7.3.1` Redactar `docs/ARCHITECTURE.md` (contrato arquitectónico global).
-- [ ] `7.3.2` Redactar `docs/RUNBOOK.md`, `docs/PRODUCTION_ENV.md`, `docs/SECRET_ROTATION.md`, `docs/SECURITY_DEBT.md`.
-- [ ] `7.3.3` Redactar `README.md` raíz de portafolio (visión, stack, arquitectura, métricas de rigor).
-- [ ] `7.3.4` Registrar bugs conocidos en `docs/bugs/` si aplica (formato de los manifiestos).
+- [x] `7.3.1` Redactar `docs/ARCHITECTURE.md` (contrato arquitectónico global; incluye §5.1 de env vars).
+- [x] `7.3.2` Redactar `docs/RUNBOOK.md`, `docs/PRODUCTION_ENV.md`, `docs/SECRET_ROTATION.md`, `docs/SECURITY_DEBT.md`. Extra: `docs/API_CONTRACT.md` (gaps contrato↔dominio, AP5).
+- [x] `7.3.3` Redactar `README.md` raíz de portafolio (visión, stack, arquitectura, métricas de rigor). `README.en.md` alineado.
+- [x] `7.3.4` Registrar bugs conocidos en `docs/bugs/` (BUG-001 run-ons, BUG-002 `finish_reason=length`, BUG-003 `/analytics/progress` 501).
 
 ---
 
 ## ✅ Gate de salida
 
-- [ ] CI verde en PR (lint + test + build de todo el monorepo).
-- [ ] `pnpm test-integration` verde en nightly (Tier 3 con testcontainers).
-- [ ] `gosec` + `govulncheck` sin hallazgos críticos.
-- [ ] Documentación canónica completa y consistente con los manifiestos.
-- [ ] **Definition of Done del MVP** (PRODUCT_DOMAIN §11) íntegramente cumplida.
+- [ ] CI verde en PR (lint + test + build de todo el monorepo). *(requiere el primer run real en GitHub; no corre en local)*
+- [ ] `pnpm test-integration` verde en nightly (Tier 3 con testcontainers). *(idem)*
+- [x] `gosec` + `govulncheck` sin hallazgos críticos. *(verificado en local: 0 hallazgos)*
+- [x] Documentación canónica completa y consistente con los manifiestos.
+- [ ] **Definition of Done del MVP** (PRODUCT_DOMAIN §11) íntegramente cumplida. *(alcance funcional completo; el cierre formal depende del gate de CI)*
 
 ## Fuente normativa
 
-- **A10, A12**, **AP-MR7, AP-MR9**, **§6.5** (CI/CD del monorepo).
+- **A10, A12**, **AP5**, **AP-MR7, AP-MR9**, **§6.5** (CI/CD del monorepo).
 - **PRODUCT_DOMAIN.md** §11 (DoD) y §14 (documentos autoritativos).
