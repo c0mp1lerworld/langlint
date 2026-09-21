@@ -1,0 +1,33 @@
+# Contexto de build del frontend (raíz del monorepo, requerido por el workspace
+# pnpm y `turbo prune`). Aplica también al backend si se usara la raíz como
+# contexto, pero el backend declara su propio apps/backend/.dockerignore.
+
+# VCS / CI
+.git
+.github
+
+# Dependencias y artefactos
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/build
+**/coverage
+**/bin
+**/test-results
+**/playwright-report
+**/*.tsbuildinfo
+
+# Entorno y secretos (A8): nunca dentro de la imagen.
+**/.env
+**/.env.*
+!**/.env.example
+
+# Documentación e infraestructura no requeridas en las imágenes.
+docs
+ops
+MANIFEST_MONOREPO.md
+MANIFEST_FRONTEND.md
+README.md
+README.en.md
+LICENSE

@@ -1,0 +1,9 @@
+# Entorno y secretos (A8): nunca dentro de la imagen.
+.env
+.env.*
+
+# Artefactos de desarrollo.
+bin/
+test/
+*.md
+.git
