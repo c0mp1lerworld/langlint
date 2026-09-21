@@ -69,7 +69,8 @@ else
 fi
 
 # --- 2. AP-MR9: docs no expuesto sin guard -----------------------------------
-docs_files="$(grep_src "$DOCS_REF" --include='*.go' apps/backend \
+# Se excluyen los tests: asertan la AUSENCIA de /docs y no montan rutas de prod.
+docs_files="$(grep_src "$DOCS_REF" --include='*.go' --exclude='*_test.go' apps/backend \
   | cut -d: -f1 | sort -u || true)"
 
 docs_violations=""
@@ -90,7 +91,7 @@ fi
 
 # --- 3. AP-MR9: x-internal filtrado ------------------------------------------
 if grep -qE 'x-internal' "$SPEC"; then
-  if [ -z "$(grep_src 'x-internal|XInternal' --include='*.go' apps/backend)" ]; then
+  if [ -z "$(grep_src 'x-internal|XInternal' --include='*.go' --exclude='*_test.go' apps/backend)" ]; then
     echo "security_audit: '${SPEC}' marca x-internal pero no hay filtro en Go (AP-MR9)." >&2
     status=1
   else

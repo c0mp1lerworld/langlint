@@ -664,3 +664,30 @@ func TestServer_EvaluateQuizAnswer_ReturnsEvaluation(t *testing.T) {
 		t.Fatalf("evaluation = %+v", evaluation)
 	}
 }
+
+// TestGeneratedRouter_DocsEndpoints_NotFound encodes AP-MR9 (7.2.3): the backend
+// must not serve interactive API docs. The generated mux only mounts the
+// contract operations, so every docs path resolves to 404.
+func TestGeneratedRouter_DocsEndpoints_NotFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	userID := domain.MustNewID()
+
+	srv := newTestServer(ctrl,
+		mocks.NewMockPracticeRepository(ctrl),
+		mocks.NewMockAnalysisRepository(ctrl),
+		mocks.NewMockErrorMetricRepository(ctrl),
+		mocks.NewMockOutbox(ctrl),
+	)
+
+	router := chi.NewRouter()
+	router.Use(httpx.UserResolver(userID))
+	HandlerFromMux(srv, router)
+
+	for _, path := range []string{"/docs", "/docs/", "/openapi.json", "/swagger", "/scalar"} {
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("GET %s status = %d, want 404 (AP-MR9: docs no expuesto)", path, rec.Code)
+		}
+	}
+}
