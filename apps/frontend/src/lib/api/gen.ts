@@ -366,9 +366,12 @@ export interface components {
             user_draft: string;
             /** @description Corrección directa. */
             correction: string;
-            target_verb_review: components["schemas"]["TargetVerbReview"];
-            lexical_clarification: components["schemas"]["LexicalClarification"];
-            grammar_explanation: components["schemas"]["GrammarExplanation"];
+            /** @description Uno o más verbos objetivo con su revisión estructurada; lista vacía si el fragmento no tiene un verbo objetivo relevante. */
+            target_verb_reviews: components["schemas"]["TargetVerbReview"][];
+            /** @description Una o más aclaraciones léxicas; lista vacía si el fragmento no tiene una elección de vocabulario o colocación que aclarar. */
+            lexical_clarifications: components["schemas"]["LexicalClarification"][];
+            /** @description Una o más reglas gramaticales; lista vacía si el fragmento no tiene un error gramatical que explicar. */
+            grammar_explanations: components["schemas"]["GrammarExplanation"][];
             error_patterns: components["schemas"]["ErrorPattern"][];
         };
         Analysis: {

@@ -69,6 +69,12 @@ function ExplanationCard({ title, children }: { title: string; children: ReactNo
   );
 }
 
+// categoryTitle numbers repeated cards of the same category (e.g. a fragment
+// with two target verbs) so the learner can tell them apart.
+function categoryTitle(base: string, index: number, total: number): string {
+  return total > 1 ? `${base} (${index + 1}/${total})` : base;
+}
+
 export function FragmentDiff({
   fragment,
   practiceId,
@@ -81,9 +87,9 @@ export function FragmentDiff({
   const [open, setOpen] = useState(false);
   const detailsId = useId();
   const tokens = diffWords(fragment.user_draft, fragment.correction);
-  const verb = fragment.target_verb_review;
-  const lexical = fragment.lexical_clarification;
-  const grammar = fragment.grammar_explanation;
+  const verbs = fragment.target_verb_reviews;
+  const lexicals = fragment.lexical_clarifications;
+  const grammars = fragment.grammar_explanations;
 
   return (
     <li className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -126,34 +132,49 @@ export function FragmentDiff({
         </button>
 
         <div id={detailsId} hidden={!open} className="mt-2 space-y-2 rounded-md bg-gray-50 p-3">
-          <ExplanationCard title="Verbo objetivo">
-            <Field label="Verbo">{verb.verb}</Field>
-            <Field label="Forma correcta">{verb.correct_form}</Field>
-            <Field label="Regla">{verb.rule}</Field>
-            <Field label="Por qué">{verb.why}</Field>
-            <Field label="En español">{verb.es_contrast}</Field>
-            <Field label="Alternativas">
-              <Alternatives items={verb.alternatives} />
-            </Field>
-          </ExplanationCard>
+          {verbs.map((verb, verbIndex) => (
+            <ExplanationCard
+              key={`verb-${verbIndex}`}
+              title={categoryTitle("Verbo objetivo", verbIndex, verbs.length)}
+            >
+              <Field label="Verbo">{verb.verb}</Field>
+              <Field label="Forma correcta">{verb.correct_form}</Field>
+              <Field label="Regla">{verb.rule}</Field>
+              <Field label="Por qué">{verb.why}</Field>
+              <Field label="En español">{verb.es_contrast}</Field>
+              <Field label="Alternativas">
+                <Alternatives items={verb.alternatives} />
+              </Field>
+            </ExplanationCard>
+          ))}
 
-          <ExplanationCard title="Aclaración léxica">
-            <Field label="Término">{lexical.term}</Field>
-            <Field label="Significado">{lexical.meaning}</Field>
-            <Field label="Por qué no">{lexical.why_wrong}</Field>
-            <Field label="Alternativas">
-              <Alternatives items={lexical.alternatives} />
-            </Field>
-          </ExplanationCard>
+          {lexicals.map((lexical, lexicalIndex) => (
+            <ExplanationCard
+              key={`lexical-${lexicalIndex}`}
+              title={categoryTitle("Aclaración léxica", lexicalIndex, lexicals.length)}
+            >
+              <Field label="Término">{lexical.term}</Field>
+              <Field label="Significado">{lexical.meaning}</Field>
+              <Field label="Por qué no">{lexical.why_wrong}</Field>
+              <Field label="Alternativas">
+                <Alternatives items={lexical.alternatives} />
+              </Field>
+            </ExplanationCard>
+          ))}
 
-          <ExplanationCard title="Explicación gramatical">
-            <Field label="Regla">{grammar.rule_name}</Field>
-            <Field label="Cómo se forma">{grammar.construction}</Field>
-            <Field label="Por qué">{grammar.explanation}</Field>
-            <Field label="Contra-ejemplo">{grammar.counterexample}</Field>
-            <Field label="Excepción">{grammar.exception}</Field>
-            <Field label="En español">{grammar.es_contrast}</Field>
-          </ExplanationCard>
+          {grammars.map((grammar, grammarIndex) => (
+            <ExplanationCard
+              key={`grammar-${grammarIndex}`}
+              title={categoryTitle("Explicación gramatical", grammarIndex, grammars.length)}
+            >
+              <Field label="Regla">{grammar.rule_name}</Field>
+              <Field label="Cómo se forma">{grammar.construction}</Field>
+              <Field label="Por qué">{grammar.explanation}</Field>
+              <Field label="Contra-ejemplo">{grammar.counterexample}</Field>
+              <Field label="Excepción">{grammar.exception}</Field>
+              <Field label="En español">{grammar.es_contrast}</Field>
+            </ExplanationCard>
+          ))}
 
           {fragment.error_patterns.length > 0 ? (
             <section className="rounded-md bg-white p-3 ring-1 ring-gray-200">

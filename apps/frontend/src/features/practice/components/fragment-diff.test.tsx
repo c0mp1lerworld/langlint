@@ -11,28 +11,34 @@ const fragment: Fragment = {
   source_es: "Ayer fui al parque.",
   user_draft: "Yesterday I go to the park.",
   correction: "Yesterday I went to the park.",
-  target_verb_review: {
-    verb: "go",
-    correct_form: "went",
-    rule: "pasado simple irregular",
-    why: "la acción ocurrió ayer",
-    es_contrast: "en español el pretérito cambia la forma",
-    alternatives: ["went", "did go (énfasis)"],
-  },
-  lexical_clarification: {
-    term: "go",
-    meaning: "ir",
-    why_wrong: "el borrador usa el presente",
-    alternatives: [],
-  },
-  grammar_explanation: {
-    rule_name: "pasado simple irregular",
-    explanation: "el verbo no añade -ed, sino que cambia de forma",
-    construction: "go → went",
-    counterexample: "I go → I went",
-    exception: "los regulares añaden -ed",
-    es_contrast: "el español usa 'fui'",
-  },
+  target_verb_reviews: [
+    {
+      verb: "go",
+      correct_form: "went",
+      rule: "pasado simple irregular",
+      why: "la acción ocurrió ayer",
+      es_contrast: "en español el pretérito cambia la forma",
+      alternatives: ["went", "did go (énfasis)"],
+    },
+  ],
+  lexical_clarifications: [
+    {
+      term: "go",
+      meaning: "ir",
+      why_wrong: "el borrador usa el presente",
+      alternatives: [],
+    },
+  ],
+  grammar_explanations: [
+    {
+      rule_name: "pasado simple irregular",
+      explanation: "el verbo no añade -ed, sino que cambia de forma",
+      construction: "go → went",
+      counterexample: "I go → I went",
+      exception: "los regulares añaden -ed",
+      es_contrast: "el español usa 'fui'",
+    },
+  ],
   error_patterns: [{ code: "tense_agreement", severity: "critical", note: "pasado" }],
 };
 
@@ -73,6 +79,44 @@ describe("FragmentDiff", () => {
 
     await user.click(screen.getByRole("button", { name: "Ocultar explicación" }));
     expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("renderiza varias tarjetas cuando hay varios verbos y reglas", async () => {
+    const user = userEvent.setup();
+    const multiple: Fragment = {
+      ...fragment,
+      target_verb_reviews: [
+        ...fragment.target_verb_reviews,
+        {
+          verb: "bet",
+          correct_form: "bet",
+          rule: "verbo + preposición fija",
+          why: "bet on",
+          es_contrast: "apostar a",
+          alternatives: [],
+        },
+      ],
+      grammar_explanations: [
+        ...fragment.grammar_explanations,
+        {
+          rule_name: "orden de palabras",
+          explanation: "el orden es rígido",
+          construction: "sujeto + verbo + complemento",
+          counterexample: "not all can be put aside",
+          exception: "imperativas",
+          es_contrast: "en español el orden es flexible",
+        },
+      ],
+    };
+
+    render(<ul><FragmentDiff fragment={multiple} /></ul>);
+    await user.click(screen.getByRole("button", { name: "Ver explicación" }));
+
+    expect(screen.getByRole("heading", { name: "Verbo objetivo (1/2)" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Verbo objetivo (2/2)" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Explicación gramatical (2/2)" })).toBeVisible();
+    expect(screen.getByText("bet on")).toBeVisible();
+    expect(screen.getByText("orden de palabras")).toBeVisible();
   });
 
   it("no tiene violaciones de accesibilidad", async () => {

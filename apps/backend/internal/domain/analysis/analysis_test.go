@@ -22,26 +22,26 @@ func testFragments(t *testing.T) []analysis.Fragment {
 		SourceES:   "El gato duerme.",
 		UserDraft:  "The cat sleep.",
 		Correction: "The cat sleeps.",
-		TargetVerbReview: analysis.TargetVerbReview{
+		TargetVerbReviews: []analysis.TargetVerbReview{{
 			Verb:         "sleep",
 			CorrectForm:  "sleeps",
 			Rule:         "tercera persona singular",
 			Why:          "el sujeto es singular",
 			ESContrast:   "en español no cambia",
 			Alternatives: []string{"sleeps"},
-		},
-		LexicalClarification: analysis.LexicalClarification{
+		}},
+		LexicalClarifications: []analysis.LexicalClarification{{
 			Term:    "cat",
 			Meaning: "gato",
-		},
-		GrammarExplanation: analysis.GrammarExplanation{
+		}},
+		GrammarExplanations: []analysis.GrammarExplanation{{
 			RuleName:       "tercera persona singular",
 			Explanation:    "el verbo añade -s",
 			Construction:   "verbo + -s",
 			Counterexample: "sleep -> sleeps",
 			Exception:      "irregulares",
 			ESContrast:     "no aplica en español",
-		},
+		}},
 		ErrorPatterns: []domain.ErrorPattern{pattern},
 	}}
 }

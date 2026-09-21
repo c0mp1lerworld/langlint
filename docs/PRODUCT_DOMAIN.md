@@ -304,17 +304,25 @@ components:
         - source_es
         - user_draft
         - correction
-        - target_verb_review
-        - lexical_clarification
-        - grammar_explanation
+        - target_verb_reviews
+        - lexical_clarifications
+        - grammar_explanations
         - error_patterns
       properties:
-        source_es:            { type: string }   # Frase base en español
-        user_draft:           { type: string }   # Borrador del usuario (inglés)
-        correction:           { type: string }   # Corrección directa
-        target_verb_review:   { type: string }   # Revisión del verbo objetivo
-        lexical_clarification:{ type: string }   # Aclaración léxica
-        grammar_explanation:  { type: string }   # Regla gramatical profunda
+        source_es:              { type: string }   # Frase base en español
+        user_draft:             { type: string }   # Borrador del usuario (inglés)
+        correction:             { type: string }   # Corrección directa
+        # Un fragmento puede acumular varios elementos por categoría; cada lista
+        # puede ir vacía cuando esa categoría no aplica.
+        target_verb_reviews:
+          type: array
+          items: { $ref: '#/components/schemas/TargetVerbReview' }
+        lexical_clarifications:
+          type: array
+          items: { $ref: '#/components/schemas/LexicalClarification' }
+        grammar_explanations:
+          type: array
+          items: { $ref: '#/components/schemas/GrammarExplanation' }
         error_patterns:
           type: array
           items: { $ref: '#/components/schemas/ErrorPattern' }
@@ -433,7 +441,7 @@ type LLMExtractor interface {
 | **2 — Tu borrador** | Traducción experimental del usuario, con errores resaltados. |
 | **3 — Corrección IA** | Corrección del LLM con diff resaltado (rojo/verde). |
 
-- **Paneles interactivos**: cada fragmento expandible muestra `target_verb_review`, `lexical_clarification` y `grammar_explanation` con tooltips.
+- **Paneles interactivos**: cada fragmento expandible muestra todas las entradas de `target_verb_reviews`, `lexical_clarifications` y `grammar_explanations` (una tarjeta por entrada, numeradas si hay varias) con tooltips.
 - **Alertas de errores recurrentes**: banner que señala el `ErrorPattern` más frecuente del usuario.
 
 ### 8.2 Mapeo a los axiomas del frontend

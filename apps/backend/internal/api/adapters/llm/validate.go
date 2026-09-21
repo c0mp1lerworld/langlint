@@ -27,14 +27,20 @@ func validateFragment(fragment analysis.Fragment) error {
 	if !nonEmpty(fragment.SourceES, fragment.UserDraft, fragment.Correction) {
 		return invalidOutput()
 	}
-	if !validTargetVerbReview(fragment.TargetVerbReview) {
-		return invalidOutput()
+	for _, review := range fragment.TargetVerbReviews {
+		if !validTargetVerbReview(review) {
+			return invalidOutput()
+		}
 	}
-	if !validLexicalClarification(fragment.LexicalClarification) {
-		return invalidOutput()
+	for _, clarification := range fragment.LexicalClarifications {
+		if !validLexicalClarification(clarification) {
+			return invalidOutput()
+		}
 	}
-	if !validGrammarExplanation(fragment.GrammarExplanation) {
-		return invalidOutput()
+	for _, explanation := range fragment.GrammarExplanations {
+		if !validGrammarExplanation(explanation) {
+			return invalidOutput()
+		}
 	}
 
 	for _, pattern := range fragment.ErrorPatterns {

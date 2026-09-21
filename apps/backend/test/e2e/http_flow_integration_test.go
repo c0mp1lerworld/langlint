@@ -40,27 +40,27 @@ func (fakeExtractor) Extract(_ context.Context, req ports.ExtractRequest) ([]ana
 		SourceES:   req.SourceText,
 		UserDraft:  req.DraftText,
 		Correction: "corrected",
-		TargetVerbReview: analysis.TargetVerbReview{
+		TargetVerbReviews: []analysis.TargetVerbReview{{
 			Verb:         "run",
 			CorrectForm:  "ran",
 			Rule:         "past simple",
 			Why:          "acción pasada",
 			ESContrast:   "en español varía",
 			Alternatives: []string{"ran"},
-		},
-		LexicalClarification: analysis.LexicalClarification{
+		}},
+		LexicalClarifications: []analysis.LexicalClarification{{
 			Term:     "run",
 			Meaning:  "correr",
 			WhyWrong: "tiempo incorrecto",
-		},
-		GrammarExplanation: analysis.GrammarExplanation{
+		}},
+		GrammarExplanations: []analysis.GrammarExplanation{{
 			RuleName:       "past simple",
 			Explanation:    "se usa para acciones terminadas",
 			Construction:   "verbo + -ed / irregular",
 			Counterexample: "run -> ran",
 			Exception:      "verbos irregulares",
 			ESContrast:     "en español el pretérito",
-		},
+		}},
 		ErrorPatterns: []domain.ErrorPattern{{
 			Code:     domain.ErrorPatternCodeTenseAgreement,
 			Severity: domain.ErrorPatternSeverityMinor,

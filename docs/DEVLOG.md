@@ -4,6 +4,38 @@
 
 ---
 
+## 2026-09-20 — Fragmentos con múltiples explicaciones (contrato `3.0.0`)
+
+**Estado**: mejora de calidad completada. `go build/vet/test -race` (+ `-tags=integration`) OK; `pnpm test-integration --filter=backend` OK; `pnpm lint` (3/3), `pnpm test` (backend + frontend **95**), `pnpm typecheck --filter=frontend`, `pnpm test:e2e` (2) y `pnpm build` (3/3) en verde; `pnpm generate` idempotente. **Cambio de contrato A12 BREAKING** (`apps/contracts` → `3.0.0`).
+
+**Contexto**: al revisar un análisis real se observó que un `Fragment` puede contener **varios** verbos objetivo, aclaraciones léxicas y reglas gramaticales, pero el contrato forzaba exactamente uno de cada (objeto único). El prompt ya decía "target verb(s)", pero el JSON Schema de Structured Outputs cerraba la cardinalidad a 1, así que el modelo descartaba el resto (p. ej. `bet on`, `my brother`, orden de palabras en la misma frase).
+
+**Hecho**:
+- A12: `Fragment.target_verb_review`/`lexical_clarification`/`grammar_explanation` pasan de objeto a **array** y se renombran a `target_verb_reviews`/`lexical_clarifications`/`grammar_explanations`; los esquemas internos (`TargetVerbReview`…) no cambian. `pnpm generate` (Go + TS). Bump a `3.0.0` + `CHANGELOG.md`.
+- Dominio `analysis.Fragment`: los tres campos pasan a slices; test nuevo de round-trip con 2 elementos por categoría.
+- Adapter LLM: `schema.go` envuelve cada esquema en `arrayOf(...)`; `validate.go` itera cada elemento y **permite listas vacías** (se añade test); `prompt.go` pide "una entrada por problema distinto" y un array vacío cuando la categoría no aplica (elimina el relleno forzado "sin error léxico en este fragmento").
+- `handlers/server.go`: conversión dominio→wire slice→slice.
+- Frontend `fragment-diff.tsx`: renderiza una tarjeta por entrada (`Verbo objetivo (i/n)` solo cuando hay varias; array vacío → sin tarjeta); fixtures, unit (95) y e2e actualizados.
+- `docs/PRODUCT_DOMAIN.md §5.2/§8.1` alineado con el nuevo esquema.
+
+**Decisiones**:
+- **Arrays para las tres categorías** (no solo léxico/gramática): el usuario pidió paridad y el ejemplo real tiene varios verbos.
+- **Renombrado a plural** en el wire (`..._reviews`): autodocumenta la cardinalidad; BREAKING asumido y versionado.
+- **Listas vacías permitidas** (como `error_patterns`): evita que el modelo invente relleno para cumplir el `required`.
+- **Sin migración de datos**: `analyses.fragments` es JSONB derivado; las filas antiguas con claves singulares se leerán con listas vacías. Se regenera re-analizando; no se escribe una migración para datos descartables.
+
+**Verificación**:
+- `go build ./...` · `go vet ./...` · `go test -race -count=1 ./...` · `go test -race -count=1 -tags=integration ./...` → OK.
+- `pnpm test-integration --filter=backend` → OK (Tier 3, incluido el e2e HTTP que ahora usa arrays).
+- `pnpm lint` (3/3) · `pnpm test` (frontend 95) · `pnpm typecheck --filter=frontend` · `pnpm test:e2e` (2) · `pnpm build` (3/3) → OK.
+- `pnpm generate` idempotente (hashes md5 de `gen_types.go`/`gen.ts` estables); `gofmt -l` limpio.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 7 (Hardening) o cerrar `9.7`. Pendiente de decisión de producto: `PRODUCT_DOMAIN §11` (DoD) y `/analytics/progress` (sigue `501`).
+
+---
+
 ## 2026-09-19 — Fase 9: feedback profundo y práctica activa (9.1–9.6; 9.7 diferido)
 
 **Estado**: bloque `9.1`–`9.6` completado; **Gate de Fase 9 en verde** para esos items. `go build/vet/test -race` (+ `-tags=integration`) OK; `pnpm test-integration --filter=backend`, `pnpm lint`, `pnpm test` (frontend 94), `pnpm typecheck --filter=frontend` y `pnpm build` OK; `pnpm generate` idempotente. Cambio de contrato A12: `2.0.0` (BREAKING, `Fragment` estructurado) + `2.1.0` (endpoints de quiz).

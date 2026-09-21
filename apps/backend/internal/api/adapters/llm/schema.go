@@ -67,12 +67,12 @@ func fragmentItemSchema() map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"source_es":             map[string]any{"type": "string"},
-			"user_draft":            map[string]any{"type": "string"},
-			"correction":            map[string]any{"type": "string"},
-			"target_verb_review":    targetVerbReviewSchema(),
-			"lexical_clarification": lexicalClarificationSchema(),
-			"grammar_explanation":   grammarExplanationSchema(),
+			"source_es":              map[string]any{"type": "string"},
+			"user_draft":             map[string]any{"type": "string"},
+			"correction":             map[string]any{"type": "string"},
+			"target_verb_reviews":    arrayOf(targetVerbReviewSchema()),
+			"lexical_clarifications": arrayOf(lexicalClarificationSchema()),
+			"grammar_explanations":   arrayOf(grammarExplanationSchema()),
 			"error_patterns": map[string]any{
 				"type": "array",
 				"items": map[string]any{
@@ -91,13 +91,21 @@ func fragmentItemSchema() map[string]any {
 			"source_es",
 			"user_draft",
 			"correction",
-			"target_verb_review",
-			"lexical_clarification",
-			"grammar_explanation",
+			"target_verb_reviews",
+			"lexical_clarifications",
+			"grammar_explanations",
 			"error_patterns",
 		},
 		"additionalProperties": false,
 	}
+}
+
+// arrayOf wraps an item schema as a JSON Schema array. Each explanation
+// category is a list because a fragment can hold several target verbs, lexical
+// notes or grammar rules; an empty list is valid when the category does not
+// apply.
+func arrayOf(items map[string]any) map[string]any {
+	return map[string]any{"type": "array", "items": items}
 }
 
 // stringProp is a JSON Schema string property.

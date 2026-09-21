@@ -4,15 +4,17 @@ import "github.com/c0mp1lerworld/langlint/backend/internal/domain"
 
 // Fragment is the atomic unit of an analysis (PRODUCT_DOMAIN §5.2): the base
 // sentence, the user's draft, the correction and the deep, structured
-// explanation ("Beyond Correction", §1.2).
+// explanation ("Beyond Correction", §1.2). A fragment may carry several target
+// verbs, lexical notes and grammar rules; each slice may be empty when that
+// category does not apply.
 type Fragment struct {
-	SourceES             string                `json:"source_es"`
-	UserDraft            string                `json:"user_draft"`
-	Correction           string                `json:"correction"`
-	TargetVerbReview     TargetVerbReview      `json:"target_verb_review"`
-	LexicalClarification LexicalClarification  `json:"lexical_clarification"`
-	GrammarExplanation   GrammarExplanation    `json:"grammar_explanation"`
-	ErrorPatterns        []domain.ErrorPattern `json:"error_patterns"`
+	SourceES              string                 `json:"source_es"`
+	UserDraft             string                 `json:"user_draft"`
+	Correction            string                 `json:"correction"`
+	TargetVerbReviews     []TargetVerbReview     `json:"target_verb_reviews"`
+	LexicalClarifications []LexicalClarification `json:"lexical_clarifications"`
+	GrammarExplanations   []GrammarExplanation   `json:"grammar_explanations"`
+	ErrorPatterns         []domain.ErrorPattern  `json:"error_patterns"`
 }
 
 // TargetVerbReview is the structured review of the target verb: it names the

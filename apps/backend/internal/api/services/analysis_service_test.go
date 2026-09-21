@@ -36,27 +36,27 @@ func testFragments() []analysis.Fragment {
 			SourceES:   "El perro corre.",
 			UserDraft:  "The dog run.",
 			Correction: "The dog runs.",
-			TargetVerbReview: analysis.TargetVerbReview{
+			TargetVerbReviews: []analysis.TargetVerbReview{{
 				Verb:         "run",
 				CorrectForm:  "runs",
 				Rule:         "tercera persona singular",
 				Why:          "el sujeto es singular",
 				ESContrast:   "en español no cambia",
 				Alternatives: []string{"runs"},
-			},
-			LexicalClarification: analysis.LexicalClarification{
+			}},
+			LexicalClarifications: []analysis.LexicalClarification{{
 				Term:     "run",
 				Meaning:  "correr",
 				WhyWrong: "falta la -s de tercera persona",
-			},
-			GrammarExplanation: analysis.GrammarExplanation{
+			}},
+			GrammarExplanations: []analysis.GrammarExplanation{{
 				RuleName:       "tercera persona singular",
 				Explanation:    "el verbo añade -s",
 				Construction:   "verbo + -s",
 				Counterexample: "run -> runs",
 				Exception:      "verbos irregulares",
 				ESContrast:     "no aplica en español",
-			},
+			}},
 			ErrorPatterns: []domain.ErrorPattern{
 				{
 					Code:     domain.ErrorPatternCodeInfinitiveConjugation,

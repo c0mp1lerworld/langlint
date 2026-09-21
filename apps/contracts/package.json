@@ -1,7 +1,7 @@
 {
   "name": "@langlint/contracts",
   "private": true,
-  "version": "2.1.0",
+  "version": "3.0.0",
   "scripts": {
     "build": "echo \"contracts: spec validado con 'pnpm lint'; codegen con 'pnpm generate'\"",
     "lint": "redocly lint openapi/api.yaml",

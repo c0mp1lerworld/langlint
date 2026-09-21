@@ -49,9 +49,9 @@ func TestFragmentSchema_MirrorsFragmentContract(t *testing.T) {
 		"source_es",
 		"user_draft",
 		"correction",
-		"target_verb_review",
-		"lexical_clarification",
-		"grammar_explanation",
+		"target_verb_reviews",
+		"lexical_clarifications",
+		"grammar_explanations",
 		"error_patterns",
 	})
 
@@ -60,13 +60,13 @@ func TestFragmentSchema_MirrorsFragmentContract(t *testing.T) {
 		t.Fatalf("items.properties = %v, want object", items["properties"])
 	}
 
-	assertNestedObject(t, itemProperties["target_verb_review"], []string{
+	assertNestedArrayOfObjects(t, itemProperties["target_verb_reviews"], []string{
 		"verb", "correct_form", "rule", "why", "es_contrast", "alternatives",
 	})
-	assertNestedObject(t, itemProperties["lexical_clarification"], []string{
+	assertNestedArrayOfObjects(t, itemProperties["lexical_clarifications"], []string{
 		"term", "meaning", "why_wrong", "alternatives",
 	})
-	assertNestedObject(t, itemProperties["grammar_explanation"], []string{
+	assertNestedArrayOfObjects(t, itemProperties["grammar_explanations"], []string{
 		"rule_name", "explanation", "construction", "counterexample", "exception", "es_contrast",
 	})
 
@@ -135,6 +135,20 @@ func TestFragmentResponseFormat_IsStrictJSONSchema(t *testing.T) {
 	if _, ok := jsonSchema["schema"].(map[string]any); !ok {
 		t.Fatalf("json_schema.schema = %v, want object", jsonSchema["schema"])
 	}
+}
+
+// assertNestedArrayOfObjects checks a property is an array whose items are
+// strict objects with exactly the expected required keys.
+func assertNestedArrayOfObjects(t *testing.T, got any, wantRequired []string) {
+	t.Helper()
+	arr, ok := got.(map[string]any)
+	if !ok {
+		t.Fatalf("nested array = %v (%T), want object", got, got)
+	}
+	if arr["type"] != "array" {
+		t.Fatalf("nested array.type = %v, want array", arr["type"])
+	}
+	assertNestedObject(t, arr["items"], wantRequired)
 }
 
 // assertNestedObject checks an object property is strict (additionalProperties

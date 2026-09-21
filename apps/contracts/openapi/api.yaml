@@ -661,9 +661,9 @@ components:
         - source_es
         - user_draft
         - correction
-        - target_verb_review
-        - lexical_clarification
-        - grammar_explanation
+        - target_verb_reviews
+        - lexical_clarifications
+        - grammar_explanations
         - error_patterns
       properties:
         source_es:
@@ -675,12 +675,27 @@ components:
         correction:
           type: string
           description: Corrección directa.
-        target_verb_review:
-          $ref: '#/components/schemas/TargetVerbReview'
-        lexical_clarification:
-          $ref: '#/components/schemas/LexicalClarification'
-        grammar_explanation:
-          $ref: '#/components/schemas/GrammarExplanation'
+        target_verb_reviews:
+          type: array
+          description: >-
+            Uno o más verbos objetivo con su revisión estructurada; lista vacía
+            si el fragmento no tiene un verbo objetivo relevante.
+          items:
+            $ref: '#/components/schemas/TargetVerbReview'
+        lexical_clarifications:
+          type: array
+          description: >-
+            Una o más aclaraciones léxicas; lista vacía si el fragmento no tiene
+            una elección de vocabulario o colocación que aclarar.
+          items:
+            $ref: '#/components/schemas/LexicalClarification'
+        grammar_explanations:
+          type: array
+          description: >-
+            Una o más reglas gramaticales; lista vacía si el fragmento no tiene
+            un error gramatical que explicar.
+          items:
+            $ref: '#/components/schemas/GrammarExplanation'
         error_patterns:
           type: array
           items:

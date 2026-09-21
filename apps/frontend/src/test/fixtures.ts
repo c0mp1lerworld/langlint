@@ -25,28 +25,34 @@ export function fragment(over: Partial<Schemas["Fragment"]> = {}): Schemas["Frag
     source_es: "Ayer fui al parque.",
     user_draft: "Yesterday I go to the park.",
     correction: "Yesterday I went to the park.",
-    target_verb_review: {
-      verb: "go",
-      correct_form: "went",
-      rule: "pasado simple de un verbo irregular",
-      why: "la acción ocurrió ayer",
-      es_contrast: "en español el pretérito cambia la forma",
-      alternatives: ["went", "did go (énfasis)"],
-    },
-    lexical_clarification: {
-      term: "go",
-      meaning: "ir",
-      why_wrong: "el borrador usa el presente",
-      alternatives: [],
-    },
-    grammar_explanation: {
-      rule_name: "pasado simple irregular",
-      explanation: "el verbo no añade -ed, sino que cambia de forma",
-      construction: "go → went",
-      counterexample: "I go → I went",
-      exception: "los regulares añaden -ed",
-      es_contrast: "el español usa 'fui'",
-    },
+    target_verb_reviews: [
+      {
+        verb: "go",
+        correct_form: "went",
+        rule: "pasado simple de un verbo irregular",
+        why: "la acción ocurrió ayer",
+        es_contrast: "en español el pretérito cambia la forma",
+        alternatives: ["went", "did go (énfasis)"],
+      },
+    ],
+    lexical_clarifications: [
+      {
+        term: "go",
+        meaning: "ir",
+        why_wrong: "el borrador usa el presente",
+        alternatives: [],
+      },
+    ],
+    grammar_explanations: [
+      {
+        rule_name: "pasado simple irregular",
+        explanation: "el verbo no añade -ed, sino que cambia de forma",
+        construction: "go → went",
+        counterexample: "I go → I went",
+        exception: "los regulares añaden -ed",
+        es_contrast: "el español usa 'fui'",
+      },
+    ],
     error_patterns: [{ code: "tense_agreement", severity: "critical", note: "pasado" }],
     ...over,
   };

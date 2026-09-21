@@ -4,6 +4,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 El contrato OpenAPI es la SSOT del wire format (A12); todo cambio breaking sube
 la versión major y se anota aquí (AP-MR6).
 
+## [3.0.0] — 2026-09-20
+
+### BREAKING
+
+- **`Fragment`**: `target_verb_review`, `lexical_clarification` y
+  `grammar_explanation` dejan de ser un objeto único y pasan a ser listas
+  (`target_verb_reviews`, `lexical_clarifications`, `grammar_explanations`).
+  Un mismo fragmento puede acumular varios verbos objetivo, varias
+  aclaraciones léxicas y varias reglas gramaticales; cada lista puede ir vacía
+  cuando la categoría no aplica (PRODUCT_DOMAIN §1.2, "Beyond Correction"). Los
+  clientes que leían un solo elemento deben regenerar y adaptar el render.
+
 ## [2.1.0] — 2026-09-19
 
 ### Añadido

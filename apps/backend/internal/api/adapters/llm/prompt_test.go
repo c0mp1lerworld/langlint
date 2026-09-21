@@ -50,9 +50,9 @@ func TestBuildPrompt_SystemPromptDescribesOutputContract(t *testing.T) {
 		"source_es",
 		"user_draft",
 		"correction",
-		"target_verb_review",
-		"lexical_clarification",
-		"grammar_explanation",
+		"target_verb_reviews",
+		"lexical_clarifications",
+		"grammar_explanations",
 		"error_patterns",
 	} {
 		if !strings.Contains(p.System, want) {

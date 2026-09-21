@@ -22,27 +22,27 @@ func mustCompletedAnalysis(t *testing.T, practiceID domain.ID) *analysis.Analysi
 		SourceES:   "El perro corre",
 		UserDraft:  "The dog run",
 		Correction: "The dog runs",
-		TargetVerbReview: analysis.TargetVerbReview{
+		TargetVerbReviews: []analysis.TargetVerbReview{{
 			Verb:         "run",
 			CorrectForm:  "runs",
 			Rule:         "tercera persona singular",
 			Why:          "sujeto singular",
 			ESContrast:   "en español no cambia",
 			Alternatives: []string{"runs"},
-		},
-		LexicalClarification: analysis.LexicalClarification{
+		}},
+		LexicalClarifications: []analysis.LexicalClarification{{
 			Term:     "run",
 			Meaning:  "correr",
 			WhyWrong: "falta -s",
-		},
-		GrammarExplanation: analysis.GrammarExplanation{
+		}},
+		GrammarExplanations: []analysis.GrammarExplanation{{
 			RuleName:       "tercera persona singular",
 			Explanation:    "añade -s",
 			Construction:   "verbo + -s",
 			Counterexample: "run -> runs",
 			Exception:      "irregulares",
 			ESContrast:     "no aplica",
-		},
+		}},
 		ErrorPatterns: []domain.ErrorPattern{{
 			Code:     domain.ErrorPatternCodeTenseAgreement,
 			Severity: domain.ErrorPatternSeverityModerate,

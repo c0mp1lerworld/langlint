@@ -13,27 +13,27 @@ func validFragment() analysis.Fragment {
 		SourceES:   "El perro corre.",
 		UserDraft:  "The dog run.",
 		Correction: "The dog runs.",
-		TargetVerbReview: analysis.TargetVerbReview{
+		TargetVerbReviews: []analysis.TargetVerbReview{{
 			Verb:         "run",
 			CorrectForm:  "runs",
 			Rule:         "tercera persona singular",
 			Why:          "el sujeto es singular",
 			ESContrast:   "en español la forma no cambia",
 			Alternatives: []string{"runs"},
-		},
-		LexicalClarification: analysis.LexicalClarification{
+		}},
+		LexicalClarifications: []analysis.LexicalClarification{{
 			Term:     "run",
 			Meaning:  "correr",
 			WhyWrong: "falta la -s de tercera persona",
-		},
-		GrammarExplanation: analysis.GrammarExplanation{
+		}},
+		GrammarExplanations: []analysis.GrammarExplanation{{
 			RuleName:       "tercera persona singular",
 			Explanation:    "el verbo añade -s",
 			Construction:   "verbo + -s",
 			Counterexample: "run -> runs",
 			Exception:      "verbos irregulares",
 			ESContrast:     "no aplica en español",
-		},
+		}},
 	}
 }
 
@@ -64,32 +64,50 @@ func TestValidateFragments_EmptySlice_ReturnsNil(t *testing.T) {
 
 func TestValidateFragments_EmptyRequiredField_ReturnsError(t *testing.T) {
 	fragment := validFragment()
-	fragment.GrammarExplanation.RuleName = "   "
+	fragment.GrammarExplanations[0].RuleName = "   "
 
 	assertInvalidOutput(t, validateFragments([]analysis.Fragment{fragment}))
 }
 
 func TestValidateFragments_EmptyVerbReviewField_ReturnsError(t *testing.T) {
 	fragment := validFragment()
-	fragment.TargetVerbReview.Rule = ""
+	fragment.TargetVerbReviews[0].Rule = ""
 
 	assertInvalidOutput(t, validateFragments([]analysis.Fragment{fragment}))
 }
 
 func TestValidateFragments_BlankAlternative_ReturnsError(t *testing.T) {
 	fragment := validFragment()
-	fragment.LexicalClarification.Alternatives = []string{"ok", "  "}
+	fragment.LexicalClarifications[0].Alternatives = []string{"ok", "  "}
 
 	assertInvalidOutput(t, validateFragments([]analysis.Fragment{fragment}))
 }
 
 func TestValidateFragments_EmptyAlternatives_IsAllowed(t *testing.T) {
 	fragment := validFragment()
-	fragment.TargetVerbReview.Alternatives = nil
+	fragment.TargetVerbReviews[0].Alternatives = nil
 
 	if err := validateFragments([]analysis.Fragment{fragment}); err != nil {
 		t.Fatalf("validateFragments() error = %v, want nil", err)
 	}
+}
+
+func TestValidateFragments_EmptyExplanationLists_IsAllowed(t *testing.T) {
+	fragment := validFragment()
+	fragment.TargetVerbReviews = nil
+	fragment.LexicalClarifications = nil
+	fragment.GrammarExplanations = nil
+
+	if err := validateFragments([]analysis.Fragment{fragment}); err != nil {
+		t.Fatalf("validateFragments() error = %v, want nil", err)
+	}
+}
+
+func TestValidateFragments_InvalidSecondVerbReview_ReturnsError(t *testing.T) {
+	fragment := validFragment()
+	fragment.TargetVerbReviews = append(fragment.TargetVerbReviews, analysis.TargetVerbReview{Verb: "bet"})
+
+	assertInvalidOutput(t, validateFragments([]analysis.Fragment{fragment}))
 }
 
 func TestValidateFragments_UnknownErrorCode_ReturnsError(t *testing.T) {

@@ -449,14 +449,26 @@ func fragmentToWire(f analysis.Fragment) Fragment {
 	for _, pattern := range f.ErrorPatterns {
 		patterns = append(patterns, errorPatternToWire(pattern))
 	}
+	reviews := make([]TargetVerbReview, 0, len(f.TargetVerbReviews))
+	for _, review := range f.TargetVerbReviews {
+		reviews = append(reviews, targetVerbReviewToWire(review))
+	}
+	clarifications := make([]LexicalClarification, 0, len(f.LexicalClarifications))
+	for _, clarification := range f.LexicalClarifications {
+		clarifications = append(clarifications, lexicalClarificationToWire(clarification))
+	}
+	explanations := make([]GrammarExplanation, 0, len(f.GrammarExplanations))
+	for _, explanation := range f.GrammarExplanations {
+		explanations = append(explanations, grammarExplanationToWire(explanation))
+	}
 	return Fragment{
-		SourceEs:             f.SourceES,
-		UserDraft:            f.UserDraft,
-		Correction:           f.Correction,
-		TargetVerbReview:     targetVerbReviewToWire(f.TargetVerbReview),
-		LexicalClarification: lexicalClarificationToWire(f.LexicalClarification),
-		GrammarExplanation:   grammarExplanationToWire(f.GrammarExplanation),
-		ErrorPatterns:        patterns,
+		SourceEs:              f.SourceES,
+		UserDraft:             f.UserDraft,
+		Correction:            f.Correction,
+		TargetVerbReviews:     reviews,
+		LexicalClarifications: clarifications,
+		GrammarExplanations:   explanations,
+		ErrorPatterns:         patterns,
 	}
 }
 

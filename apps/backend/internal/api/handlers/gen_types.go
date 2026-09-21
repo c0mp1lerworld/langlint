@@ -279,14 +279,20 @@ type ErrorResponseCode string
 // Fragment defines model for Fragment.
 type Fragment struct {
 	// Correction Corrección directa.
-	Correction           string               `json:"correction"`
-	ErrorPatterns        []ErrorPattern       `json:"error_patterns"`
-	GrammarExplanation   GrammarExplanation   `json:"grammar_explanation"`
-	LexicalClarification LexicalClarification `json:"lexical_clarification"`
+	Correction    string         `json:"correction"`
+	ErrorPatterns []ErrorPattern `json:"error_patterns"`
+
+	// GrammarExplanations Una o más reglas gramaticales; lista vacía si el fragmento no tiene un error gramatical que explicar.
+	GrammarExplanations []GrammarExplanation `json:"grammar_explanations"`
+
+	// LexicalClarifications Una o más aclaraciones léxicas; lista vacía si el fragmento no tiene una elección de vocabulario o colocación que aclarar.
+	LexicalClarifications []LexicalClarification `json:"lexical_clarifications"`
 
 	// SourceEs Frase base en español.
-	SourceEs         string           `json:"source_es"`
-	TargetVerbReview TargetVerbReview `json:"target_verb_review"`
+	SourceEs string `json:"source_es"`
+
+	// TargetVerbReviews Uno o más verbos objetivo con su revisión estructurada; lista vacía si el fragmento no tiene un verbo objetivo relevante.
+	TargetVerbReviews []TargetVerbReview `json:"target_verb_reviews"`
 
 	// UserDraft Borrador del usuario (inglés).
 	UserDraft string `json:"user_draft"`
