@@ -14,9 +14,9 @@
 
 | ID | Título | Estado |
 |---|---|---|
-| [BUG-001](BUG-001-run-ons-no-subdivididos.md) | Run-ons largos no se subdividen en fragmentos | Abierto |
-| [BUG-002](BUG-002-finish-reason-length-como-llm-unavailable.md) | `finish_reason=length` se reporta como `llm_unavailable` | Abierto |
-| [BUG-003](BUG-003-analytics-progress-501.md) | `GET /analytics/progress` responde `501` | Abierto |
+| [BUG-001](BUG-001-run-ons-no-subdivididos.md) | Run-ons largos no se subdividen en fragmentos | Cerrado |
+| [BUG-002](BUG-002-finish-reason-length-como-llm-unavailable.md) | `finish_reason=length` se reporta como `llm_unavailable` | Cerrado |
+| [BUG-003](BUG-003-analytics-progress-501.md) | `GET /analytics/progress` responde `501` | Cerrado |
 
 ---
 

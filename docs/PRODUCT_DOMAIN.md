@@ -167,7 +167,7 @@ Para mantener el proyecto acotado y evitar la parálisis por análisis (MVP acot
 | Agregado | Campos | Notas |
 |---|---|---|
 | `ErrorMetric` | `UserID`, `ErrorPattern.Code`, `Window`, `Count`, `LastSeenAt` | Materializado por el handler de `AnalysisCompleted`. |
-| `ProgressMetric` | `UserID`, `Window`, `TotalFragments`, `ErrorCount`, `Accuracy` | Serie temporal de progreso. |
+| `ProgressMetric` | `UserID`, `Window`, `PeriodStart`, `TotalFragments`, `ErrorCount`, `Accuracy` | Punto de la serie temporal de progreso (bucketing por periodo según la ventana). |
 
 ### 4.3 Value Objects
 
@@ -413,6 +413,7 @@ type LLMExtractor interface {
 
 - El handler de `AnalysisCompleted` (en `analytics`) hace `Upsert` de `ErrorMetric` por `(UserID, ErrorPattern.Code, Window)`, incrementando `Count` y actualizando `LastSeenAt`.
 - `ProgressMetric` agrega `TotalFragments`, `ErrorCount` y `Accuracy = 1 - ErrorCount/TotalFragments` por ventana.
+- La **serie de progreso** se deriva **on-read** de las `analyses` completadas (no se materializa tabla) y se agrupa por periodo —día, semana ISO o mes— según la ventana mediante `analytics.BucketPeriod`/`BuildProgressSeries`.
 
 ### 7.2 Jobs del Provisioner
 

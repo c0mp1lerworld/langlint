@@ -27,6 +27,7 @@ import (
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/services/event_handlers"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/analysis"
+	"github.com/c0mp1lerworld/langlint/backend/internal/domain/analytics"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/identity"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/httpx"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/testdb"
@@ -89,6 +90,7 @@ func newRouter(t *testing.T, pool *pgxpool.Pool, userID domain.ID) http.Handler 
 	practices := repositories.NewPracticeRepository(pool)
 	analyses := repositories.NewAnalysisRepository(pool)
 	metrics := repositories.NewErrorMetricRepository(pool, testPseudonymizer(t))
+	progress := repositories.NewProgressRepository(pool)
 	deletions := repositories.NewDeletionRequestRepository(pool)
 	accessLog := repositories.NewAccessLogRepository(pool)
 	uow := postgres.NewUnitOfWork(pool)
@@ -96,7 +98,7 @@ func newRouter(t *testing.T, pool *pgxpool.Pool, userID domain.ID) http.Handler 
 
 	analysisSvc := services.NewAnalysisService(fakeExtractor{}, uow, practices, analyses, outbox, services.LLMTimeout(0))
 	practiceSvc := services.NewPracticeService(uow, practices, analyses, outbox)
-	analyticsSvc := services.NewAnalyticsService(metrics)
+	analyticsSvc := services.NewAnalyticsService(metrics, progress)
 	email, err := identity.NewEmail("student@example.com")
 	if err != nil {
 		t.Fatalf("NewEmail() error = %v", err)
@@ -213,6 +215,27 @@ func TestHTTPFlow_CreateAnalyzePollAnalytics(t *testing.T) {
 	}
 	if stats.Patterns[0].Code != httpapi.ErrorPatternCode(domain.ErrorPatternCodeTenseAgreement) {
 		t.Fatalf("pattern code = %q", stats.Patterns[0].Code)
+	}
+
+	// [4b] The progress endpoint returns the derived series (was 501, GAP-1).
+	resp, err = http.Get(api.URL + "/analytics/progress?window=week")
+	if err != nil {
+		t.Fatalf("GET progress error = %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("GET progress status = %d, want 200 (%s)", resp.StatusCode, body)
+	}
+	var series httpapi.ProgressSeries
+	if err := json.NewDecoder(resp.Body).Decode(&series); err != nil {
+		t.Fatalf("decode progress series: %v", err)
+	}
+	resp.Body.Close()
+	if series.Window != httpapi.Window(analytics.WindowWeek) || len(series.Points) != 1 {
+		t.Fatalf("progress series = %+v, want one weekly point", series)
+	}
+	if series.Points[0].TotalFragments != 1 || series.Points[0].ErrorCount != 1 {
+		t.Fatalf("progress point = %+v, want total=1 errors=1", series.Points[0])
 	}
 
 	// [5] The active-practice quiz generates a question and evaluates an answer.

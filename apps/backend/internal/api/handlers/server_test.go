@@ -37,7 +37,7 @@ func wireID(id domain.ID) PracticeId {
 
 func newTestServer(ctrl *gomock.Controller, practices *mocks.MockPracticeRepository, analyses *mocks.MockAnalysisRepository, metrics *mocks.MockErrorMetricRepository, outbox *mocks.MockOutbox) *Server {
 	practiceSvc := services.NewPracticeService(runUoW(ctrl), practices, analyses, outbox)
-	return NewServer(practiceSvc, services.NewAnalyticsService(metrics), testIdentityService(ctrl), testQuizService(ctrl))
+	return NewServer(practiceSvc, services.NewAnalyticsService(metrics, mocks.NewMockProgressRepository(ctrl)), testIdentityService(ctrl), testQuizService(ctrl))
 }
 
 // testQuizService builds a QuizService over throwaway mocks.
@@ -303,15 +303,55 @@ func TestServer_GetErrorPatternStats_ReturnsPatterns(t *testing.T) {
 	}
 }
 
-func TestServer_ProgressSeries_Returns501(t *testing.T) {
+func TestServer_ProgressSeries_ReturnsSeries(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	srv := newTestServer(ctrl, mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockOutbox(ctrl))
+	userID := domain.MustNewID()
+	samples := []analytics.ProgressSample{
+		{CompletedAt: time.Date(2026, 9, 17, 8, 0, 0, 0, time.UTC), TotalFragments: 4, ErrorCount: 1},
+	}
 
-	rec := serve(domain.MustNewID(),
+	progress := mocks.NewMockProgressRepository(ctrl)
+	progress.EXPECT().ListSamplesByUser(gomock.Any(), userID).Return(samples, nil)
+
+	srv := NewServer(
+		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
+		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), progress),
+		testIdentityService(ctrl),
+		testQuizService(ctrl),
+	)
+
+	rec := serve(userID,
 		func(w http.ResponseWriter, r *http.Request) { srv.GetProgressSeries(w, r, GetProgressSeriesParams{}) },
 		httptest.NewRequest(http.MethodGet, "/", nil))
-	if rec.Code != http.StatusNotImplemented {
-		t.Fatalf("status = %d, want 501", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %s)", rec.Code, rec.Body.String())
+	}
+
+	var body ProgressSeries
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	if body.Window != Window(analytics.WindowWeek) || len(body.Points) != 1 {
+		t.Fatalf("body = %+v", body)
+	}
+	if body.Points[0].TotalFragments != 4 || body.Points[0].ErrorCount != 1 {
+		t.Fatalf("point = %+v, want total=4 errors=1", body.Points[0])
+	}
+}
+
+func TestServer_ProgressSeries_InvalidWindow_Returns422(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	userID := domain.MustNewID()
+	srv := newTestServer(ctrl, mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockOutbox(ctrl))
+
+	invalid := Window("year")
+	rec := serve(userID,
+		func(w http.ResponseWriter, r *http.Request) {
+			srv.GetProgressSeries(w, r, GetProgressSeriesParams{Window: &invalid})
+		},
+		httptest.NewRequest(http.MethodGet, "/", nil))
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", rec.Code)
 	}
 }
 
@@ -331,7 +371,7 @@ func TestServer_ExportData_ReturnsDataExport(t *testing.T) {
 	)
 	srv := NewServer(
 		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
-		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
+		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockProgressRepository(ctrl)),
 		identitySvc,
 		testQuizService(ctrl),
 	)
@@ -368,7 +408,7 @@ func TestServer_ExportData_RepositoryError_Returns500(t *testing.T) {
 
 	srv := NewServer(
 		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
-		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
+		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockProgressRepository(ctrl)),
 		services.NewIdentityService(mustEmail(t, testEmail), practices, mocks.NewMockDeletionRequestRepository(ctrl), mocks.NewMockAccessLogRepository(ctrl)),
 		testQuizService(ctrl),
 	)
@@ -389,7 +429,7 @@ func TestServer_DeleteData_NoPending_Returns202(t *testing.T) {
 
 	srv := NewServer(
 		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
-		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
+		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockProgressRepository(ctrl)),
 		services.NewIdentityService(mustEmail(t, testEmail), mocks.NewMockPracticeRepository(ctrl), deletions, mocks.NewMockAccessLogRepository(ctrl)),
 		testQuizService(ctrl),
 	)
@@ -410,7 +450,7 @@ func TestServer_DeleteData_AlreadyPending_Returns202Idempotent(t *testing.T) {
 
 	srv := NewServer(
 		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
-		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
+		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockProgressRepository(ctrl)),
 		services.NewIdentityService(mustEmail(t, testEmail), mocks.NewMockPracticeRepository(ctrl), deletions, mocks.NewMockAccessLogRepository(ctrl)),
 		testQuizService(ctrl),
 	)
@@ -435,7 +475,7 @@ func TestServer_GetAccessLog_ReturnsPage(t *testing.T) {
 
 	srv := NewServer(
 		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
-		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
+		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockProgressRepository(ctrl)),
 		services.NewIdentityService(mustEmail(t, testEmail), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockDeletionRequestRepository(ctrl), accessLog),
 		testQuizService(ctrl),
 	)
@@ -594,7 +634,7 @@ func TestServer_CreateQuizQuestion_ReturnsQuestion(t *testing.T) {
 
 	srv := NewServer(
 		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
-		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
+		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockProgressRepository(ctrl)),
 		testIdentityService(ctrl),
 		services.NewQuizService(practices, analyses, questioner),
 	)
@@ -639,7 +679,7 @@ func TestServer_EvaluateQuizAnswer_ReturnsEvaluation(t *testing.T) {
 
 	srv := NewServer(
 		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
-		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
+		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockProgressRepository(ctrl)),
 		testIdentityService(ctrl),
 		services.NewQuizService(practices, analyses, questioner),
 	)

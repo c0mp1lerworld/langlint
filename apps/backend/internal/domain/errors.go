@@ -93,6 +93,23 @@ func (e *LLMUnavailableError) Error() string {
 	return fmt.Sprintf("%s: %s", e.Field, e.Message)
 }
 
+// LLMOutputTruncatedError signals that the LLM provider reached its output token
+// cap and returned a truncated result (HTTP 503, wire code
+// llm_output_truncated). It is distinct from LLMUnavailableError: the provider
+// is up, but the work per call exceeded the output budget (BUG-002).
+type LLMOutputTruncatedError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
+// Error implements the error interface.
+func (e *LLMOutputTruncatedError) Error() string {
+	if e.Field == "" {
+		return e.Message
+	}
+	return fmt.Sprintf("%s: %s", e.Field, e.Message)
+}
+
 // InternalError signals an unexpected infrastructure failure (A5, HTTP 500).
 // Adapters wrap unknown database or dependency errors in this type so no
 // infrastructure detail leaks to the service.

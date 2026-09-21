@@ -4,6 +4,24 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 El contrato OpenAPI es la SSOT del wire format (A12); todo cambio breaking sube
 la versión major y se anota aquí (AP-MR6).
 
+## [3.2.0] — 2026-09-21
+
+### Añadido
+
+- **`ErrorResponse.code`**: nuevo código `llm_output_truncated`, distinto de
+  `llm_unavailable`, para cuando el proveedor alcanza el tope de tokens de salida
+  y devuelve una respuesta truncada (BUG-002). No es breaking: es un valor nuevo
+  de un enum que el cliente ya tolera como desconocido.
+
+## [3.1.0] — 2026-09-21
+
+### Cambiado
+
+- **`GET /v1/analytics/progress`**: deja de declarar `501 NotImplemented`; la
+  operación responde `200 ProgressSeries` con la serie temporal real
+  (PRODUCT_DOMAIN §7.1). Se retira el componente de respuesta `NotImplemented`,
+  ya sin uso (no es breaking: el `200` ya estaba declarado).
+
 ## [3.0.0] — 2026-09-20
 
 ### BREAKING

@@ -277,6 +277,37 @@ func TestAnalysisService_RunAnalysis_ExtractorError_PersistsFailedAnalysisAndEmi
 	}
 }
 
+func TestAnalysisService_RunAnalysis_TruncatedOutput_PersistsReasonLLMOutputTruncated(t *testing.T) {
+	fixture := newServiceFixture(t)
+	p := testPractice()
+
+	fixture.practices.EXPECT().GetByID(gomock.Any(), p.ID).Return(p, nil)
+	fixture.extractor.EXPECT().Model().Return("gpt-4o-mini")
+	fixture.extractor.EXPECT().ModelVersion().Return("2024-07-18")
+	fixture.extractor.EXPECT().Extract(gomock.Any(), gomock.Any()).Return(nil, &domain.LLMOutputTruncatedError{Message: "llm output truncated"})
+	fixture.expectTransaction()
+
+	var dispatched domain.DomainEvent
+	fixture.analyses.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+	fixture.outbox.EXPECT().Append(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, event domain.DomainEvent) error {
+			dispatched = event
+			return nil
+		},
+	)
+
+	if err := fixture.svc.RunAnalysis(context.Background(), p.ID); err != nil {
+		t.Fatalf("RunAnalysis() error = %v, want nil (handled failure)", err)
+	}
+	event, ok := dispatched.(domain.AnalysisFailed)
+	if !ok {
+		t.Fatalf("dispatched event = %T, want domain.AnalysisFailed", dispatched)
+	}
+	if event.Reason != reasonLLMOutputTruncated {
+		t.Fatalf("event.Reason = %q, want %q", event.Reason, reasonLLMOutputTruncated)
+	}
+}
+
 func TestAnalysisService_RunAnalysis_EmptyFragments_PersistsFailedAnalysis(t *testing.T) {
 	fixture := newServiceFixture(t)
 	p := testPractice()

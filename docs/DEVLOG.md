@@ -4,6 +4,33 @@
 
 ---
 
+## 2026-09-21 — Cierre de gaps pre-post-MVP: GAP-1/BUG-003, BUG-002 y BUG-001
+
+**Estado**: los tres bugs abiertos de `docs/bugs/` quedan **cerrados** y el único gap contrato↔dominio funcional (`GAP-1`) también. Contratos `3.1.0` (progress) y `3.2.0` (`llm_output_truncated`). `go build/vet/test -race` (Tier 1+2+3), `pnpm generate` idempotente, `pnpm lint` (contrato incluido, 6 warnings conocidos), `pnpm test` (frontend 95), `pnpm typecheck`, `pnpm build` y `pnpm test:e2e` en verde. Queda como único bloqueo del *Gate de Fase 7* el primer run real de CI en GitHub (acción humana).
+
+**Hecho**:
+- **GAP-1 / BUG-003 — `GET /analytics/progress`**: la serie se deriva **on-read** de las `analyses` completadas (verdad append-only), sin tabla materializada: puerto `storage.ProgressRepository` (`ListSamplesByUser`), adaptador `PostgresProgressRepository` y la función pura `analytics.BuildProgressSeries` + `BucketPeriod` (día / semana ISO / mes). El handler responde `200 ProgressSeries`; el frontend deja de mostrar el placeholder. Contrato `3.1.0`: se retira el `501` y el componente `NotImplemented`.
+- **BUG-002 — `finish_reason=length`**: el adaptador devuelve `*domain.LLMOutputTruncatedError` (en vez de `llm_unavailable`); el `AnalysisService` registra `reason = "llm output truncated"`. Contrato `3.2.0`: `llm_output_truncated` en el enum `ErrorResponse.code`; mapeo HTTP `503`.
+- **BUG-001 — run-ons**: `splitSegments`/`splitRunOns` en `prompt.go` subdividen las frases largas (≥25 palabras) por sub-cláusulas deterministas (coma + conjunción/relativo, o `;`) con **invariante de cobertura** (`reconstructs`); si no se cumple, se conserva la frase entera. El adaptador llama al modelo por sub-cláusula.
+- Tests nuevos: dominio (`BucketPeriod`, `BuildProgressSeries`, `ProgressMetric.PeriodStart`), service (`ProgressSeries`), handler (`200`/`422`, mapeo del nuevo error), adapter (`finish_reason=length`, run-on multi-llamada) y Tier 3 (`progress_repository_integration_test.go` + paso `[4b]` del e2e HTTP).
+
+**Decisiones**:
+- **Progress on-read, no materializado**: el plan de cierre admitía "job o consulta"; con un único usuario, derivar de la fuente de verdad evita migración, tabla y reconciliación (el plan original de materializar en `refresh-aggregates` habría añadido drift sin beneficio). `ProgressMetric` gana `PeriodStart` y se agrupa por periodo.
+- **`llm_output_truncated` → HTTP `503`**: es una condición transitoria del proveedor (tope de salida), reintentable tras reducir el trabajo por llamada; se distingue de `llm_unavailable` por el `code`.
+- **Run-ons con umbral y validadas**: solo se subdividen frases ≥25 palabras y solo si las piezas reconstruyen la frase; en caso contrario se mantiene el comportamiento anterior (sin regresión de cobertura).
+
+**Verificación** (local):
+- `go build ./...` · `go vet ./...` (+ `-tags=integration`) · `go test -race -count=1 ./...` → OK; `gofmt -l` limpio.
+- `go test -race -count=1 -tags=integration ./internal/api/adapters/postgres/repositories/ ./test/e2e/` → OK.
+- `pnpm generate` idempotente; `check-version.sh` → `3.2.0`; `pnpm --filter @langlint/contracts lint` → válido.
+- `pnpm --filter frontend test` (95) · `pnpm --filter frontend typecheck` · `pnpm --filter frontend lint` → OK.
+
+**Bloqueos**: el *Gate de Fase 7* sigue requiriendo el primer run real de CI en GitHub (secrets `TURBO_*` y var `STAGING_API_URL`).
+
+**Próximo paso**: cerrar el Gate de Fase 7 con el primer run de CI; después, post-MVP (tutor adaptativo) o el `9.7` diferido.
+
+---
+
 ## 2026-09-21 — Fase 7.3: Documentación (7.3.1–7.3.4)
 
 **Estado**: bloque Documentación completado; con él, **todos los items de Fase 7 (`7.1`–`7.3`) quedan hechos**. El *Gate de salida* de Fase 7 sigue pendiente únicamente del **primer run real de los workflows en GitHub** (no corren en local); `gosec`/`govulncheck` (0 hallazgos) y la documentación ya están cerrados. Sin cambios de código ni de contrato (A12).

@@ -172,6 +172,31 @@ func TestOpenAIExtractor_Extract_MultipleSentences_OneCallPerSentence(t *testing
 	}
 }
 
+// TestOpenAIExtractor_Extract_LongRunOn_OneCallPerSubClause asserts a long
+// run-on is subdivided and corrected sub-clause by sub-clause (BUG-001).
+func TestOpenAIExtractor_Extract_LongRunOn_OneCallPerSubClause(t *testing.T) {
+	calls := 0
+	extractor := newExtractorForHandler(t, func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		writeChatCompletion(t, w, validFragmentContent)
+	})
+
+	draft := "I went to the market because I needed some milk, and I bought bread, and then I walked home while the sun was setting behind the buildings."
+	got, err := extractor.Extract(context.Background(), ports.ExtractRequest{
+		SourceText: "Fui al mercado porque necesitaba leche, y compré pan, y luego caminé a casa.",
+		DraftText:  draft,
+	})
+	if err != nil {
+		t.Fatalf("Extract() error = %v", err)
+	}
+	if calls != 3 {
+		t.Fatalf("provider calls = %d, want 3 (one per sub-clause)", calls)
+	}
+	if len(got) != 3 {
+		t.Fatalf("len(fragments) = %d, want 3", len(got))
+	}
+}
+
 func TestOpenAIExtractor_Extract_EmptyDraft_ReturnsNoFragments(t *testing.T) {
 	extractor := newExtractorForHandler(t, func(w http.ResponseWriter, _ *http.Request) {
 		t.Error("provider must not be called for an empty draft")
@@ -244,6 +269,36 @@ func TestOpenAIExtractor_Extract_InvalidJSON_ReturnsLLMUnavailableError(t *testi
 
 	_, err := extractor.Extract(context.Background(), ports.ExtractRequest{DraftText: "The dog run."})
 	assertLLMUnavailable(t, err)
+}
+
+// TestOpenAIExtractor_Extract_TruncatedOutput_ReturnsLLMOutputTruncatedError
+// asserts finish_reason=length is surfaced as a specific domain error instead of
+// the generic llm_unavailable (BUG-002).
+func TestOpenAIExtractor_Extract_TruncatedOutput_ReturnsLLMOutputTruncatedError(t *testing.T) {
+	extractor := newExtractorForHandler(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		response := map[string]any{
+			"id":      "chatcmpl-test",
+			"object":  "chat.completion",
+			"created": 0,
+			"model":   "gpt-4o-mini",
+			"choices": []map[string]any{
+				{
+					"index":         0,
+					"finish_reason": "length",
+					"message":       map[string]any{"role": "assistant", "content": `{"fragments":[`},
+				},
+			},
+		}
+		_ = json.NewEncoder(w).Encode(response)
+	})
+
+	_, err := extractor.Extract(context.Background(), ports.ExtractRequest{DraftText: "The dog run."})
+
+	var target *domain.LLMOutputTruncatedError
+	if !errors.As(err, &target) {
+		t.Fatalf("Extract() error = %v, want *domain.LLMOutputTruncatedError", err)
+	}
 }
 
 func TestOpenAIExtractor_Extract_NoChoices_ReturnsLLMUnavailableError(t *testing.T) {

@@ -27,30 +27,28 @@
 
 | ID | Gap | Tipo | Estado |
 |---|---|---|---|
-| GAP-1 | `GET /analytics/progress` responde `501` | Endpoint no implementado | Abierto |
+| GAP-1 | `GET /analytics/progress` responde `501` | Endpoint no implementado | **Cerrado** (contrato `3.1.0`) |
 | GAP-2 | `DataExport.email` se toma de la config, no de un usuario persistido | Decisión de diseño | Aceptado (MVP) |
 
 ---
 
-## GAP-1 — `GET /analytics/progress` sin implementar
+## GAP-1 — `GET /analytics/progress` sin implementar (**CERRADO**)
 
 - **Contrato**: la operación `get_progress_series` declara `200` con
-  `ProgressSeries` y `501 NotImplemented`.
-- **Dominio**: existe `analytics.ProgressMetric` (con tests), pero **nada lo
-  materializa**: `refresh-aggregates` solo reconstruye `error_metrics`; no hay
-  repositorio ni adaptador de progreso.
-- **Implementación**: `Server.GetProgressSeries` responde `writeNotImplemented`
-  (`501`). El dashboard del frontend muestra un placeholder "disponible
-  próximamente".
-- **Causa**: la Fase 6 (provisioner) no incluyó un item para materializar
-  progreso; se documentó como gap.
-- **Impacto**: funcionalidad anunciada no disponible; el contrato ya lo declara
-  como `501`, así que no hay divergencia silenciosa.
-- **Plan de cierre**: implementar la agregación de `ProgressMetric` (job o
-  consulta), un `ProgressRepository`, cablearlo en `refresh-aggregates` y
-  sustituir el `501` por el `200`. Alternativa: retirar la operación del
-  contrato hasta implementarla.
-- **Seguimiento**: [BUG-003](bugs/BUG-003-analytics-progress-501.md).
+  `ProgressSeries`; el `501 NotImplemented` se **retiró** en el contrato
+  `3.1.0`.
+- **Solución**: la serie se **deriva on-read** de las `analyses` completadas
+  (la verdad append-only), sin materializar tabla: `ProgressRepository`
+  (`ListSamplesByUser`) + la función pura `analytics.BuildProgressSeries`
+  (bucketing por día/semana/mes con `analytics.BucketPeriod`). El handler
+  devuelve `200`.
+- **Por qué on-read y no una tabla**: con un único usuario el volumen es
+  pequeño y `refresh-aggregates`/migración habrían añadido superficie de drift
+  sin beneficio; el plan de cierre admitía "job o consulta". Derivar de la
+  fuente de verdad satisface A4 y no requiere reconciliación.
+- **Impacto**: la funcionalidad anunciada está disponible y el dashboard deja de
+  mostrar el placeholder.
+- **Seguimiento**: [BUG-003](bugs/BUG-003-analytics-progress-501.md) (cerrado).
 
 ---
 

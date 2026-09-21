@@ -42,6 +42,9 @@ func NewOpenAIExtractor(client openai.Client, model, modelVersion string) *OpenA
 // non-deterministically collapse several mistakes into a single explanation.
 const extractionTemperature = 0.0
 
+// finishReasonLength is the provider's signal that the output cap was reached.
+const finishReasonLength = "length"
+
 // Model returns the LLM model identifier used by the adapter.
 func (e *OpenAIExtractor) Model() string { return e.model }
 
@@ -49,25 +52,26 @@ func (e *OpenAIExtractor) Model() string { return e.model }
 func (e *OpenAIExtractor) ModelVersion() string { return e.modelVersion }
 
 // Extract sends the anonymized practice to the LLM and returns the parsed
-// fragments. It calls the model once per sentence of the learner's draft so the
-// fragments cannot drift out of alignment when the source and the draft have
-// different sentence counts; the draft segmentation is deterministic and owned
-// here. Any provider, transport, empty-response or JSON parsing failure is
-// surfaced as a *domain.LLMUnavailableError with a generic message, so no raw
-// provider error leaks upstream (A5, A8). The calls receive ctx and run outside
-// every transaction (PRODUCT_DOMAIN §4.7, AP6).
+// fragments. It calls the model once per sentence of the learner's draft, with
+// long run-ons subdivided into sub-clauses (BUG-001), so the fragments cannot
+// drift out of alignment when the source and the draft have different sentence
+// counts; the draft segmentation is deterministic and owned here. Any provider,
+// transport, empty-response or JSON parsing failure is surfaced as a
+// *domain.LLMUnavailableError with a generic message, so no raw provider error
+// leaks upstream (A5, A8). The calls receive ctx and run outside every
+// transaction (PRODUCT_DOMAIN §4.7, AP6).
 func (e *OpenAIExtractor) Extract(ctx context.Context, req ports.ExtractRequest) ([]analysis.Fragment, error) {
-	sentences := SplitSentences(req.DraftText)
-	if len(sentences) == 0 {
+	segments := splitSegments(req.DraftText)
+	if len(segments) == 0 {
 		return []analysis.Fragment{}, nil
 	}
 
-	fragments := make([]analysis.Fragment, 0, len(sentences))
-	for i, sentence := range sentences {
+	fragments := make([]analysis.Fragment, 0, len(segments))
+	for i, segment := range segments {
 		if err := ctx.Err(); err != nil {
 			return nil, &domain.LLMUnavailableError{Message: "llm unavailable"}
 		}
-		fragment, err := e.extractSentence(ctx, req, i, len(sentences), sentence)
+		fragment, err := e.extractSentence(ctx, req, i, len(segments), segment)
 		if err != nil {
 			return nil, err
 		}
@@ -101,6 +105,12 @@ func (e *OpenAIExtractor) extractSentence(ctx context.Context, req ports.Extract
 	}
 	if len(completion.Choices) == 0 {
 		return analysis.Fragment{}, &domain.LLMUnavailableError{Message: "llm unavailable"}
+	}
+	// The provider hit its output token cap and truncated the JSON. This is not
+	// an outage: surface a specific error so the caller can reduce the work per
+	// call instead of retrying blindly (BUG-002).
+	if completion.Choices[0].FinishReason == finishReasonLength {
+		return analysis.Fragment{}, &domain.LLMOutputTruncatedError{Message: "llm output truncated"}
 	}
 
 	var envelope fragmentEnvelope

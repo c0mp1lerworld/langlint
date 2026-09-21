@@ -15,11 +15,6 @@ func writeDomainError(w http.ResponseWriter, err error) {
 	writeError(w, status, code, message)
 }
 
-// writeNotImplemented reports an endpoint reserved to a later phase (Fase 6).
-func writeNotImplemented(w http.ResponseWriter) {
-	writeError(w, http.StatusNotImplemented, ErrorResponseCodeNotImplemented, "not implemented")
-}
-
 // writeError encodes the standard ErrorResponse body.
 func writeError(w http.ResponseWriter, status int, code ErrorResponseCode, message string) {
 	w.Header().Set("Content-Type", "application/json")
@@ -37,6 +32,7 @@ func domainError(err error) (int, ErrorResponseCode, string) {
 	var pending *domain.AnalysisPendingError
 	var failed *domain.AnalysisFailedError
 	var llmUnavailable *domain.LLMUnavailableError
+	var llmTruncated *domain.LLMOutputTruncatedError
 	var internal *domain.InternalError
 
 	switch {
@@ -52,6 +48,8 @@ func domainError(err error) (int, ErrorResponseCode, string) {
 		return http.StatusUnprocessableEntity, ErrorResponseCodeAnalysisFailed, failed.Message
 	case errors.As(err, &llmUnavailable):
 		return http.StatusServiceUnavailable, ErrorResponseCodeLlmUnavailable, llmUnavailable.Message
+	case errors.As(err, &llmTruncated):
+		return http.StatusServiceUnavailable, ErrorResponseCodeLlmOutputTruncated, llmTruncated.Message
 	case errors.As(err, &internal):
 		return http.StatusInternalServerError, ErrorResponseCodeInternal, "internal error"
 	default:

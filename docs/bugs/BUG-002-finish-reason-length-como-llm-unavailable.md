@@ -1,8 +1,9 @@
 # BUG-002 — `finish_reason=length` se reporta como `llm_unavailable`
 
-- **Estado**: Abierto (mitigado parcialmente)
+- **Estado**: Cerrado
 - **Área**: Motor de IA (adaptador) · `internal/api/adapters/llm`
 - **Detectado**: 2026-09-20
+- **Cerrado**: 2026-09-21
 
 ## Qué pasó
 
@@ -30,10 +31,16 @@ respuestas operativas distintas (reintentar vs. reducir el trabajo por llamada).
 
 ## Regla / plan de cierre
 
-- **Candidato de hardening**: detectar `finish_reason=length` en el adaptador y
-  devolver un **error de dominio específico** (p. ej. `llm_output_truncated`) en
-  vez de `llm_unavailable`, para que la API/UX pueda distinguirlo.
-- Añadir un test del adaptador que cubra la respuesta truncada.
+- **Implementado**: el adaptador detecta `finish_reason=length` y devuelve el
+  error de dominio específico `*domain.LLMOutputTruncatedError` (wire
+  `llm_output_truncated`, HTTP `503`), distinto de `llm_unavailable`. El
+  `AnalysisService` registra el `AnalysisFailed.reason` correspondiente
+  (`llm output truncated`).
+- Contrato `3.2.0`: `llm_output_truncated` añadido al enum
+  `ErrorResponse.code`.
+- Tests: `openai_extractor_test.go` (respuesta truncada ⇒
+  `LLMOutputTruncatedError`), `analysis_service_test.go` (reason específico) y
+  `errors_test.go` (mapeo HTTP).
 
 ## Referencias
 

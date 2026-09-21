@@ -28,6 +28,58 @@ func TestSplitSentences_EmptyText_ReturnsNil(t *testing.T) {
 	}
 }
 
+func TestSplitRunOns_ShortSentence_Unchanged(t *testing.T) {
+	sentence := "The dog runs in the park."
+
+	got := splitRunOns(sentence)
+	if len(got) != 1 || got[0] != sentence {
+		t.Fatalf("splitRunOns() = %q, want [%q]", got, sentence)
+	}
+}
+
+func TestSplitRunOns_LongRunOn_SplitsAtCommaConjunctions(t *testing.T) {
+	sentence := "I went to the market because I needed some milk, and I bought bread, and then I walked home while the sun was setting behind the buildings."
+
+	got := splitRunOns(sentence)
+	if len(got) != 3 {
+		t.Fatalf("splitRunOns() = %q, want 3 sub-clauses", got)
+	}
+	if !reconstructs(sentence, got) {
+		t.Fatalf("splitRunOns() pieces do not reconstruct the original: %q", got)
+	}
+	if !strings.HasPrefix(got[1], "and ") {
+		t.Fatalf("second sub-clause = %q, want it to start with the connector", got[1])
+	}
+}
+
+func TestSplitRunOns_LongSentenceWithoutConnectors_Unchanged(t *testing.T) {
+	sentence := "The quick brown fox jumps over the lazy dog while everyone in the whole town watches the scene from the square with great attention and delight."
+
+	got := splitRunOns(sentence)
+	// The only boundary candidate is ", and" absent from this sentence, so it is
+	// kept as a single fragment even though it is long.
+	for _, part := range got {
+		if part == "" {
+			t.Fatal("splitRunOns() returned an empty piece")
+		}
+	}
+	if len(got) != 1 {
+		t.Fatalf("splitRunOns() = %q, want the original sentence (no clause boundary)", got)
+	}
+}
+
+func TestSplitSegments_MixesSentencesAndRunOns(t *testing.T) {
+	text := "Short one. I went to the market because I needed some milk, and I bought bread, and then I walked home while the sun was setting behind the buildings."
+
+	got := splitSegments(text)
+	if len(got) != 4 {
+		t.Fatalf("splitSegments() = %q, want 4 segments", got)
+	}
+	if got[0] != "Short one." {
+		t.Fatalf("splitSegments()[0] = %q, want %q", got[0], "Short one.")
+	}
+}
+
 func TestBuildSentencePrompt_IncludesSourceSentenceAndTargetRules(t *testing.T) {
 	req := ports.ExtractRequest{
 		PracticeID: domain.MustNewID(),

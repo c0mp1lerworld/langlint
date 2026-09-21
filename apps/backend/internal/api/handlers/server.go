@@ -267,10 +267,40 @@ func (s *Server) GetErrorPatternStats(w http.ResponseWriter, r *http.Request, pa
 	writeJSON(w, http.StatusOK, ErrorPatternStats{Window: Window(window), Patterns: patterns})
 }
 
-// GetProgressSeries handles GET /analytics/progress. Deferred to Fase 6
-// (refresh-aggregates).
-func (s *Server) GetProgressSeries(w http.ResponseWriter, _ *http.Request, _ GetProgressSeriesParams) {
-	writeNotImplemented(w)
+// GetProgressSeries handles GET /analytics/progress: the user's temporal
+// progress series for a window (PRODUCT_DOMAIN §7.1).
+func (s *Server) GetProgressSeries(w http.ResponseWriter, r *http.Request, params GetProgressSeriesParams) {
+	userID, ok := httpx.UserFrom(r.Context())
+	if !ok {
+		writeDomainError(w, &domain.InternalError{Field: "user", Message: "missing user context"})
+		return
+	}
+
+	window := analytics.WindowWeek
+	if params.Window != nil {
+		window = analytics.Window(*params.Window)
+		if !window.IsValid() {
+			writeDomainError(w, &domain.ValidationError{Field: "window", Message: "must be day, week or month"})
+			return
+		}
+	}
+
+	metrics, err := s.analytics.ProgressSeries(r.Context(), userID, window)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+
+	points := make([]ProgressPoint, 0, len(metrics))
+	for _, m := range metrics {
+		points = append(points, ProgressPoint{
+			PeriodStart:    m.PeriodStart,
+			TotalFragments: m.TotalFragments,
+			ErrorCount:     m.ErrorCount,
+			Accuracy:       float32(m.Accuracy),
+		})
+	}
+	writeJSON(w, http.StatusOK, ProgressSeries{Window: Window(window), Points: points})
 }
 
 // GetAccessLog handles GET /me/access-log: the user's append-only audit (A9).

@@ -4,6 +4,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/c0mp1lerworld/langlint/backend/internal/api/ports"
@@ -24,8 +25,9 @@ const (
 
 	// Generic failure reasons stored in AnalysisFailed. They never carry the raw
 	// provider error (A5, A8).
-	reasonLLMUnavailable = "llm unavailable"
-	reasonInvalidResult  = "invalid result"
+	reasonLLMUnavailable     = "llm unavailable"
+	reasonLLMOutputTruncated = "llm output truncated"
+	reasonInvalidResult      = "invalid result"
 )
 
 // LLMTimeout is the maximum duration of a single LLM extraction call. It is a
@@ -102,6 +104,10 @@ func (s *AnalysisService) RunAnalysis(ctx context.Context, practiceID domain.ID)
 		TargetRules: p.TargetRules,
 	})
 	if err != nil {
+		var truncated *domain.LLMOutputTruncatedError
+		if errors.As(err, &truncated) {
+			return s.failAnalysis(ctx, result, reasonLLMOutputTruncated)
+		}
 		return s.failAnalysis(ctx, result, reasonLLMUnavailable)
 	}
 

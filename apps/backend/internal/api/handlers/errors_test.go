@@ -23,6 +23,7 @@ func TestDomainError_MapsDomainErrors(t *testing.T) {
 		{"analysis pending", &domain.AnalysisPendingError{Message: "pending"}, http.StatusConflict, ErrorResponseCodeAnalysisPending},
 		{"analysis failed", &domain.AnalysisFailedError{Message: "failed"}, http.StatusUnprocessableEntity, ErrorResponseCodeAnalysisFailed},
 		{"llm unavailable", &domain.LLMUnavailableError{Message: "down"}, http.StatusServiceUnavailable, ErrorResponseCodeLlmUnavailable},
+		{"llm output truncated", &domain.LLMOutputTruncatedError{Message: "truncated"}, http.StatusServiceUnavailable, ErrorResponseCodeLlmOutputTruncated},
 		{"internal", &domain.InternalError{Message: "boom"}, http.StatusInternalServerError, ErrorResponseCodeInternal},
 		{"unknown", errors.New("raw pgx error"), http.StatusInternalServerError, ErrorResponseCodeInternal},
 	}
@@ -57,22 +58,5 @@ func TestWriteDomainError_UnknownError_DoesNotLeakDetail(t *testing.T) {
 	}
 	if body.Message != "internal error" {
 		t.Fatalf("message = %q, want generic", body.Message)
-	}
-}
-
-func TestWriteNotImplemented_Returns501(t *testing.T) {
-	rec := httptest.NewRecorder()
-	writeNotImplemented(rec)
-
-	if rec.Code != http.StatusNotImplemented {
-		t.Fatalf("status = %d, want 501", rec.Code)
-	}
-
-	var body ErrorResponse
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("Unmarshal() error = %v", err)
-	}
-	if body.Code != ErrorResponseCodeNotImplemented {
-		t.Fatalf("code = %q, want %q", body.Code, ErrorResponseCodeNotImplemented)
 	}
 }

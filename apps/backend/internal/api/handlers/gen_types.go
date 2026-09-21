@@ -92,14 +92,15 @@ func (e ErrorPatternSeverity) Valid() bool {
 
 // Defines values for ErrorResponseCode.
 const (
-	ErrorResponseCodeAnalysisFailed  ErrorResponseCode = "analysis_failed"
-	ErrorResponseCodeAnalysisPending ErrorResponseCode = "analysis_pending"
-	ErrorResponseCodeInternal        ErrorResponseCode = "internal"
-	ErrorResponseCodeInvalidState    ErrorResponseCode = "invalid_state"
-	ErrorResponseCodeLlmUnavailable  ErrorResponseCode = "llm_unavailable"
-	ErrorResponseCodeNotFound        ErrorResponseCode = "not_found"
-	ErrorResponseCodeNotImplemented  ErrorResponseCode = "not_implemented"
-	ErrorResponseCodeValidationError ErrorResponseCode = "validation_error"
+	ErrorResponseCodeAnalysisFailed     ErrorResponseCode = "analysis_failed"
+	ErrorResponseCodeAnalysisPending    ErrorResponseCode = "analysis_pending"
+	ErrorResponseCodeInternal           ErrorResponseCode = "internal"
+	ErrorResponseCodeInvalidState       ErrorResponseCode = "invalid_state"
+	ErrorResponseCodeLlmOutputTruncated ErrorResponseCode = "llm_output_truncated"
+	ErrorResponseCodeLlmUnavailable     ErrorResponseCode = "llm_unavailable"
+	ErrorResponseCodeNotFound           ErrorResponseCode = "not_found"
+	ErrorResponseCodeNotImplemented     ErrorResponseCode = "not_implemented"
+	ErrorResponseCodeValidationError    ErrorResponseCode = "validation_error"
 )
 
 // Valid indicates whether the value is a known member of the ErrorResponseCode enum.
@@ -112,6 +113,8 @@ func (e ErrorResponseCode) Valid() bool {
 	case ErrorResponseCodeInternal:
 		return true
 	case ErrorResponseCodeInvalidState:
+		return true
+	case ErrorResponseCodeLlmOutputTruncated:
 		return true
 	case ErrorResponseCodeLlmUnavailable:
 		return true
@@ -494,9 +497,6 @@ type LLMUnavailable = ErrorResponse
 
 // NotFound defines model for NotFound.
 type NotFound = ErrorResponse
-
-// NotImplemented defines model for NotImplemented.
-type NotImplemented = ErrorResponse
 
 // ValidationError defines model for ValidationError.
 type ValidationError = ErrorResponse

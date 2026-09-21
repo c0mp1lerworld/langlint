@@ -47,6 +47,7 @@ func Module() fx.Option {
 			newPracticeRepository,
 			newAnalysisRepository,
 			newErrorMetricRepository,
+			newProgressRepository,
 			newDeletionRequestRepository,
 			newAccessLogRepository,
 			newUserEmail,
@@ -106,6 +107,10 @@ func newAnalysisRepository(pool *pgxpool.Pool) storage.AnalysisRepository {
 
 func newErrorMetricRepository(pool *pgxpool.Pool, pseudonyms *pseudonymizer.Pseudonymizer) storage.ErrorMetricRepository {
 	return repositories.NewErrorMetricRepository(pool, pseudonyms)
+}
+
+func newProgressRepository(pool *pgxpool.Pool) storage.ProgressRepository {
+	return repositories.NewProgressRepository(pool)
 }
 
 // newPseudonymizer builds the HMAC keyed with APP_PSEUDONYM_SECRET (A8).

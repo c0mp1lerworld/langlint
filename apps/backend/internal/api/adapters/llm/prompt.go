@@ -88,7 +88,7 @@ Prioritize: list every mistake in error_patterns, but explain in the structured 
 // sentence of the draft. It is exported so operators and the manual
 // `cmd/llmcheck` runner can audit the prompt without calling the API.
 func PromptText(req ports.ExtractRequest) (system, user string) {
-	sentences := SplitSentences(req.DraftText)
+	sentences := splitSegments(req.DraftText)
 	sentence := ""
 	if len(sentences) > 0 {
 		sentence = sentences[0]
@@ -168,6 +168,105 @@ func SplitSentences(text string) []string {
 		}
 	}
 	return sentences
+}
+
+// runOnMinWords is the word count from which a sentence is treated as a run-on
+// and subdivided by sub-clauses before the model is called (BUG-001). Below it a
+// sentence is handled as a single fragment.
+const runOnMinWords = 25
+
+// clauseConnectors are the words that, after a comma, mark a clause boundary. A
+// bare conjunction without a comma is not a boundary ("black and white").
+var clauseConnectors = map[string]bool{
+	"and": true, "but": true, "or": true, "so": true, "yet": true,
+	"because": true, "although": true, "though": true, "while": true,
+	"whereas": true, "since": true, "which": true, "who": true,
+	"whom": true, "whose": true, "that": true, "when": true, "if": true,
+}
+
+// splitSegments splits a draft into the units the adapter sends to the model:
+// sentences first, then long run-ons subdivided by sub-clauses. The order and
+// the coverage of the draft are preserved by construction (BUG-001).
+func splitSegments(text string) []string {
+	sentences := SplitSentences(text)
+	segments := make([]string, 0, len(sentences))
+	for _, sentence := range sentences {
+		segments = append(segments, splitRunOns(sentence)...)
+	}
+	return segments
+}
+
+// splitRunOns subdivides a long sentence at deterministic clause boundaries. It
+// only returns the subdivision when the pieces reconstruct the original text
+// exactly (coverage invariant); otherwise it returns the sentence unchanged.
+func splitRunOns(sentence string) []string {
+	if wordCount(sentence) < runOnMinWords {
+		return []string{sentence}
+	}
+
+	parts := splitAtClauseBoundaries(sentence)
+	if len(parts) <= 1 || !reconstructs(sentence, parts) {
+		return []string{sentence}
+	}
+	return parts
+}
+
+// splitAtClauseBoundaries cuts the sentence after a clause separator: a
+// semicolon, or a comma followed by a coordinating conjunction or relative
+// pronoun. The separator stays attached to the preceding clause so joining the
+// pieces with a single space reproduces the original.
+func splitAtClauseBoundaries(sentence string) []string {
+	runes := []rune(sentence)
+	var parts []string
+	start := 0
+	for i := 0; i < len(runes); i++ {
+		if runes[i] != ',' && runes[i] != ';' {
+			continue
+		}
+		if runes[i] == ',' {
+			rest := strings.TrimLeft(string(runes[i+1:]), " ")
+			if !startsWithConnector(rest) {
+				continue
+			}
+		}
+		if piece := strings.TrimSpace(string(runes[start : i+1])); piece != "" {
+			parts = append(parts, piece)
+		}
+		start = i + 1
+	}
+	if start < len(runes) {
+		if tail := strings.TrimSpace(string(runes[start:])); tail != "" {
+			parts = append(parts, tail)
+		}
+	}
+	return parts
+}
+
+// reconstructs reports whether joining the pieces with a single space recreates
+// the original sentence once whitespace runs are normalized.
+func reconstructs(original string, parts []string) bool {
+	return normalizeSpaces(strings.Join(parts, " ")) == normalizeSpaces(original)
+}
+
+// normalizeSpaces collapses every run of whitespace into a single space and
+// trims the result.
+func normalizeSpaces(text string) string {
+	return strings.Join(strings.Fields(text), " ")
+}
+
+// startsWithConnector reports whether the text begins with a clause connector.
+func startsWithConnector(text string) bool {
+	fields := strings.Fields(text)
+	if len(fields) == 0 {
+		return false
+	}
+	word := strings.ToLower(strings.Trim(fields[0], ",.;:!?"))
+	return clauseConnectors[word]
+}
+
+// wordCount returns the number of whitespace-separated words in the text.
+func wordCount(text string) int {
+	return len(strings.Fields(text))
 }
 
 // errorPatternCatalog renders the code taxonomy as a bullet list with meanings.

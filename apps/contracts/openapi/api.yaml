@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: LangLint API
-  version: 3.0.0
+  version: 3.2.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -256,8 +256,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProgressSeries'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
 
   /me/data/export:
     get:
@@ -380,14 +378,6 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
-    NotImplemented:
-      description: |
-        Endpoint reservado a una fase posterior (Fase 6: provisioner y
-        privacidad) todavía no implementado.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
 
   schemas:
     # --- Errores de wire (PRODUCT_DOMAIN §4.5) ---
@@ -406,6 +396,7 @@ components:
             - analysis_failed
             - invalid_state
             - llm_unavailable
+            - llm_output_truncated
             - not_implemented
             - internal
         message:

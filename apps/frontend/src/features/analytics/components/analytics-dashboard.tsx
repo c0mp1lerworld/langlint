@@ -1,6 +1,6 @@
 "use client";
 
-import { ApiError, userMessage } from "@/lib/api/errors";
+import { userMessage } from "@/lib/api/errors";
 import { useErrorPatternStats, useProgressSeries } from "@/lib/query/analytics";
 import { useAnalyticsStore } from "@/lib/store/analytics";
 import { mostFrequentPattern } from "@/lib/utils/error-patterns";
@@ -87,13 +87,6 @@ function ProgressSection() {
   }
 
   if (progress.isError) {
-    if (progress.error instanceof ApiError && progress.error.code === "not_implemented") {
-      return (
-        <p className="text-gray-600">
-          La serie de progreso estará disponible próximamente (Fase 6).
-        </p>
-      );
-    }
     return (
       <p role="alert" className="rounded-md bg-red-50 p-3 text-red-800">
         {userMessage(progress.error)}

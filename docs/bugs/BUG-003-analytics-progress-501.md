@@ -1,8 +1,9 @@
 # BUG-003 — `GET /analytics/progress` responde `501`
 
-- **Estado**: Abierto
+- **Estado**: Cerrado
 - **Área**: Backend (API) + analíticas · `internal/api/handlers/server.go`
 - **Detectado**: 2026-09-19
+- **Cerrado**: 2026-09-21
 
 ## Qué pasó
 
@@ -33,13 +34,12 @@ que el client-team descubre en integración. El contrato lo mitiga declarando
 
 ## Regla / plan de cierre
 
-- Implementar la materialización de `ProgressMetric` (job o consulta), un
-  `ProgressRepository` y cablearlo en `refresh-aggregates`; sustituir el `501`
-  por el `200`.
-- Alternativa: retirar la operación del contrato hasta implementarla (evita
-  anunciar algo inexistente).
-- **No** reimplementar el cálculo en el frontend (F11): el backend es la fuente
-  de verdad.
+- **Implementado**: la serie se deriva **on-read** de las `analyses` completadas
+  (la verdad append-only), sin tabla materializada. `ProgressRepository`
+  (`ListSamplesByUser`) + `analytics.BuildProgressSeries` (bucketing puro) y el
+  handler devuelve `200 ProgressSeries`. El contrato `3.1.0` retiró el `501`.
+- **Sin reimplementar el cálculo en el frontend** (F11): el backend sigue siendo
+  la fuente de verdad; el dashboard consume `points` y ya no muestra placeholder.
 
 ## Referencias
 

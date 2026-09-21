@@ -57,15 +57,26 @@ describe("AnalyticsDashboard", () => {
     expect(screen.getAllByText("tiempo/concordancia").length).toBeGreaterThan(0);
   });
 
-  it("muestra el placeholder de progreso ante not_implemented (Fase 6)", () => {
+  it("muestra la serie de progreso cuando hay datos", () => {
     mockProgress({
       isPending: false,
-      isError: true,
-      error: new ApiError({ status: 501, code: "not_implemented", message: "not implemented" }),
-      data: undefined,
+      isError: false,
+      error: null,
+      data: {
+        window: "week",
+        points: [
+          {
+            period_start: "2026-09-14T00:00:00Z",
+            total_fragments: 10,
+            error_count: 2,
+            accuracy: 0.8,
+          },
+        ],
+      },
     });
     render(<AnalyticsDashboard />);
-    expect(screen.getByText(/estará disponible próximamente/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Serie temporal de progreso")).toBeInTheDocument();
+    expect(screen.getByText(/80% precisión/)).toBeInTheDocument();
   });
 
   it("mapea otros errores de query a UX", () => {

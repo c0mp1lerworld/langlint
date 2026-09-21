@@ -66,6 +66,7 @@ const ERROR_MESSAGES: Record<ErrorCode, string> = {
   analysis_failed: "El análisis no pudo completarse.",
   invalid_state: "La práctica no está en un estado válido para esta acción.",
   llm_unavailable: "El motor de análisis no responde. Inténtalo de nuevo.",
+  llm_output_truncated: "El análisis generó una respuesta demasiado larga. Inténtalo con un texto más corto.",
   not_implemented: "Esta función aún no está disponible.",
   internal: "Ocurrió un error inesperado.",
 };
