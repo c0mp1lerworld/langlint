@@ -11,5 +11,24 @@ services:
     volumes:
       - langlint_pgdata:/var/lib/postgresql/data
 
+  # Remote cache self-hosted de Turborepo (7.1.4, AP-MR7).
+  # Storage local en un volumen; para staging/cluster, cambiar a S3.
+  # El cliente (local o CI) apunta a http://<host>:3300 con TURBO_API,
+  # TURBO_TOKEN y TURBO_TEAM. Ver ops/docker/README.md.
+  turbo-cache:
+    image: ducktors/turborepo-remote-cache:latest
+    container_name: langlint-turbo-cache
+    environment:
+      TURBO_TOKEN: ${TURBO_REMOTE_CACHE_TOKEN:-local-dev-token}
+      STORAGE_PROVIDER: local
+      STORAGE_PATH: /data/turbo-cache
+      STORAGE_PATH_USE_TMP_FOLDER: "false"
+      PORT: "3000"
+    ports:
+      - "3300:3000"
+    volumes:
+      - langlint_turbo_cache:/data/turbo-cache
+
 volumes:
   langlint_pgdata:
+  langlint_turbo_cache:
