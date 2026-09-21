@@ -1,0 +1,75 @@
+name: security
+
+# Seguridad de la cadena de suministro y del código (7.2.1, AP-MR9):
+#  - security_audit.sh: auditoría estática de secretos y exposición de docs.
+#  - gosec: SAST de Go (los hallazgos se suben como SARIF a Code Scanning).
+#  - govulncheck: vulnerabilidades conocidas en dependencias/alcanzables.
+on:
+  pull_request:
+    paths:
+      - 'apps/**'
+      - 'ops/**'
+      - '.github/**'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'ops/**'
+      - '.github/**'
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOSEC_VERSION: v2.29.0
+  GOVULNCHECK_VERSION: v1.8.0
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/backend/go.mod
+          cache-dependency-path: apps/backend/go.sum
+
+      - name: Auditoría estática (secretos, docs, x-internal)
+        run: bash ops/scripts/security_audit.sh
+
+      - name: Instalar gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@${GOSEC_VERSION}
+
+      - name: gosec (SARIF)
+        id: gosec
+        continue-on-error: true
+        working-directory: apps/backend
+        run: gosec -fmt sarif -out gosec.sarif -severity high -confidence medium ./...
+
+      - name: Subir SARIF de gosec
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: apps/backend/gosec.sarif
+
+      - name: Gate gosec
+        if: steps.gosec.outcome == 'failure'
+        run: |
+          echo "gosec: hallazgos high/medium. Revisa el SARIF en Code Scanning." >&2
+          exit 1
+
+      - name: Instalar govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}
+
+      - name: govulncheck
+        working-directory: apps/backend
+        run: govulncheck ./...
