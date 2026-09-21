@@ -1,0 +1,50 @@
+name: contracts
+
+# Valida la coherencia del contrato OpenAPI como SSOT (A12, AP-MR6, 7.1.2):
+#  1. Regenera los tipos Go y TS desde `openapi/api.yaml`.
+#  2. Falla si el código generado commiteado difiere (drift) — garantiza que
+#     backend y frontend se generaron de la MISMA versión del contrato.
+#  3. Falla si `info.version` de api.yaml no coincide con la versión del
+#     paquete `@langlint/contracts`.
+on:
+  pull_request:
+    paths:
+      - 'apps/contracts/**'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/contracts/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contracts-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/backend/go.mod
+          cache-dependency-path: apps/backend/go.sum
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Regenerar tipos Go + TS desde el contrato
+        run: pnpm generate
+      - name: Fallar si hay drift entre el contrato y el código generado
+        run: |
+          git diff --exit-code -- \
+            apps/backend/internal/api/handlers/gen_types.go \
+            apps/backend/internal/api/handlers/gen_server.go \
+            apps/frontend/src/lib/api/gen.ts
+      - name: Validar la versión del contrato
+        run: pnpm --filter @langlint/contracts check-version

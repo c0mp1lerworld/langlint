@@ -5,6 +5,7 @@
   "scripts": {
     "build": "echo \"contracts: spec validado con 'pnpm lint'; codegen con 'pnpm generate'\"",
     "lint": "redocly lint openapi/api.yaml",
+    "check-version": "bash scripts/check-version.sh",
     "generate": "bash scripts/generate.sh"
   },
   "devDependencies": {
