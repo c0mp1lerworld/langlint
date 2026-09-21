@@ -39,6 +39,23 @@ describe("createPracticeSchema", () => {
   it("rechaza target_rules vacío", () => {
     expect(createPracticeSchema.safeParse({ ...validInput, target_rules: [] }).success).toBe(false);
   });
+
+  it("rechaza un texto de más de 2000 caracteres", () => {
+    const tooLong = "a".repeat(2001);
+    expect(createPracticeSchema.safeParse({ ...validInput, source_text: tooLong }).success).toBe(
+      false,
+    );
+    expect(createPracticeSchema.safeParse({ ...validInput, draft_text: tooLong }).success).toBe(
+      false,
+    );
+  });
+
+  it("rechaza más de 5 reglas objetivo", () => {
+    const rules = Array.from({ length: 6 }, () => ({ verb: "run" }));
+    expect(createPracticeSchema.safeParse({ ...validInput, target_rules: rules }).success).toBe(
+      false,
+    );
+  });
 });
 
 describe("updatePracticeSchema", () => {

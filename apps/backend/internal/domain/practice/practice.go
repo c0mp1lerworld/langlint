@@ -31,6 +31,9 @@ func NewPractice(userID domain.ID, source SourceText, draft DraftText, rules []T
 	if len(rules) == 0 {
 		return nil, &domain.ValidationError{Field: "target_rules", Message: "must contain at least one rule"}
 	}
+	if len(rules) > maxTargetRules {
+		return nil, &domain.ValidationError{Field: "target_rules", Message: "must contain at most 5 rules"}
+	}
 
 	id, err := generateID()
 	if err != nil {
@@ -87,6 +90,9 @@ func (p *Practice) Edit(source *SourceText, draft *DraftText, rules []TargetRule
 	}
 	if rules != nil && len(rules) == 0 {
 		return &domain.ValidationError{Field: "target_rules", Message: "must contain at least one rule"}
+	}
+	if len(rules) > maxTargetRules {
+		return &domain.ValidationError{Field: "target_rules", Message: "must contain at most 5 rules"}
 	}
 
 	changed := false

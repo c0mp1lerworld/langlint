@@ -120,6 +120,40 @@ func TestNewPractice_EmptyTargetRules_ReturnsValidationError(t *testing.T) {
 	}
 }
 
+// manyTargetRules builds n distinct valid rules for the limit tests.
+func manyTargetRules(t *testing.T, n int) []practice.TargetRule {
+	t.Helper()
+	rules := make([]practice.TargetRule, 0, n)
+	for i := 0; i < n; i++ {
+		rule, err := practice.NewTargetRule("verb", "present", "")
+		if err != nil {
+			t.Fatalf("NewTargetRule() error = %v", err)
+		}
+		rules = append(rules, rule)
+	}
+	return rules
+}
+
+func TestNewPractice_TooManyTargetRules_ReturnsValidationError(t *testing.T) {
+	_, err := practice.NewPractice(domain.MustNewID(), testSourceText(t), testDraftText(t), manyTargetRules(t, 6), testNow)
+	if err == nil {
+		t.Fatal("NewPractice() with 6 target rules: want error, got nil")
+	}
+	var target *domain.ValidationError
+	if !errors.As(err, &target) {
+		t.Fatalf("NewPractice() error = %T, want *domain.ValidationError", err)
+	}
+	if target.Field != "target_rules" {
+		t.Fatalf("ValidationError.Field = %q, want target_rules", target.Field)
+	}
+}
+
+func TestNewPractice_MaxTargetRules_IsAccepted(t *testing.T) {
+	if _, err := practice.NewPractice(domain.MustNewID(), testSourceText(t), testDraftText(t), manyTargetRules(t, 5), testNow); err != nil {
+		t.Fatalf("NewPractice() with 5 target rules error = %v, want nil", err)
+	}
+}
+
 func TestNewPractice_MarshalJSON_UsesSnakeCase(t *testing.T) {
 	p := newTestPractice(t)
 
@@ -297,6 +331,19 @@ func TestPractice_Edit_EmptyRules_ReturnsValidationError(t *testing.T) {
 	err := p.Edit(nil, nil, []practice.TargetRule{}, testNow)
 	if err == nil {
 		t.Fatal("Edit() with empty target rules: want error, got nil")
+	}
+	var target *domain.ValidationError
+	if !errors.As(err, &target) {
+		t.Fatalf("Edit() error = %T, want *domain.ValidationError", err)
+	}
+}
+
+func TestPractice_Edit_TooManyRules_ReturnsValidationError(t *testing.T) {
+	p := newTestPractice(t)
+
+	err := p.Edit(nil, nil, manyTargetRules(t, 6), testNow)
+	if err == nil {
+		t.Fatal("Edit() with 6 target rules: want error, got nil")
 	}
 	var target *domain.ValidationError
 	if !errors.As(err, &target) {

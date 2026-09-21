@@ -2,6 +2,7 @@ package practice_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain"
@@ -31,5 +32,19 @@ func TestDraftText_NewDraftText_Blank_ReturnsValidationError(t *testing.T) {
 		if target.Field != "draft_text" {
 			t.Fatalf("ValidationError.Field = %q, want %q", target.Field, "draft_text")
 		}
+	}
+}
+
+func TestDraftText_NewDraftText_TooLong_ReturnsValidationError(t *testing.T) {
+	_, err := practice.NewDraftText(strings.Repeat("a", 2001))
+	if err == nil {
+		t.Fatal("NewDraftText(2001 runes): want error, got nil")
+	}
+	var target *domain.ValidationError
+	if !errors.As(err, &target) {
+		t.Fatalf("error = %T, want *domain.ValidationError", err)
+	}
+	if target.Field != "draft_text" {
+		t.Fatalf("ValidationError.Field = %q, want draft_text", target.Field)
 	}
 }

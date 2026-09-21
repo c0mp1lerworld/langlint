@@ -12,9 +12,18 @@ export const targetRuleSchema = z.object({
 });
 
 export const createPracticeSchema = z.object({
-  source_text: z.string().min(1, "El texto en español es obligatorio"),
-  draft_text: z.string().min(1, "El borrador en inglés es obligatorio"),
-  target_rules: z.array(targetRuleSchema).min(1, "Añade al menos una regla objetivo"),
+  source_text: z
+    .string()
+    .min(1, "El texto en español es obligatorio")
+    .max(2000, "El texto no puede superar los 2000 caracteres"),
+  draft_text: z
+    .string()
+    .min(1, "El borrador en inglés es obligatorio")
+    .max(2000, "El borrador no puede superar los 2000 caracteres"),
+  target_rules: z
+    .array(targetRuleSchema)
+    .min(1, "Añade al menos una regla objetivo")
+    .max(5, "Puedes practicar hasta 5 reglas a la vez"),
 });
 
 export const updatePracticeSchema = createPracticeSchema.partial();

@@ -52,6 +52,19 @@ describe("PracticeForm", () => {
     });
   });
 
+  it("limita a 5 las reglas objetivo", async () => {
+    const user = userEvent.setup();
+    render(<PracticeForm />);
+
+    const add = screen.getByRole("button", { name: "Añadir regla" });
+    for (let i = 0; i < 4; i += 1) {
+      await user.click(add);
+    }
+
+    expect(screen.getAllByLabelText("Verbo")).toHaveLength(5);
+    expect(add).toBeDisabled();
+  });
+
   it("no tiene violaciones de accesibilidad", async () => {
     const { container } = render(<PracticeForm />);
     await expectNoA11yViolations(container);

@@ -15,7 +15,7 @@
 
 ## 9.5 Límites de práctica (punto 1)
 
-- [ ] `9.5` Acotar el "engorro" de muchos verbos / textos largos: máximo de `TargetRules` y longitud máxima de `source_text`/`draft_text` (error de dominio A5) + guía en `practice-form.tsx`.
+- [x] `9.5` Acotar el "engorro" de muchos verbos / textos largos: máximo de `TargetRules` y longitud máxima de `source_text`/`draft_text` (error de dominio A5) + guía en `practice-form.tsx`. _(Máx. 5 reglas y 2000 runes, con `ValidationError`; espejo en Zod y contador de botón "Añadir regla".)_
 
 ## 9.6–9.7 Preguntas generadas por IA (práctica activa)
 

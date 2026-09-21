@@ -45,6 +45,7 @@ export function PracticeForm() {
         <textarea
           id="source_text"
           rows={3}
+          maxLength={2000}
           aria-invalid={errors.source_text !== undefined}
           aria-describedby={errors.source_text !== undefined ? "source_text-error" : undefined}
           className={FIELD_CLASS}
@@ -64,6 +65,7 @@ export function PracticeForm() {
         <textarea
           id="draft_text"
           rows={3}
+          maxLength={2000}
           aria-invalid={errors.draft_text !== undefined}
           aria-describedby={errors.draft_text !== undefined ? "draft_text-error" : undefined}
           className={FIELD_CLASS}
@@ -78,6 +80,9 @@ export function PracticeForm() {
 
       <fieldset className="space-y-3">
         <legend className={LABEL_CLASS}>Reglas objetivo</legend>
+        <p className="text-xs text-gray-500">
+          Practica entre 1 y 5 verbos relacionados entre sí.
+        </p>
         {errors.target_rules?.root !== undefined ? (
           <p role="alert" className={ERROR_CLASS}>
             {errors.target_rules.root.message}
@@ -144,7 +149,8 @@ export function PracticeForm() {
         <button
           type="button"
           onClick={() => append({ verb: "", tense: "", note: "" })}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          disabled={fields.length >= 5}
+          className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50"
         >
           Añadir regla
         </button>
