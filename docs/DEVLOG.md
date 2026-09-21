@@ -4,6 +4,38 @@
 
 ---
 
+## 2026-09-20 — Exhaustividad del feedback del LLM (prompt + `temperature=0`)
+
+**Estado**: mejora de calidad aplicada. Sin cambio de contrato (A12). `go build/vet/test -race` (+ `-tags=integration`) OK; `pnpm test-integration --filter=backend`, `pnpm lint` (3/3), `pnpm test`, `pnpm typecheck --filter=frontend` y `pnpm build` (3/3) en verde; `gofmt -l` limpio.
+
+**Contexto**: tras activar los arrays (`3.0.0`), un análisis real seguía mostrando **1** verbo/1 léxico/1 gramática. Al medir con `cmd/llmcheck` se descubrió que gpt-4o-mini **no era determinista**: la misma frase devolvía a veces 1 entrada por categoría y a veces varias. La causa era la adherencia del modelo + muestreo con `temperature` por defecto (1.0), no el wire.
+
+**Hecho**:
+- `prompt.go`: fragmentación **por cláusula** (partir oraciones largas en conjunciones/relativos/puntuación), **cardinalidad simétrica** por sección (*"one entry for every …; never collapse several"*) y **regla de cobertura** (`error_patterns` ↔ secciones estructuradas).
+- `openai_extractor.go`: `Temperature=0` (`extractionTemperature`) en la llamada de extracción, para muestreo greedy y consistente.
+- Tests: `prompt_test.go` verifica que el system prompt incluye las reglas nuevas; `openai_extractor_test.go` verifica que la petición envía `temperature=0`. Sin cambio de contrato → `pnpm generate` no aplica.
+
+**Medición (`cmd/llmcheck`, misma frase del usuario)** — `(verbs, lexical, grammar, patterns)`:
+- Antes (temp por defecto): `(3,2,2,4)` y `(1,0,1,1)` → alta varianza.
+- Después (temp 0): `(5,1,1,1)`, `(6,6,1,1)`, `(3,2,5,5)`. Mejor caso: 3 verbos (`quit`,`let`,`wants`), 2 léxicos, 5 gramáticas, 5 patrones.
+
+**Decisiones**:
+- **Prompt + `temperature=0`**: se ataca la causa (adherencia) y la varianza (greedy) a la vez.
+- **Sin few-shot ni tope** (acordado): el prompt + temp bastan para el MVP, sin coste extra de tokens.
+- **Límite conocido**: gpt-4o-mini sigue siendo imperfecto; la cobertura exacta patrón↔explicación no es determinista. Se documenta como caveat del MVP (candidato a endurecer en Hardening: evaluación con golden examples).
+
+**Verificación**:
+- `go build ./...` · `go vet ./...` · `go test -race -count=1 ./...` → OK.
+- `pnpm test-integration --filter=backend` → OK (Tier 3).
+- `pnpm lint` (3/3) · `pnpm test` · `pnpm typecheck --filter=frontend` · `pnpm build` (3/3) → OK.
+- Manual: 3 corridas de `llmcheck` con la frase de referencia devuelven múltiples entradas por categoría (antes del cambio: 1/0/1/1 en una corrida).
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 7 (Hardening) o `9.7`.
+
+---
+
 ## 2026-09-20 — Fragmentos con múltiples explicaciones (contrato `3.0.0`)
 
 **Estado**: mejora de calidad completada. `go build/vet/test -race` (+ `-tags=integration`) OK; `pnpm test-integration --filter=backend` OK; `pnpm lint` (3/3), `pnpm test` (backend + frontend **95**), `pnpm typecheck --filter=frontend`, `pnpm test:e2e` (2) y `pnpm build` (3/3) en verde; `pnpm generate` idempotente. **Cambio de contrato A12 BREAKING** (`apps/contracts` → `3.0.0`).

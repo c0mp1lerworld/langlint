@@ -362,6 +362,8 @@ components:
           items: { $ref: '#/components/schemas/Fragment' }
 ```
 
+> **Granularidad y exhaustividad**: un `Fragment` corresponde a una cláusula (las oraciones largas se parten en conjunciones, relativos y puntuación). Cada lista estructurada (`target_verb_reviews`, `lexical_clarifications`, `grammar_explanations`) debe traer **una entrada por error distinto** y, en conjunto, cubrir todos los `error_patterns` del fragmento; una lista puede ir vacía si esa categoría no aplica. La extracción fija `temperature=0` para maximizar la consistencia (evita que el modelo colapse varios errores en una sola explicación).
+
 ### 5.3 Reglas operativas del contrato
 
 1. **Cambio de wire format** → primero `api.yaml`, luego `pnpm generate`, luego usar el tipo generado (A12).

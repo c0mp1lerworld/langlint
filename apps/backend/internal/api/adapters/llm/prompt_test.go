@@ -87,6 +87,21 @@ func TestBuildPrompt_SystemPromptListsErrorTaxonomy(t *testing.T) {
 	}
 }
 
+func TestBuildPrompt_SystemPromptRequiresEveryIssue(t *testing.T) {
+	p := buildPrompt(ports.ExtractRequest{})
+
+	for _, want := range []string{
+		"one fragment per meaningful clause",
+		"never collapse several",
+		"cover every mistake",
+		"not one summary",
+	} {
+		if !strings.Contains(p.System, want) {
+			t.Fatalf("system prompt missing completeness rule %q:\n%s", want, p.System)
+		}
+	}
+}
+
 func TestBuildPrompt_RequiresVerbatimFragmentsAndSpanishExplanations(t *testing.T) {
 	p := buildPrompt(ports.ExtractRequest{})
 

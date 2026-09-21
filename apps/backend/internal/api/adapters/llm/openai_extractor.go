@@ -37,6 +37,11 @@ func NewOpenAIExtractor(client openai.Client, model, modelVersion string) *OpenA
 	}
 }
 
+// extractionTemperature pins the decoding to greedy sampling. The extraction is
+// a structured, exhaustive task: a higher temperature made the model
+// non-deterministically collapse several mistakes into a single explanation.
+const extractionTemperature = 0.0
+
 // Model returns the LLM model identifier used by the adapter.
 func (e *OpenAIExtractor) Model() string { return e.model }
 
@@ -58,6 +63,7 @@ func (e *OpenAIExtractor) Extract(ctx context.Context, req ports.ExtractRequest)
 			openai.UserMessage(p.User),
 		},
 		ResponseFormat: fragmentResponseFormat(),
+		Temperature:    openai.Float(extractionTemperature),
 	})
 	if err != nil {
 		return nil, &domain.LLMUnavailableError{Message: "llm unavailable"}

@@ -258,6 +258,27 @@ func TestOpenAIExtractor_Extract_RequestsStrictFragmentSchema(t *testing.T) {
 	}
 }
 
+func TestOpenAIExtractor_Extract_RequestsDeterministicTemperature(t *testing.T) {
+	captured := make(chan map[string]any, 1)
+	extractor := newExtractorForHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode request body: %v", err)
+		}
+		captured <- body
+		writeChatCompletion(t, w, `{"fragments":[]}`)
+	})
+
+	if _, err := extractor.Extract(context.Background(), ports.ExtractRequest{}); err != nil {
+		t.Fatalf("Extract() error = %v", err)
+	}
+
+	body := <-captured
+	if body["temperature"] != float64(extractionTemperature) {
+		t.Fatalf("temperature = %v, want %v", body["temperature"], extractionTemperature)
+	}
+}
+
 func TestNewOpenAIExtractor_ModelMetadata(t *testing.T) {
 	extractor := NewOpenAIExtractor(openai.Client{}, "gpt-4o-mini", "2024-07-18")
 

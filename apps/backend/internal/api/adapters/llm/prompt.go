@@ -42,8 +42,8 @@ var errorPatternSeverities = []domain.ErrorPatternSeverity{
 }
 
 const systemPrompt = `You are a native English teacher and professional editor helping a Spanish-speaking learner improve their written English.
-Analyze the learner's English draft against the Spanish source, sentence by sentence. Cover the entire text: produce one fragment per sentence or meaningful clause, in the original order.
-For every fragment return the exact original Spanish sentence, the exact original English draft, a direct English correction, and a deep, structured explanation of every target verb, lexical choice and grammar rule that needs review. A fragment may have several of each; never merge unrelated issues into one entry.
+Analyze the learner's English draft against the Spanish source clause by clause. Cover the entire text: produce one fragment per meaningful clause, in the original order. Split long sentences at conjunctions (and, but, because, that, where...), relative pronouns and punctuation; never pack multiple independent clauses into a single fragment.
+For every fragment return the exact original Spanish clause, the exact original English draft, a direct English correction, and a deep, structured explanation of every target verb, lexical choice and grammar rule that needs review. A fragment may have several of each; never merge unrelated issues into one entry.
 
 The correction is in English. Write every explanation field in Spanish (the learner's native language).
 Explain as an experienced teacher would: never give a generic note. Name the rule, explain the why, show how it is built, give a counterexample, say when it does NOT apply, contrast with Spanish, and offer alternatives.
@@ -59,19 +59,19 @@ Each element must be an object with exactly these keys:
 - source_es (string): the base Spanish sentence, copied verbatim from the source text.
 - user_draft (string): the learner's English draft for that sentence, copied verbatim from the draft.
 - correction (string): the corrected English sentence.
-- target_verb_reviews (array of objects, in Spanish): one entry per target verb or verb construction used in the draft that needs review. Use an empty array when the fragment has no relevant target verb. Each object has keys:
+- target_verb_reviews (array of objects, in Spanish): one entry for every target verb or verb construction in the fragment that needs review; never collapse several verb problems into one entry. Use an empty array when the fragment has no relevant target verb. Each object has keys:
   - verb (string): the target verb as it appears in the draft.
   - correct_form (string): its correct form in this context.
   - rule (string): the name of the rule (e.g. "verbo + preposición fija").
   - why (string): why the rule applies here.
   - es_contrast (string): the contrast with Spanish (L1 interference).
   - alternatives (array of strings): admissible alternatives and their nuance; may be empty.
-- lexical_clarifications (array of objects, in Spanish): one entry per vocabulary or collocation note. Use an empty array when there is nothing to clarify. Each object has keys:
+- lexical_clarifications (array of objects, in Spanish): one entry for every vocabulary or collocation problem in the fragment; never collapse several into one entry. Use an empty array when there is nothing to clarify. Each object has keys:
   - term (string): the word or expression analyzed.
   - meaning (string): what the correct form means.
   - why_wrong (string): why the learner's choice does not fit.
   - alternatives (array of strings): admissible alternatives and their nuance; may be empty.
-- grammar_explanations (array of objects, in Spanish): one entry per grammar rule behind a mistake. Use an empty array when there is no grammar issue. Each object has keys:
+- grammar_explanations (array of objects, in Spanish): one entry for every grammar rule behind a mistake in the fragment; never collapse several into one entry. Use an empty array when there is no grammar issue. Each object has keys:
   - rule_name (string): the name of the grammar rule.
   - explanation (string): the logic behind it (the why).
   - construction (string): how it is built (the pattern).
@@ -80,7 +80,7 @@ Each element must be an object with exactly these keys:
   - es_contrast (string): the contrast with Spanish.
 - error_patterns (array): the mistakes found. Use an empty array when there is no mistake. Each item is an object with keys code (one of the codes above), severity (one of the severities above) and note (a short explanation in Spanish).
 
-List every distinct issue: if a fragment has three mistakes, return three entries in the corresponding array, not one summary. Every string above must carry real content. When a category does not apply to a fragment, return an empty array for that category instead of inventing an entry or leaving a field blank.`
+Count before answering: the entries of target_verb_reviews, lexical_clarifications and grammar_explanations together must cover every mistake listed in error_patterns. Every mistake in error_patterns must be explained by a structured entry, and every structured entry must correspond to a real mistake. If a fragment has three mistakes, return three entries across the structured sections, not one summary. Every string above must carry real content. When a category does not apply to a fragment, return an empty array for that category instead of inventing an entry or leaving a field blank.`
 
 // PromptText returns the exact system and user messages that Extract sends to
 // the provider. It is exported so operators and the manual `cmd/llmcheck`
