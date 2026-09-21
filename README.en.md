@@ -4,38 +4,56 @@
 
 [Español](README.md) · **English**
 
----
+[![Contract](https://img.shields.io/badge/contract-3.0.0-informational)](apps/contracts/CHANGELOG.md)
+[![Go](https://img.shields.io/badge/Go-1.26.8-00ADD8)](apps/backend/go.mod)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black)](apps/frontend/package.json)
 
-## Project status
-
-- **Current phase**: Phase 1 — Foundations (base monorepo green).
-- **MVP**: single-user, no real login. The MVP language pair is **Spanish → English**.
-- **Code**: `apps/` is still under construction. Phase 0 (documentation and foundations) is complete.
-
-This repository is a **demonstration of modern software architecture**: a polyglot monorepo (Go + Next.js), an OpenAPI contract as the *Single Source of Truth*, and strict Domain-Driven Design.
+This repository is a **demonstration of modern software architecture**: a
+polyglot monorepo (Go + Next.js), an OpenAPI contract as the *Single Source of
+Truth*, and strict Domain-Driven Design, with automated quality gates.
 
 ---
 
 ## What is LangLint?
 
-Traditional learning methods (Anki-style flashcards) work for **passive memorization**, but fail at **active production**: the learner recognizes a word yet still cannot write a correct text with it. LangLint closes that gap.
+Traditional learning methods (Anki-style flashcards) work for **passive
+memorization**, but fail at **active production**: the learner recognizes a word
+yet still cannot write a correct text with it. LangLint closes that gap.
 
-The user practices contextual productive writing, and an AI breaks the text down **fragment by fragment**, explaining the grammatical *why* behind each mistake and classifying it. An analytics engine tracks recurring errors over time to eliminate blind spots.
+The user practices contextual productive writing, and an AI breaks the text down
+**fragment by fragment**, explaining the grammatical *why* behind each mistake
+and classifying it. An analytics engine tracks recurring errors over time to
+eliminate blind spots.
 
 ### Usage flow
 
-1. The user defines a **set of grammar targets** (e.g., irregular verbs to practice).
+1. The user defines a **set of grammar targets** (e.g., irregular verbs to
+   practice).
 2. They write a **source text in Spanish** applying those targets.
 3. They write their **experimental English translation** (the draft).
-4. The **AI** corrects and explains fragment by fragment, classifying each error (preposition, possessive, false friend…).
-5. The **analytics dashboard** shows recurring errors and progress over time.
+4. The **AI** corrects and explains fragment by fragment, classifying each error
+   (preposition, possessive, false friend…).
+5. The **analytics dashboard** shows recurring errors and progress.
 
 ### Value proposition
 
 | For | Value delivered |
 |---|---|
 | The student | Move from recognizing a word to writing it correctly in context; understand the *why*, not just see the correction. |
-| The product (portfolio) | A demonstration of hexagonal, contract-first, event-driven architecture in a polyglot monorepo. |
+| The product (portfolio) | A demonstration of adapted hexagonal, contract-first, event-driven architecture in a polyglot monorepo. |
+
+---
+
+## Project status
+
+- **Functional MVP complete**: Phases 1–6 (foundations, pure domain, ports and
+  adapters, AI engine, frontend, provisioner/privacy) are green.
+- **Phase 7 — Hardening**: CI/CD (`7.1`) and Security (`7.2`) complete;
+  documentation (`7.3`) being closed out. Code, tests and local gates are green.
+- **Post-MVP enhancement — Phase 9**: structured deep feedback and active
+  practice (AI quiz) complete (`9.1`–`9.6`).
+- **MVP non-goals**: real multi-user, multi-language and streaming
+  (see [`PRODUCT_DOMAIN.md §3.2`](docs/PRODUCT_DOMAIN.md)).
 
 ---
 
@@ -43,91 +61,96 @@ The user practices contextual productive writing, and an AI breaks the text down
 
 | Layer | Technology |
 |---|---|
-| Languages | Go 1.26 · TypeScript (strict) |
-| Frontend | Next.js 14+ (App Router) · React Server Components · Tailwind CSS |
+| Languages | Go 1.26 · TypeScript 5.9 (strict) |
+| Frontend | Next.js 15 (App Router) · React 19 · Tailwind CSS 4 |
 | State | TanStack Query (server state) · Zustand (client state) |
 | Forms | React Hook Form + Zod |
-| Backend | Go (adapted hexagonal architecture) |
+| Backend | Go: adapted hexagonal architecture · Uber Fx · chi |
 | Contract | OpenAPI 3.1 (`apps/contracts/openapi/api.yaml`) |
 | Generation | `oapi-codegen` (Go) · `openapi-typescript` (TS) |
-| Persistence | PostgreSQL · Unit of Work · Outbox pattern |
-| AI | LLM provider with Structured Outputs (OpenAI, behind the `LLMExtractor` port) |
-| Monorepo | pnpm workspaces + Turborepo |
+| Persistence | PostgreSQL 16 · `pgx` · goose · Unit of Work · Outbox |
+| AI | OpenAI with Structured Outputs, behind the `LLMExtractor` port |
+| Tests | `go test -race` · testcontainers · Vitest · RTL · Playwright |
+| Monorepo | pnpm workspaces + Turborepo (self-hosted remote cache) |
+| Security | `gosec` · `govulncheck` · static audits |
 
 ---
 
 ## Architecture
 
-### Contract-first monorepo
+### Contract-first monorepo (A12)
 
-The `api.yaml` contract is the **single source of truth** for the wire. Every change starts in the contract, goes through `pnpm generate`, and only then reaches the Go and TypeScript code. Generated artifacts (`gen_*.go`, `gen.ts`) are never edited by hand.
+The `api.yaml` contract is the **single source of truth** for the wire. Every
+change starts in the contract, goes through `pnpm generate` (which regenerates
+Go **and** TS), and only then reaches the code. Generated artifacts (`gen_*.go`,
+`gen.ts`) are never edited by hand. CI fails if the generated code drifts from
+the contract.
 
-### Dependency direction
-
-Dependencies always flow inward:
+### Dependency direction (A2)
 
 ```
 cmd  →  adapters  →  services  →  ports  →  domain
-                                            (pure core, stdlib only)
+                                            (pure core, stdlib only, A1)
 ```
 
-- **Pure domain**: `internal/domain/` only imports the Go standard library.
-- **Ports and adapters**: services know interfaces (`ports/`), not implementations (`adapters/`).
-
-### Bounded contexts
-
-Four domain contexts, **isolated from one another** (they communicate via ports and append-only events):
+### Isolated bounded contexts (A3)
 
 | Context | Responsibility | Aggregate root |
 |---|---|---|
-| `identity` | Portable user identity (data owner). | `User` |
-| `practice` | The writing exercise: source text, draft, target rules. | `Practice` |
+| `identity` | Portable identity and data audit (A9). | `User` |
+| `practice` | The exercise: source text, draft and target rules. | `Practice` |
 | `analysis` | The fragment-level analysis produced by the AI. | `Analysis` |
-| `analytics` | Materialization of error patterns and progress. | `ErrorMetric`, `ProgressMetric` |
+| `analytics` | Materialization of error patterns and progress. | `ErrorMetric` |
 
-### Repository layout
+They communicate through ports and **domain events** via the outbox, never
+through cross-imports. Details live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+### Transactions and events
+
+- **Unit of Work**: services never touch SQL; the adapter opens
+  `BEGIN/COMMIT/ROLLBACK`.
+- **Outbox**: the state change and the event are persisted in the same
+  transaction; a relay publishes them after commit.
+
+### Privacy (A8/A9)
+
+- **Anonymization** before the LLM and **pseudonymization** (HMAC-SHA256) in
+  analytics; raw data separation and scheduled purging.
+- `PIIHandler` as a runtime logging guard plus static audits in CI.
+
+---
+
+## Repository layout
 
 ```text
 langlint/
 ├── apps/
-│   ├── contracts/        # OpenAPI SSOT + generation pipeline
-│   ├── backend/          # Go: cmd → adapters → services → ports → domain (pending)
-│   └── frontend/         # Next.js App Router (pending)
-├── docs/
-│   ├── checklist/        # 8 phases with exit gates
-│   ├── DEVLOG.md         # append-only development log
-│   ├── GUIDE_WORK_IA.md  # human-AI collaboration methodology
-│   └── PRODUCT_DOMAIN.md # product vision and domain model
-├── MANIFEST_MONOREPO.md  # axioms A1–A12 and backend/monorepo patterns
-├── MANIFEST_FRONTEND.md  # frontend axioms F1–F12
-├── AGENTS.md             # onboarding and working memory for AI agents
-├── turbo.json
-└── pnpm-workspace.yaml
+│   ├── contracts/          # OpenAPI SSOT + generation pipeline
+│   ├── backend/            # Go: cmd → adapters → services → ports → domain
+│   └── frontend/           # Next.js App Router (3-column diff + analytics)
+├── docs/                   # ARCHITECTURE, RUNBOOK, PRODUCTION_ENV, SECRET_ROTATION, …
+├── ops/                    # docker-compose (Postgres + turbo-cache) and audit scripts
+├── .github/workflows/      # ci · contracts · deploy-staging · security
+├── MANIFEST_MONOREPO.md    # axioms A1–A12 and backend/monorepo patterns
+├── MANIFEST_FRONTEND.md    # frontend axioms F1–F12
+├── turbo.json · pnpm-workspace.yaml · .tool-versions
+└── AGENTS.md               # onboarding and working memory for AI agents
 ```
 
 ---
 
-## Roadmap
+## Engineering rigor
 
-### MVP (7 steps)
-
-| # | Step | Deliverable | Status |
-|---|---|---|---|
-| 1 | Foundations | Monorepo (Turborepo + pnpm) + foundational OpenAPI contract | In progress |
-| 2 | Pure domain | `identity`, `practice`, `analysis`, `analytics` at 100% coverage | Pending |
-| 3 | Ports and adapters | `LLMExtractor`, repositories, UoW and outbox + Postgres (testcontainers) | Pending |
-| 4 | AI engine | `OpenAIExtractor` with Structured Outputs, anonymization and timeouts | Pending |
-| 5 | Frontend | 3-column diff view + analytics dashboard | Pending |
-| 6 | Provisioner and privacy | Aggregate/purge jobs + export/delete/access-log endpoints | Pending |
-| 7 | Hardening | CI/CD, gosec, govulncheck, documentation and portfolio README | Pending |
-
-### Future (post-MVP): Adaptive Tutor
-
-The product's natural evolution is to turn LangLint from a correction tool into a **personalized, adaptive English tutor** with *spaced repetition* and learning intelligence driven by the user's **real errors**:
-
-> *"I noticed that in your last 5 practices you systematically failed at prepositions before gerunds. Let me build you an in-depth study session on this."*
-
-The system stops merely correcting what is written today and starts generating a **dynamic study plan** from the user's learning friction. It is added as a fifth bounded context (`tutor/`) that consumes `analytics/` aggregates via the event bus (outbox), **without breaking** any of the four existing contexts.
+| Metric | Value | How it is verified |
+|---|---|---|
+| Domain coverage | **100 %** | `go test -cover ./internal/domain/...` |
+| Services coverage | **91–98 %** | `go test -cover ./internal/api/services/...` |
+| Backend tests (Tier 1+2) | green | `pnpm test` (`go test -race`) |
+| Integration (Tier 3) | green | `pnpm test-integration --filter=backend` (testcontainers) |
+| Frontend tests (Vitest) | **95** | `pnpm --filter frontend test` |
+| e2e (Playwright) | 2 | `pnpm test:e2e` |
+| Static security analysis | **0 findings** | `gosec` / `govulncheck` (CI `security.yml`) |
+| Contract | **3.0.0** | `contracts.yml`: drift + `info.version` |
 
 ---
 
@@ -135,28 +158,63 @@ The system stops merely correcting what is written today and starts generating a
 
 ### Prerequisites
 
-- **Node.js** 22.13.0 · **pnpm** 9.15.4 · **Go** 1.26.2
+- **Go** 1.26.8 · **Node** 22 · **pnpm** 9.15.4 · Docker (for Postgres).
 - Exact versions live in `.tool-versions` (works with `mise`/`asdf`) and `.nvmrc`.
 
-### Install and build
+### Install and run
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm build
+
+# Local infrastructure (Postgres :5433)
+docker compose -f ops/docker/docker-compose.yml up -d
+
+# Backend
+cd apps/backend && cp .env.example .env   # fill in real secrets (A8)
+go run ./cmd/migrate && go run ./cmd/api
+
+# Frontend (another terminal)
+cp apps/frontend/.env.example apps/frontend/.env.local
+pnpm --filter frontend dev
 ```
+
+See [`docs/RUNBOOK.md`](docs/RUNBOOK.md) for troubleshooting and
+[`docs/PRODUCTION_ENV.md`](docs/PRODUCTION_ENV.md) for every variable.
 
 ### Canonical commands
 
 | Command | Purpose |
 |---|---|
 | `pnpm build` | Build the whole monorepo (Turborepo) |
-| `pnpm lint` | Lint the monorepo |
-| `pnpm test` | Tier 1+2 tests |
+| `pnpm lint` | Lint the monorepo (redocly + go vet + eslint) |
+| `pnpm test` | Tier 1+2 tests (Go + Vitest) |
 | `pnpm test-integration --filter=backend` | Tier 3 tests (testcontainers) |
+| `pnpm test:e2e` | Frontend e2e (Playwright) |
+| `pnpm typecheck --filter=frontend` | `tsc --noEmit` |
 | `pnpm generate` | Regenerate Go + TS types from the contract |
-| `pnpm typecheck` | Frontend `tsc --noEmit` |
+| `go run ./cmd/provisioner <job>` | Batch jobs (`refresh-aggregates`, …) |
 
-Commands for phases that have not started yet are documented but not available.
+---
+
+## Roadmap
+
+| # | Step | Status |
+|---|---|---|
+| 1 | Foundations | ✅ |
+| 2 | Pure domain (100 % coverage) | ✅ |
+| 3 | Ports and adapters (UoW, outbox, Postgres) | ✅ |
+| 4 | AI engine (Structured Outputs) | ✅ |
+| 5 | Frontend (3-column diff + analytics) | ✅ |
+| 6 | Provisioner and privacy (A9) | ✅ |
+| 7 | Hardening (CI/CD, security, documentation) | closing |
+
+### Future (post-MVP): Adaptive Tutor
+
+The natural evolution is to turn LangLint into an **adaptive, personalized
+English tutor** with *spaced repetition* and learning intelligence driven by the
+user's **real errors**. It is added as a fifth bounded context (`tutor/`) that
+consumes `analytics/` aggregates via the event bus, **without breaking** any of
+the four existing contexts. See [`PRODUCT_DOMAIN.md §12.1`](docs/PRODUCT_DOMAIN.md).
 
 ---
 
@@ -164,12 +222,16 @@ Commands for phases that have not started yet are documented but not available.
 
 | Document | Content |
 |---|---|
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Global architectural contract |
 | [`docs/PRODUCT_DOMAIN.md`](docs/PRODUCT_DOMAIN.md) | Vision, domain model, contract, roadmap |
+| [`docs/RUNBOOK.md`](docs/RUNBOOK.md) | Operations and incidents |
+| [`docs/PRODUCTION_ENV.md`](docs/PRODUCTION_ENV.md) | Environment variables |
+| [`docs/SECRET_ROTATION.md`](docs/SECRET_ROTATION.md) | Secret rotation |
+| [`docs/SECURITY_DEBT.md`](docs/SECURITY_DEBT.md) | Accepted security debt |
+| [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md) | Contract↔domain gaps |
+| [`docs/bugs/`](docs/bugs/) | Known bugs |
 | [`MANIFEST_MONOREPO.md`](MANIFEST_MONOREPO.md) | Axioms A1–A12 and backend patterns |
 | [`MANIFEST_FRONTEND.md`](MANIFEST_FRONTEND.md) | Frontend axioms F1–F12 |
-| [`docs/GUIDE_WORK_IA.md`](docs/GUIDE_WORK_IA.md) | Human-AI collaboration methodology |
-| [`docs/DEVLOG.md`](docs/DEVLOG.md) | Development log |
-| [`docs/checklist/`](docs/checklist/) | Phase-by-phase plan with exit gates |
 | [`AGENTS.md`](AGENTS.md) | Onboarding for AI agents |
 
 ---

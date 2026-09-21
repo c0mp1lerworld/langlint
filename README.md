@@ -1,41 +1,61 @@
 # LangLint
 
-> **AI-Powered Writing & Grammar Analytics** — plataforma de aprendizaje de idiomas mediante escritura productiva contextual con retroalimentación de una IA que actúa como profesor nativo.
+> **AI-Powered Writing & Grammar Analytics** — plataforma de aprendizaje de idiomas mediante escritura productiva contextual, con retroalimentación de una IA que actúa como profesor nativo.
 
 **Español** · [English](README.en.md)
 
----
+[![Contract](https://img.shields.io/badge/contract-3.0.0-informational)](apps/contracts/CHANGELOG.md)
+[![Go](https://img.shields.io/badge/Go-1.26.8-00ADD8)](apps/backend/go.mod)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black)](apps/frontend/package.json)
 
-## Estado del proyecto
-
-- **Fase actual**: Fase 1 — Fundaciones (monorepo base en verde).
-- **MVP**: single-user, sin login real. El par de idiomas del MVP es **español → inglés**.
-- **Código**: `apps/` aún en construcción. La Fase 0 (documentación y fundamentos) está completa.
-
-Este repositorio es una **demostración de arquitectura de software moderna**: monorepo polyglot (Go + Next.js), contrato OpenAPI como *Single Source of Truth* y Domain-Driven Design estricto.
+Este repositorio es una **demostración de arquitectura de software moderna**:
+monorepo polyglot (Go + Next.js), contrato OpenAPI como *Single Source of Truth*
+y Domain-Driven Design estricto, con gates de calidad automatizados.
 
 ---
 
 ## ¿Qué es LangLint?
 
-Los métodos tradicionales de aprendizaje (tarjetas de memoria tipo Anki) funcionan para la **memorización pasiva**, pero fallan en la **producción activa**: el estudiante reconoce una palabra y aun así no logra escribir un texto correcto con ella. LangLint cierra esa brecha.
+Los métodos tradicionales de aprendizaje (tarjetas de memoria tipo Anki)
+funcionan para la **memorización pasiva**, pero fallan en la **producción
+activa**: el estudiante reconoce una palabra y aun así no logra escribir un texto
+correcto con ella. LangLint cierra esa brecha.
 
-El usuario practica escritura productiva contextual y una IA desmenuza su texto **fragmento por fragmento**, explicando el *porqué* gramatical detrás de cada error y clasificándolo. Un motor de analíticas rastrea los errores recurrentes a lo largo del tiempo para eliminar puntos ciegos.
+El usuario practica escritura productiva contextual y una IA desmenuza su texto
+**fragmento por fragmento**, explicando el *porqué* gramatical detrás de cada
+error y clasificándolo. Un motor de analíticas rastrea los errores recurrentes a
+lo largo del tiempo para eliminar puntos ciegos.
 
 ### Flujo de uso
 
-1. El usuario define un **conjunto de objetivos gramaticales** (p. ej. verbos irregulares a practicar).
+1. El usuario define un **conjunto de objetivos gramaticales** (p. ej. verbos
+   irregulares a practicar).
 2. Escribe un **texto base en español** aplicando esos objetivos.
 3. Redacta su **traducción experimental al inglés** (el borrador).
-4. La **IA** corrige y explica fragmento por fragmento, clasificando cada error (preposición, posesivo, falso amigo…).
-5. El **dashboard de analíticas** muestra errores recurrentes y progreso temporal.
+4. La **IA** corrige y explica fragmento por fragmento, clasificando cada error
+   (preposición, posesivo, falso amigo…).
+5. El **dashboard de analíticas** muestra errores recurrentes y progreso.
 
 ### Propuesta de valor
 
 | Para | Valor entregado |
 |---|---|
 | El estudiante | Pasar de reconocer una palabra a escribirla correctamente en contexto; entender el *porqué*, no solo ver la corrección. |
-| El producto (portafolio) | Demostración de arquitectura hexagonal, contract-first, event-driven y monorepo polyglot. |
+| El producto (portafolio) | Demostración de arquitectura hexagonal adaptada, contract-first, event-driven y monorepo polyglot. |
+
+---
+
+## Estado del proyecto
+
+- **MVP funcional completo**: Fases 1–6 (fundaciones, dominio puro, puertos y
+  adaptadores, motor IA, frontend y provisioner/privacidad) en verde.
+- **Fase 7 — Hardening**: CI/CD (`7.1`) y Seguridad (`7.2`) completados;
+  documentación (`7.3`) en cierre. El código, los tests y los gates locales
+  están en verde.
+- **Mejora post-MVP — Fase 9**: feedback profundo estructurado y práctica activa
+  (quiz con IA) completados (`9.1`–`9.6`).
+- **Non-goals del MVP**: multi-usuario real, multi-idioma y streaming
+  (ver [`PRODUCT_DOMAIN.md §3.2`](docs/PRODUCT_DOMAIN.md)).
 
 ---
 
@@ -43,91 +63,95 @@ El usuario practica escritura productiva contextual y una IA desmenuza su texto 
 
 | Capa | Tecnología |
 |---|---|
-| Lenguajes | Go 1.26 · TypeScript (strict) |
-| Frontend | Next.js 14+ (App Router) · React Server Components · Tailwind CSS |
+| Lenguajes | Go 1.26 · TypeScript 5.9 (strict) |
+| Frontend | Next.js 15 (App Router) · React 19 · Tailwind CSS 4 |
 | Estado | TanStack Query (server state) · Zustand (client state) |
 | Formularios | React Hook Form + Zod |
-| Backend | Go (arquitectura hexagonal adaptada) |
+| Backend | Go: arquitectura hexagonal adaptada · Uber Fx · chi |
 | Contrato | OpenAPI 3.1 (`apps/contracts/openapi/api.yaml`) |
 | Generación | `oapi-codegen` (Go) · `openapi-typescript` (TS) |
-| Persistencia | PostgreSQL · Unit of Work · patrón Outbox |
-| IA | Proveedor LLM con Structured Outputs (OpenAI, detrás del puerto `LLMExtractor`) |
-| Monorepo | pnpm workspaces + Turborepo |
+| Persistencia | PostgreSQL 16 · `pgx` · goose · Unit of Work · Outbox |
+| IA | OpenAI con Structured Outputs, detrás del puerto `LLMExtractor` |
+| Tests | `go test -race` · testcontainers · Vitest · RTL · Playwright |
+| Monorepo | pnpm workspaces + Turborepo (remote cache self-hosted) |
+| Seguridad | `gosec` · `govulncheck` · auditorías estáticas |
 
 ---
 
 ## Arquitectura
 
-### Monorepo contract-first
+### Monorepo contract-first (A12)
 
-El contrato `api.yaml` es la **única fuente de verdad** del wire. Todo cambio empieza en el contrato, pasa por `pnpm generate` y recién entonces llega al código Go y TypeScript. Nunca se editan a mano los artefactos generados (`gen_*.go`, `gen.ts`).
+El contrato `api.yaml` es la **única fuente de verdad** del wire. Todo cambio
+empieza en el contrato, pasa por `pnpm generate` (que regenera Go **y** TS) y
+recién entonces llega al código. Nunca se editan a mano `gen_*.go` ni `gen.ts`.
+CI falla si el código generado diverge del contrato.
 
-### Dirección de dependencias
-
-Las dependencias fluyen siempre hacia adentro:
+### Dirección de dependencias (A2)
 
 ```
 cmd  →  adapters  →  services  →  ports  →  domain
-                                            (núcleo puro, solo stdlib)
+                                            (núcleo puro, solo stdlib, A1)
 ```
 
-- **Dominio puro**: `internal/domain/` solo importa la stdlib de Go.
-- **Puertos y adaptadores**: los servicios conocen interfaces (`ports/`), no implementaciones (`adapters/`).
-
-### Bounded contexts
-
-Cuatro contextos de dominio, **aislados entre sí** (se comunican vía puertos y eventos append-only):
+### Bounded contexts aislados (A3)
 
 | Contexto | Responsabilidad | Agregado raíz |
 |---|---|---|
-| `identity` | Identidad portable del usuario (dueño de los datos). | `User` |
-| `practice` | El ejercicio de escritura: texto base, borrador, reglas objetivo. | `Practice` |
+| `identity` | Identidad portable y auditoría de datos (A9). | `User` |
+| `practice` | El ejercicio: texto base, borrador y reglas objetivo. | `Practice` |
 | `analysis` | El análisis fragmentado generado por la IA. | `Analysis` |
-| `analytics` | Materialización de patrones de error y progreso temporal. | `ErrorMetric`, `ProgressMetric` |
+| `analytics` | Materialización de patrones de error y progreso. | `ErrorMetric` |
 
-### Estructura del repositorio
+Se comunican por puertos y **eventos de dominio** vía outbox, nunca por imports
+cruzados. Los detalles están en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+### Transacciones y eventos
+
+- **Unit of Work**: los services no tocan SQL; el adaptador abre
+  `BEGIN/COMMIT/ROLLBACK`.
+- **Outbox**: el cambio de estado y el evento se persisten en la misma
+  transacción; un relay los publica post-commit.
+
+### Privacidad (A8/A9)
+
+- **Anonimización** antes del LLM y **pseudonimización** (HMAC-SHA256) en
+  analytics; separación de datos crudos y purga programada.
+- `PIIHandler` como guard runtime del logging y auditorías estáticas en CI.
+
+---
+
+## Estructura del repositorio
 
 ```text
 langlint/
 ├── apps/
-│   ├── contracts/        # SSOT OpenAPI + pipeline de generación
-│   ├── backend/          # Go: cmd → adapters → services → ports → domain (pendiente)
-│   └── frontend/         # Next.js App Router (pendiente)
-├── docs/
-│   ├── checklist/        # 8 fases con gate de salida
-│   ├── DEVLOG.md         # bitácora append-only de sesiones
-│   ├── GUIDE_WORK_IA.md  # metodología de colaboración humano-IA
-│   └── PRODUCT_DOMAIN.md # visión y modelo de dominio
-├── MANIFEST_MONOREPO.md  # axiomas A1–A12 y patrones del backend/monorepo
-├── MANIFEST_FRONTEND.md  # axiomas F1–F12 del frontend
-├── AGENTS.md             # onboarding y memoria de trabajo para agentes de IA
-├── turbo.json
-└── pnpm-workspace.yaml
+│   ├── contracts/          # SSOT OpenAPI + pipeline de generación
+│   ├── backend/            # Go: cmd → adapters → services → ports → domain
+│   └── frontend/           # Next.js App Router (diff de 3 columnas + analíticas)
+├── docs/                   # ARCHITECTURE, RUNBOOK, PRODUCTION_ENV, SECRET_ROTATION, …
+├── ops/                    # docker-compose (Postgres + turbo-cache) y scripts de auditoría
+├── .github/workflows/      # ci · contracts · deploy-staging · security
+├── MANIFEST_MONOREPO.md    # axiomas A1–A12 y patrones del backend/monorepo
+├── MANIFEST_FRONTEND.md    # axiomas F1–F12 del frontend
+├── turbo.json · pnpm-workspace.yaml · .tool-versions
+└── AGENTS.md               # onboarding y memoria de trabajo para agentes de IA
 ```
 
 ---
 
-## Roadmap
+## Métricas de rigor
 
-### MVP (7 pasos)
-
-| # | Paso | Entregable | Estado |
-|---|---|---|---|
-| 1 | Fundaciones | Monorepo (Turborepo + pnpm) + contrato OpenAPI fundacional | En curso |
-| 2 | Dominio puro | `identity`, `practice`, `analysis`, `analytics` con 100% de cobertura | Pendiente |
-| 3 | Puertos y adaptadores | `LLMExtractor`, repositorios, UoW y outbox + Postgres (testcontainers) | Pendiente |
-| 4 | Motor de IA | `OpenAIExtractor` con Structured Outputs, anonimización y timeouts | Pendiente |
-| 5 | Frontend | Vista diff de 3 columnas + dashboard de analíticas | Pendiente |
-| 6 | Provisioner y privacidad | Jobs de agregados/purga + endpoints de export/delete/access-log | Pendiente |
-| 7 | Hardening | CI/CD, gosec, govulncheck, documentación y README de portafolio | Pendiente |
-
-### Futuro (post-MVP): Tutor Adaptativo
-
-La evolución natural del producto es transformar LangLint de una herramienta de corrección en un **tutor de inglés personalizado y adaptativo** con *spaced repetition* e inteligencia de aprendizaje basada en los **errores reales** del usuario:
-
-> *"He notado que en tus últimas 5 prácticas has fallado sistemáticamente en las preposiciones antes de gerundios. Voy a generarte una sesión de estudio profunda sobre esto."*
-
-El sistema deja de solo corregir lo escrito hoy y pasa a generar un **plan de estudio dinámico** a partir de la fricción de aprendizaje del usuario. Se incorpora como un quinto bounded context (`tutor/`) que consume los agregados de `analytics/` vía el bus de eventos (outbox), **sin romper** ninguno de los cuatro contextos existentes.
+| Métrica | Valor | Cómo se verifica |
+|---|---|---|
+| Cobertura del dominio | **100 %** | `go test -cover ./internal/domain/...` |
+| Cobertura de services | **91–98 %** | `go test -cover ./internal/api/services/...` |
+| Tests backend (Tier 1+2) | en verde | `pnpm test` (`go test -race`) |
+| Integración (Tier 3) | en verde | `pnpm test-integration --filter=backend` (testcontainers) |
+| Tests frontend (Vitest) | **95** | `pnpm --filter frontend test` |
+| e2e (Playwright) | 2 | `pnpm test:e2e` |
+| Análisis estático de seguridad | **0 hallazgos** | `gosec` / `govulncheck` (CI `security.yml`) |
+| Contrato | **3.0.0** | `contracts.yml`: drift + `info.version` |
 
 ---
 
@@ -135,28 +159,64 @@ El sistema deja de solo corregir lo escrito hoy y pasa a generar un **plan de es
 
 ### Prerrequisitos
 
-- **Node.js** 22.13.0 · **pnpm** 9.15.4 · **Go** 1.26.2
-- Las versiones exactas están en `.tool-versions` (compatible con `mise`/`asdf`) y `.nvmrc`.
+- **Go** 1.26.8 · **Node** 22 · **pnpm** 9.15.4 · Docker (para Postgres).
+- Versiones exactas en `.tool-versions` (compatible con `mise`/`asdf`) y `.nvmrc`.
 
-### Instalación y build
+### Instalación y arranque
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm build
+
+# Infraestructura local (Postgres :5433)
+docker compose -f ops/docker/docker-compose.yml up -d
+
+# Backend
+cd apps/backend && cp .env.example .env   # rellenar secretos reales (A8)
+go run ./cmd/migrate && go run ./cmd/api
+
+# Frontend (otra terminal)
+cp apps/frontend/.env.example apps/frontend/.env.local
+pnpm --filter frontend dev
 ```
+
+Ver [`docs/RUNBOOK.md`](docs/RUNBOOK.md) para diagnóstico y
+[`docs/PRODUCTION_ENV.md`](docs/PRODUCTION_ENV.md) para todas las variables.
 
 ### Comandos canónicos
 
 | Comando | Propósito |
 |---|---|
 | `pnpm build` | Build de todo el monorepo (Turborepo) |
-| `pnpm lint` | Lint del monorepo |
-| `pnpm test` | Tests Tier 1+2 |
+| `pnpm lint` | Lint del monorepo (redocly + go vet + eslint) |
+| `pnpm test` | Tests Tier 1+2 (Go + Vitest) |
 | `pnpm test-integration --filter=backend` | Tests Tier 3 (testcontainers) |
-| `pnpm generate` | Regenerar tipos Go + TS desde el contrato |
-| `pnpm typecheck` | `tsc --noEmit` del frontend |
+| `pnpm test:e2e` | e2e de frontend (Playwright) |
+| `pnpm typecheck --filter=frontend` | `tsc --noEmit` |
+| `pnpm generate` | Regenera tipos Go + TS desde el contrato |
+| `go run ./cmd/provisioner <job>` | Jobs batch (`refresh-aggregates`, …) |
 
-Los comandos de fases aún no iniciadas están documentados pero no disponibles.
+---
+
+## Roadmap
+
+| # | Paso | Estado |
+|---|---|---|
+| 1 | Fundaciones | ✅ |
+| 2 | Dominio puro (100 % cobertura) | ✅ |
+| 3 | Puertos y adaptadores (UoW, outbox, Postgres) | ✅ |
+| 4 | Motor de IA (Structured Outputs) | ✅ |
+| 5 | Frontend (diff de 3 columnas + analíticas) | ✅ |
+| 6 | Provisioner y privacidad (A9) | ✅ |
+| 7 | Hardening (CI/CD, seguridad, documentación) | en cierre |
+
+### Futuro (post-MVP): Tutor Adaptativo
+
+La evolución natural es convertir LangLint en un **tutor de inglés adaptativo**
+con *spaced repetition* e inteligencia de aprendizaje basada en los **errores
+reales** del usuario. Se incorpora como un quinto bounded context (`tutor/`) que
+consume los agregados de `analytics/` vía el bus de eventos, **sin romper**
+ninguno de los cuatro contextos existentes. Ver
+[`PRODUCT_DOMAIN.md §12.1`](docs/PRODUCT_DOMAIN.md).
 
 ---
 
@@ -164,12 +224,16 @@ Los comandos de fases aún no iniciadas están documentados pero no disponibles.
 
 | Documento | Contenido |
 |---|---|
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Contrato arquitectónico global |
 | [`docs/PRODUCT_DOMAIN.md`](docs/PRODUCT_DOMAIN.md) | Visión, modelo de dominio, contrato, roadmap |
+| [`docs/RUNBOOK.md`](docs/RUNBOOK.md) | Operación e incidentes |
+| [`docs/PRODUCTION_ENV.md`](docs/PRODUCTION_ENV.md) | Variables de entorno |
+| [`docs/SECRET_ROTATION.md`](docs/SECRET_ROTATION.md) | Rotación de secretos |
+| [`docs/SECURITY_DEBT.md`](docs/SECURITY_DEBT.md) | Deuda de seguridad aceptada |
+| [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md) | Gaps contrato↔dominio |
+| [`docs/bugs/`](docs/bugs/) | Bugs conocidos |
 | [`MANIFEST_MONOREPO.md`](MANIFEST_MONOREPO.md) | Axiomas A1–A12 y patrones del backend |
 | [`MANIFEST_FRONTEND.md`](MANIFEST_FRONTEND.md) | Axiomas F1–F12 del frontend |
-| [`docs/GUIDE_WORK_IA.md`](docs/GUIDE_WORK_IA.md) | Metodología de colaboración humano-IA |
-| [`docs/DEVLOG.md`](docs/DEVLOG.md) | Bitácora de desarrollo |
-| [`docs/checklist/`](docs/checklist/) | Plan por fases con gates de salida |
 | [`AGENTS.md`](AGENTS.md) | Onboarding para agentes de IA |
 
 ---
