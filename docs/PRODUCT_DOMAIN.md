@@ -362,7 +362,7 @@ components:
           items: { $ref: '#/components/schemas/Fragment' }
 ```
 
-> **Granularidad y exhaustividad acotada**: un `Fragment` corresponde a una cláusula (las oraciones largas se parten en conjunciones, relativos y puntuación). `error_patterns` es la lista **completa** de fallos; las listas estructuradas (`target_verb_reviews`, `lexical_clarifications`, `grammar_explanations`) explican los **más importantes** con hasta **3 entradas** por categoría y campos de una frase (≤20 palabras); una lista puede ir vacía si esa categoría no aplica. La extracción fija `temperature=0` y este tope porque, sin él, el modelo desborda el límite de salida de gpt-4o-mini (16 384 tokens) y trunca el JSON.
+> **Granularidad y exhaustividad acotada**: un `Fragment` corresponde a **una frase del borrador del alumno**. La segmentación la hace el backend de forma determinista (`. ! ?`), y el modelo se llama **una vez por frase** para que el español y el borrador no puedan desalinearse aunque tengan distinto número de frases (el alumno fusiona o divide). El `user_draft` lo fija el backend, no el modelo, así que la cobertura del borrador está garantizada. `error_patterns` es la lista **completa** de fallos; las listas estructuradas (`target_verb_reviews`, `lexical_clarifications`, `grammar_explanations`) explican los **más importantes** con hasta **3 entradas** por categoría y campos de una frase (≤20 palabras); una lista puede ir vacía si esa categoría no aplica. La extracción fija `temperature=0` y este tope para no desbordar el límite de salida de gpt-4o-mini (16 384 tokens).
 
 ### 5.3 Reglas operativas del contrato
 

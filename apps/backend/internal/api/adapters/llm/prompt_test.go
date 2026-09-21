@@ -9,7 +9,26 @@ import (
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/practice"
 )
 
-func TestBuildPrompt_IncludesSourceDraftAndTargetRules(t *testing.T) {
+func TestSplitSentences_SplitsOnTerminators(t *testing.T) {
+	got := SplitSentences("One. Two! Three? Four")
+	want := []string{"One.", "Two!", "Three?", "Four"}
+	if len(got) != len(want) {
+		t.Fatalf("SplitSentences() = %q, want %q", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("SplitSentences()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestSplitSentences_EmptyText_ReturnsNil(t *testing.T) {
+	if got := SplitSentences("   "); got != nil {
+		t.Fatalf("SplitSentences() = %q, want nil", got)
+	}
+}
+
+func TestBuildSentencePrompt_IncludesSourceSentenceAndTargetRules(t *testing.T) {
 	req := ports.ExtractRequest{
 		PracticeID: domain.MustNewID(),
 		SourceText: "El perro corre en el parque.",
@@ -19,11 +38,12 @@ func TestBuildPrompt_IncludesSourceDraftAndTargetRules(t *testing.T) {
 		},
 	}
 
-	p := buildPrompt(req)
+	p := buildSentencePrompt(req, 0, 1, "The dog run in the park.")
 
 	for _, want := range []string{
 		req.SourceText,
-		req.DraftText,
+		"The dog run in the park.",
+		"1 of 1",
 		"run",
 		"past simple",
 		"irregular verb",
@@ -34,16 +54,16 @@ func TestBuildPrompt_IncludesSourceDraftAndTargetRules(t *testing.T) {
 	}
 }
 
-func TestBuildPrompt_NoTargetRules_RendersPlaceholder(t *testing.T) {
-	p := buildPrompt(ports.ExtractRequest{SourceText: "hola", DraftText: "hello"})
+func TestBuildSentencePrompt_NoTargetRules_RendersPlaceholder(t *testing.T) {
+	p := buildSentencePrompt(ports.ExtractRequest{SourceText: "hola", DraftText: "hello"}, 0, 1, "hello")
 
 	if !strings.Contains(p.User, "(none)") {
 		t.Fatalf("user prompt missing empty-rules placeholder:\n%s", p.User)
 	}
 }
 
-func TestBuildPrompt_SystemPromptDescribesOutputContract(t *testing.T) {
-	p := buildPrompt(ports.ExtractRequest{})
+func TestBuildSentencePrompt_SystemPromptDescribesOutputContract(t *testing.T) {
+	p := buildSentencePrompt(ports.ExtractRequest{}, 0, 1, "")
 
 	for _, want := range []string{
 		"JSON",
@@ -61,8 +81,8 @@ func TestBuildPrompt_SystemPromptDescribesOutputContract(t *testing.T) {
 	}
 }
 
-func TestBuildPrompt_SystemPromptListsErrorTaxonomy(t *testing.T) {
-	p := buildPrompt(ports.ExtractRequest{})
+func TestBuildSentencePrompt_SystemPromptListsErrorTaxonomy(t *testing.T) {
+	p := buildSentencePrompt(ports.ExtractRequest{}, 0, 1, "")
 
 	for _, code := range []string{
 		"infinitive_conjugation",
@@ -87,14 +107,13 @@ func TestBuildPrompt_SystemPromptListsErrorTaxonomy(t *testing.T) {
 	}
 }
 
-func TestBuildPrompt_SystemPromptRequiresEveryIssue(t *testing.T) {
-	p := buildPrompt(ports.ExtractRequest{})
+func TestBuildSentencePrompt_SystemPromptRequiresOneFragmentPerSentence(t *testing.T) {
+	p := buildSentencePrompt(ports.ExtractRequest{}, 0, 1, "")
 
 	for _, want := range []string{
-		"one fragment per meaningful clause",
+		"exactly one fragment",
 		"never collapse several",
 		"at most three entries",
-		"not an essay",
 		"Prioritize",
 	} {
 		if !strings.Contains(p.System, want) {
@@ -103,8 +122,8 @@ func TestBuildPrompt_SystemPromptRequiresEveryIssue(t *testing.T) {
 	}
 }
 
-func TestBuildPrompt_RequiresVerbatimFragmentsAndSpanishExplanations(t *testing.T) {
-	p := buildPrompt(ports.ExtractRequest{})
+func TestBuildSentencePrompt_RequiresVerbatimFragmentsAndSpanishExplanations(t *testing.T) {
+	p := buildSentencePrompt(ports.ExtractRequest{}, 0, 1, "")
 
 	if !strings.Contains(p.System, "verbatim") {
 		t.Fatalf("system prompt must require verbatim fragments:\n%s", p.System)
@@ -114,13 +133,13 @@ func TestBuildPrompt_RequiresVerbatimFragmentsAndSpanishExplanations(t *testing.
 	}
 }
 
-func TestPromptText_MatchesBuildPrompt(t *testing.T) {
-	req := ports.ExtractRequest{SourceText: "fuente", DraftText: "draft"}
+func TestPromptText_MatchesBuildSentencePrompt(t *testing.T) {
+	req := ports.ExtractRequest{SourceText: "fuente", DraftText: "One. Two."}
 
 	system, user := PromptText(req)
-	p := buildPrompt(req)
+	p := buildSentencePrompt(req, 0, 2, "One.")
 
 	if system != p.System || user != p.User {
-		t.Fatal("PromptText() diverges from buildPrompt()")
+		t.Fatal("PromptText() diverges from buildSentencePrompt()")
 	}
 }

@@ -4,6 +4,35 @@
 
 ---
 
+## 2026-09-20 — Fix: alineación español↔borrador (extracción por frase)
+
+**Estado**: bug de alineación diagnosticado y corregido. `go build/vet/test -race` (+ `-tags=integration`), `pnpm test-integration --filter=backend`, `pnpm lint` (3/3), `pnpm test`, `pnpm typecheck --filter=frontend` y `pnpm build` (3/3) en verde. **Sin cambio de contrato** (A12): el wire ya admitía arrays.
+
+**Síntoma**: en la vista de 3 columnas, la frase en español, el borrador y la corrección aparecían **desfasados** (el borrador barajado/duplicado y faltaba la primera frase).
+
+**Diagnóstico** (volcando la respuesta cruda del modelo):
+- El español y el borrador tienen **distinto número de frases** (el alumno fusiona/divides). El prompt pedía partir por cláusulas del *español*, pero el modelo **alineaba por índice**, no por significado: emparejaba `source[i]` con `draft[i+1]` y acababa emitiendo basura (`"{"`).
+- Se probó además un prompt con **invariante de cobertura** + validación en código: el modelo lo incumplía (reordenaba/omitía), con ~2/5 de éxito. Se probó "un fragmento por frase, sin dividir": el modelo seguía saltándose la primera frase.
+- Conclusión: **gpt-4o-mini no segmenta + alinea ES↔EN + copia verbatim + explica de forma fiable en una sola llamada** para textos largos.
+
+**Hecho** (contenido en el adapter, sin tocar puerto ni service):
+- `prompt.go`: se pasa a un **prompt por frase** (`buildSentencePrompt`) y `SplitSentences` segmenta el borrador de forma determinista en `. ! ?`.
+- `openai_extractor.go`: `Extract` **llama al modelo una vez por frase** del borrador y ensambla los fragmentos; el `user_draft` lo fija el backend a partir de su propia segmentación, de modo que la cobertura y el orden del borrador quedan **garantizados por construcción** (más fuerte que una validación posterior).
+- `prompt_test.go` / `openai_extractor_test.go`: reescritos (una llamada por frase, N frases ⇒ N llamadas, borrador vacío ⇒ 0 llamadas, temperatura 0, esquema estricto).
+
+**Verificación (texto real de ~2 KB, 6 frases en el borrador)**:
+- 3/3 corridas OK, ~30s cada una, 6 fragmentos, 37–41 entradas, con alineación correcta (cada frase del borrador con su fuente).
+- Antes: 0/5 fiables (desfase o truncado a 16 384 tokens).
+
+**Decisiones**:
+- **Chunking por frase** (acordado) en vez de una sola llamada: acota la salida de cada llamada, elimina el truncado y hace imposible el desfase.
+- **El `user_draft` lo fija el backend**, no el modelo: garantiza el invariante sin depender de que el modelo copie verbatim.
+- **Límite conocido**: una frase run-on muy larga (sin `. ! ?` internos) va en un único fragmento; partirla en sub-cláusulas de forma fiable queda como mejora futura.
+
+**Próximo paso**: Fase 7 (Hardening) o `9.7`. Candidata de hardening: subdividir run-ons largos por sub-cláusulas deterministas validadas contra la frase original.
+
+---
+
 ## 2026-09-20 — Fix: el análisis fallaba por desbordar el límite de salida del LLM
 
 **Estado**: fallo diagnosticado y corregido. `go build/vet/test -race` (+ `-tags=integration`), `pnpm test-integration --filter=backend`, `pnpm lint` (3/3), `pnpm test`, `pnpm typecheck --filter=frontend` y `pnpm build` (3/3) en verde. Sin cambio de contrato (A12).

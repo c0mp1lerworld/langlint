@@ -19,6 +19,10 @@ import (
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/practice"
 )
 
+// validFragmentContent is a single well-formed fragment for "El perro corre." /
+// "The dog run." that every sentence-level call returns.
+const validFragmentContent = `{"fragments":[{"source_es":"El perro corre.","user_draft":"The dog run.","correction":"The dog runs.","target_verb_reviews":[{"verb":"run","correct_form":"runs","rule":"tercera persona","why":"sujeto singular","es_contrast":"no cambia","alternatives":[]}],"lexical_clarifications":[],"grammar_explanations":[],"error_patterns":[]}]}`
+
 func newExtractorForHandler(t *testing.T, handler http.HandlerFunc) *OpenAIExtractor {
 	t.Helper()
 	server := httptest.NewServer(handler)
@@ -141,6 +145,48 @@ func TestOpenAIExtractor_Extract_ValidResponse_ReturnsFragments(t *testing.T) {
 	}
 }
 
+func TestOpenAIExtractor_Extract_MultipleSentences_OneCallPerSentence(t *testing.T) {
+	calls := 0
+	extractor := newExtractorForHandler(t, func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		writeChatCompletion(t, w, validFragmentContent)
+	})
+
+	got, err := extractor.Extract(context.Background(), ports.ExtractRequest{
+		SourceText: "El perro corre. El gato duerme.",
+		DraftText:  "The dog run. The cat sleep.",
+	})
+	if err != nil {
+		t.Fatalf("Extract() error = %v", err)
+	}
+	if calls != 2 {
+		t.Fatalf("provider calls = %d, want 2", calls)
+	}
+	if len(got) != 2 {
+		t.Fatalf("len(fragments) = %d, want 2", len(got))
+	}
+	for i, want := range []string{"The dog run.", "The cat sleep."} {
+		if got[i].UserDraft != want {
+			t.Fatalf("fragments[%d].UserDraft = %q, want %q", i, got[i].UserDraft, want)
+		}
+	}
+}
+
+func TestOpenAIExtractor_Extract_EmptyDraft_ReturnsNoFragments(t *testing.T) {
+	extractor := newExtractorForHandler(t, func(w http.ResponseWriter, _ *http.Request) {
+		t.Error("provider must not be called for an empty draft")
+		writeChatCompletion(t, w, validFragmentContent)
+	})
+
+	got, err := extractor.Extract(context.Background(), ports.ExtractRequest{})
+	if err != nil {
+		t.Fatalf("Extract() error = %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("len(fragments) = %d, want 0", len(got))
+	}
+}
+
 func TestOpenAIExtractor_Extract_SendsAnonymizedPromptAndModel(t *testing.T) {
 	captured := make(chan map[string]any, 1)
 	extractor := newExtractorForHandler(t, func(w http.ResponseWriter, r *http.Request) {
@@ -149,7 +195,7 @@ func TestOpenAIExtractor_Extract_SendsAnonymizedPromptAndModel(t *testing.T) {
 			t.Errorf("decode request body: %v", err)
 		}
 		captured <- body
-		writeChatCompletion(t, w, `{"fragments":[]}`)
+		writeChatCompletion(t, w, validFragmentContent)
 	})
 
 	if _, err := extractor.Extract(context.Background(), ports.ExtractRequest{
@@ -174,7 +220,7 @@ func TestOpenAIExtractor_Extract_SendsAnonymizedPromptAndModel(t *testing.T) {
 		t.Fatalf("user message = %v, want object", messages[1])
 	}
 	userContent, _ := userMessage["content"].(string)
-	for _, want := range []string{"El perro corre.", "The dog run.", "run"} {
+	for _, want := range []string{"El perro corre.", "The dog run.", "run", "1 of 1"} {
 		if !strings.Contains(userContent, want) {
 			t.Fatalf("user message missing %q:\n%s", want, userContent)
 		}
@@ -187,7 +233,7 @@ func TestOpenAIExtractor_Extract_ProviderError_ReturnsLLMUnavailableError(t *tes
 		_, _ = w.Write([]byte(`{"error":{"message":"boom","type":"server_error"}}`))
 	})
 
-	_, err := extractor.Extract(context.Background(), ports.ExtractRequest{})
+	_, err := extractor.Extract(context.Background(), ports.ExtractRequest{DraftText: "The dog run."})
 	assertLLMUnavailable(t, err)
 }
 
@@ -196,7 +242,7 @@ func TestOpenAIExtractor_Extract_InvalidJSON_ReturnsLLMUnavailableError(t *testi
 		writeChatCompletion(t, w, "not a json array")
 	})
 
-	_, err := extractor.Extract(context.Background(), ports.ExtractRequest{})
+	_, err := extractor.Extract(context.Background(), ports.ExtractRequest{DraftText: "The dog run."})
 	assertLLMUnavailable(t, err)
 }
 
@@ -212,7 +258,16 @@ func TestOpenAIExtractor_Extract_NoChoices_ReturnsLLMUnavailableError(t *testing
 		})
 	})
 
-	_, err := extractor.Extract(context.Background(), ports.ExtractRequest{})
+	_, err := extractor.Extract(context.Background(), ports.ExtractRequest{DraftText: "The dog run."})
+	assertLLMUnavailable(t, err)
+}
+
+func TestOpenAIExtractor_Extract_WrongFragmentCount_ReturnsLLMUnavailableError(t *testing.T) {
+	extractor := newExtractorForHandler(t, func(w http.ResponseWriter, _ *http.Request) {
+		writeChatCompletion(t, w, `{"fragments":[]}`)
+	})
+
+	_, err := extractor.Extract(context.Background(), ports.ExtractRequest{DraftText: "The dog run."})
 	assertLLMUnavailable(t, err)
 }
 
@@ -222,7 +277,7 @@ func TestOpenAIExtractor_Extract_InvalidErrorCode_ReturnsLLMUnavailableError(t *
 		writeChatCompletion(t, w, content)
 	})
 
-	_, err := extractor.Extract(context.Background(), ports.ExtractRequest{})
+	_, err := extractor.Extract(context.Background(), ports.ExtractRequest{DraftText: "The dog run."})
 	assertLLMUnavailable(t, err)
 }
 
@@ -234,10 +289,10 @@ func TestOpenAIExtractor_Extract_RequestsStrictFragmentSchema(t *testing.T) {
 			t.Errorf("decode request body: %v", err)
 		}
 		captured <- body
-		writeChatCompletion(t, w, `{"fragments":[]}`)
+		writeChatCompletion(t, w, validFragmentContent)
 	})
 
-	if _, err := extractor.Extract(context.Background(), ports.ExtractRequest{}); err != nil {
+	if _, err := extractor.Extract(context.Background(), ports.ExtractRequest{DraftText: "The dog run."}); err != nil {
 		t.Fatalf("Extract() error = %v", err)
 	}
 
@@ -266,10 +321,10 @@ func TestOpenAIExtractor_Extract_RequestsDeterministicTemperature(t *testing.T) 
 			t.Errorf("decode request body: %v", err)
 		}
 		captured <- body
-		writeChatCompletion(t, w, `{"fragments":[]}`)
+		writeChatCompletion(t, w, validFragmentContent)
 	})
 
-	if _, err := extractor.Extract(context.Background(), ports.ExtractRequest{}); err != nil {
+	if _, err := extractor.Extract(context.Background(), ports.ExtractRequest{DraftText: "The dog run."}); err != nil {
 		t.Fatalf("Extract() error = %v", err)
 	}
 
