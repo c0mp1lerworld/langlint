@@ -93,8 +93,9 @@ func TestBuildPrompt_SystemPromptRequiresEveryIssue(t *testing.T) {
 	for _, want := range []string{
 		"one fragment per meaningful clause",
 		"never collapse several",
-		"cover every mistake",
-		"not one summary",
+		"at most three entries",
+		"not an essay",
+		"Prioritize",
 	} {
 		if !strings.Contains(p.System, want) {
 			t.Fatalf("system prompt missing completeness rule %q:\n%s", want, p.System)

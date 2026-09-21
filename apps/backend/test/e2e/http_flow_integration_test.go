@@ -94,7 +94,7 @@ func newRouter(t *testing.T, pool *pgxpool.Pool, userID domain.ID) http.Handler 
 	uow := postgres.NewUnitOfWork(pool)
 	outbox := postgres.NewOutbox(pool)
 
-	analysisSvc := services.NewAnalysisService(fakeExtractor{}, uow, practices, analyses, outbox)
+	analysisSvc := services.NewAnalysisService(fakeExtractor{}, uow, practices, analyses, outbox, services.LLMTimeout(0))
 	practiceSvc := services.NewPracticeService(uow, practices, analyses, outbox)
 	analyticsSvc := services.NewAnalyticsService(metrics)
 	email, err := identity.NewEmail("student@example.com")

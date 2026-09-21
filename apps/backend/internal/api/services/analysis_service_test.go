@@ -89,7 +89,7 @@ func newServiceFixture(t *testing.T) *serviceFixture {
 		outbox:    mocks.NewMockOutbox(ctrl),
 		now:       time.Date(2026, 9, 18, 12, 0, 0, 0, time.UTC),
 	}
-	fixture.svc = NewAnalysisService(fixture.extractor, fixture.uow, fixture.practices, fixture.analyses, fixture.outbox)
+	fixture.svc = NewAnalysisService(fixture.extractor, fixture.uow, fixture.practices, fixture.analyses, fixture.outbox, 0)
 	fixture.svc.now = func() time.Time { return fixture.now }
 	return fixture
 }

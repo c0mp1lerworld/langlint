@@ -362,7 +362,7 @@ components:
           items: { $ref: '#/components/schemas/Fragment' }
 ```
 
-> **Granularidad y exhaustividad**: un `Fragment` corresponde a una cláusula (las oraciones largas se parten en conjunciones, relativos y puntuación). Cada lista estructurada (`target_verb_reviews`, `lexical_clarifications`, `grammar_explanations`) debe traer **una entrada por error distinto** y, en conjunto, cubrir todos los `error_patterns` del fragmento; una lista puede ir vacía si esa categoría no aplica. La extracción fija `temperature=0` para maximizar la consistencia (evita que el modelo colapse varios errores en una sola explicación).
+> **Granularidad y exhaustividad acotada**: un `Fragment` corresponde a una cláusula (las oraciones largas se parten en conjunciones, relativos y puntuación). `error_patterns` es la lista **completa** de fallos; las listas estructuradas (`target_verb_reviews`, `lexical_clarifications`, `grammar_explanations`) explican los **más importantes** con hasta **3 entradas** por categoría y campos de una frase (≤20 palabras); una lista puede ir vacía si esa categoría no aplica. La extracción fija `temperature=0` y este tope porque, sin él, el modelo desborda el límite de salida de gpt-4o-mini (16 384 tokens) y trunca el JSON.
 
 ### 5.3 Reglas operativas del contrato
 

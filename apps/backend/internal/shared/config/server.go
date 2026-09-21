@@ -23,7 +23,7 @@ const (
 
 const (
 	defaultHTTPAddr   = ":8080"
-	defaultLLMTimeout = 60 * time.Second
+	defaultLLMTimeout = 180 * time.Second
 	defaultCORSOrigin = "http://localhost:3000"
 )
 
@@ -53,7 +53,7 @@ func LoadDatabaseURL() (string, error) {
 
 // LoadServerConfig reads the API server settings from the environment.
 // DatabaseURL and UserID are required; HTTPAddr defaults to :8080 and
-// LLMTimeout to 60s.
+// LLMTimeout to 180s.
 func LoadServerConfig() (ServerConfig, error) {
 	databaseURL, err := LoadDatabaseURL()
 	if err != nil {

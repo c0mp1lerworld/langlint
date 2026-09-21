@@ -62,8 +62,8 @@ func TestLoadServerConfig_Defaults_AppliesHTTPAddrAndTimeout(t *testing.T) {
 	if cfg.HTTPAddr != ":8080" {
 		t.Fatalf("HTTPAddr = %q, want :8080", cfg.HTTPAddr)
 	}
-	if cfg.LLMTimeout != 60*time.Second {
-		t.Fatalf("LLMTimeout = %v, want 60s", cfg.LLMTimeout)
+	if cfg.LLMTimeout != 180*time.Second {
+		t.Fatalf("LLMTimeout = %v, want 180s", cfg.LLMTimeout)
 	}
 	if len(cfg.CORSAllowedOrigins) != 1 || cfg.CORSAllowedOrigins[0] != "http://localhost:3000" {
 		t.Fatalf("CORSAllowedOrigins = %v, want [http://localhost:3000]", cfg.CORSAllowedOrigins)

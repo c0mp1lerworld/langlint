@@ -17,14 +17,20 @@ const (
 	// analysisEventVersion is the payload version of the analysis events (§5.1).
 	analysisEventVersion = 1
 
-	// defaultLLMTimeout bounds the slow external LLM call (4.3.3).
-	defaultLLMTimeout = 60 * time.Second
+	// defaultLLMTimeout bounds the slow external LLM call (4.3.3) when no
+	// APP_LLM_TIMEOUT is configured. The exhaustive feedback (several structured
+	// entries per fragment) can take well over a minute on long texts.
+	defaultLLMTimeout = 180 * time.Second
 
 	// Generic failure reasons stored in AnalysisFailed. They never carry the raw
 	// provider error (A5, A8).
 	reasonLLMUnavailable = "llm unavailable"
 	reasonInvalidResult  = "invalid result"
 )
+
+// LLMTimeout is the maximum duration of a single LLM extraction call. It is a
+// named type so Fx can inject it without ambiguity with other durations (A2).
+type LLMTimeout time.Duration
 
 // AnalysisService orchestrates the cognitive analysis of a practice
 // (PRODUCT_DOMAIN §4.7). The slow LLM call runs outside the transaction (4.2.3)
@@ -48,7 +54,12 @@ func NewAnalysisService(
 	practices storage.PracticeRepository,
 	analyses storage.AnalysisRepository,
 	outbox events.Outbox,
+	llmTimeout LLMTimeout,
 ) *AnalysisService {
+	timeout := time.Duration(llmTimeout)
+	if timeout <= 0 {
+		timeout = defaultLLMTimeout
+	}
 	return &AnalysisService{
 		extractor:  extractor,
 		uow:        uow,
@@ -56,7 +67,7 @@ func NewAnalysisService(
 		analyses:   analyses,
 		outbox:     outbox,
 		now:        time.Now,
-		llmTimeout: defaultLLMTimeout,
+		llmTimeout: timeout,
 	}
 }
 

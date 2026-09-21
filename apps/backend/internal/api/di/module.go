@@ -50,6 +50,7 @@ func Module() fx.Option {
 			newDeletionRequestRepository,
 			newAccessLogRepository,
 			newUserEmail,
+			newLLMTimeout,
 			newUnitOfWork,
 			newOutbox,
 			newExtractor,
@@ -123,6 +124,11 @@ func newAccessLogRepository(pool *pgxpool.Pool) storage.AccessLogRepository {
 // newUserEmail exposes the configured single-user email as an identity value.
 func newUserEmail(cfg config.ServerConfig) identity.Email {
 	return cfg.UserEmail
+}
+
+// newLLMTimeout exposes APP_LLM_TIMEOUT to the analysis service (4.3.3).
+func newLLMTimeout(cfg config.ServerConfig) services.LLMTimeout {
+	return services.LLMTimeout(cfg.LLMTimeout)
 }
 
 func newUnitOfWork(pool *pgxpool.Pool) storage.UnitOfWork {

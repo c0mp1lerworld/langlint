@@ -4,6 +4,43 @@
 
 ---
 
+## 2026-09-20 — Fix: el análisis fallaba por desbordar el límite de salida del LLM
+
+**Estado**: fallo diagnosticado y corregido. `go build/vet/test -race` (+ `-tags=integration`), `pnpm test-integration --filter=backend`, `pnpm lint` (3/3), `pnpm test`, `pnpm typecheck --filter=frontend` y `pnpm build` (3/3) en verde. Sin cambio de contrato (A12).
+
+**Síntoma**: al analizar una práctica, tras ~60s la frontend mostraba "Fallida: el análisis no pudo completarse".
+
+**Diagnóstico** (con un probe temporal de `finish_reason`/usage, ya retirado):
+1. Se reprodujo por la API: fallaba a los ~59s. `llmcheck` con el mismo input a veces tardaba 21s y a veces fallaba a los ~110s.
+2. El probe demostró la causa: `finish_reason=length`, `completion_tokens=16384` (**el tope de salida de gpt-4o-mini**). El prompt exhaustivo hacía que el modelo se disparara hasta el límite, truncando el JSON → el adapter lo marcaba como `llm_unavailable`. Ocurría ~50% de las veces en textos de ~2 KB (el máximo que admite el formulario).
+3. De paso se halló un bug: **`APP_LLM_TIMEOUT` no se inyectaba** (config cargaba el valor, pero `NewAnalysisService` fijaba 60s a fuego).
+
+**Hecho**:
+- **Timeout cableado**: `NewAnalysisService` recibe `services.LLMTimeout` (nuevo tipo inyectado por Fx desde `cfg.LLMTimeout`); default subido a **180s** (`config/server.go`, `.env`, `.env.example`, tests).
+- **Prompt acotado** (`prompt.go`): máximo **3 entradas por categoría y fragmento**, campos de **una frase (≤20 palabras)**, `error_patterns` sigue siendo la lista completa y las secciones estructuradas explican solo lo más importante. Se sustituye la regla de "cubrir todos los errores" (que causaba el rebose) por una de priorización.
+
+**Medición (`llmcheck`, texto de ~2 KB)**:
+- Antes: `finish=length`, 16 384 tokens de salida, 112s → fallo.
+- Después: `finish=stop`, 2 763–3 373 tokens, 19–26s → éxito (3/3).
+
+**Decisiones**:
+- **Acotar el prompt en vez de chunking** (acordado): una sola llamada acotada es suficiente y mucho más simple; el chunking multi-llamada queda como posible mejora.
+- **`temperature=0` + tope**: el muestreo greedy no bastaba (la varianza era de 3k a 16k tokens); el tope es lo que garantiza el techo.
+- **Los ~110s no eran el timeout**: alargarlo no arreglaba el truncamiento; sí era necesario cablear `APP_LLM_TIMEOUT` y subir el default para las respuestas legítimamente lentas.
+
+**Verificación**:
+- `go build ./...` · `go vet ./...` · `go test -race -count=1 ./...` → OK.
+- `pnpm test-integration --filter=backend` · `pnpm lint` (3/3) · `pnpm test` · `pnpm typecheck --filter=frontend` · `pnpm build` (3/3) → OK.
+- Manual: 3 corridas de `llmcheck` con el texto de referencia devuelven `finish=stop` y ~3k tokens (antes: `finish=length` a 16 384).
+
+**Bloqueos**: ninguno.
+
+**Nota operativa**: hay que **reiniciar `cmd/api`** para que tome el nuevo timeout y prompt; `APP_LLM_TIMEOUT` en `.env` queda en `180s`.
+
+**Próximo paso**: Fase 7 (Hardening) o `9.7`. Candidato de hardening: detectar `finish_reason=length` y devolver un error específico (hoy se ve como `llm_unavailable`).
+
+---
+
 ## 2026-09-20 — Exhaustividad del feedback del LLM (prompt + `temperature=0`)
 
 **Estado**: mejora de calidad aplicada. Sin cambio de contrato (A12). `go build/vet/test -race` (+ `-tags=integration`) OK; `pnpm test-integration --filter=backend`, `pnpm lint` (3/3), `pnpm test`, `pnpm typecheck --filter=frontend` y `pnpm build` (3/3) en verde; `gofmt -l` limpio.
