@@ -4,6 +4,36 @@
 
 ---
 
+## 2026-09-21 — Fase 7.2: Seguridad (7.2.1–7.2.4)
+
+**Estado**: bloque Seguridad completado. `7.2.1`–`7.2.4` implementados y verificados en local (gosec 0 hallazgos, govulncheck 0 vulnerabilidades, `security_audit.sh` limpio y probado contra una violación, tests Tier 1+2 en verde). Los workflows siguen sin ejecutarse en GitHub (no corre en local). El *Gate de salida* de Fase 7 solo espera la ejecución real y `7.3` (documentación).
+
+**Hecho**:
+- `7.2.1` `.github/workflows/security.yml`: `security_audit.sh` + `gosec` (pin `v2.29.0`, SARIF a Code Scanning, gate high/medium) + `govulncheck` (pin `v1.8.0`); triggers PR/push `main`/nightly/manual, `security-events: write`.
+- `7.2.2` `ops/scripts/security_audit.sh`: auditoría estática sin red (secretos hardcodeados, guard de docs AP-MR9, consistencia `x-internal`), salida redactada y exit 0/1/2 como `pii_audit.sh` (que ya existía desde 6.3 y se deja intacto).
+- `7.2.3` Verificado que el backend **no** expone `/docs`: no hay handler de docs, Scalar, Swagger ni `APP_API_DOCS_*` (el router solo monta el contrato). Se añade `TestGeneratedRouter_DocsEndpoints_NotFound` (404 en `/docs`, `/openapi.json`, `/swagger`, `/scalar`) y el guard estático.
+- `7.2.4` El contrato no marca ningún endpoint `x-internal: true` (15 operaciones de producto/A9) y no hay render de docs: N/A por diseño. El guard de `security_audit.sh` exige un filtro en Go si en el futuro se marca alguno.
+
+**Hallazgos y decisiones**:
+- **`gosec` G115 (falso positivo)**: 6 conversiones `uint64 → byte` en `internal/domain/identifiers.go` (bytes del timestamp UUID v7). En vez de suprimir con `#nosec`, se enmascaró `& 0xff` (comportamiento idéntico, sin perder cobertura del scanner). gosec pasa de 6 a 0 hallazgos.
+- **`govulncheck`: toolchain vulnerable**: con Go `1.26.2` (el que fija `.tool-versions`) aparecían **12 vulnerabilidades de la stdlib** (corregidas en `1.26.3`+ y siguientes). Se fija `toolchain go1.26.8` en `apps/backend/go.mod` y `.tool-versions` a `1.26.8` (último patch de la línea 1.26). Con `GOTOOLCHAIN=auto` el binario local descarga la versión segura; CI ya usaba `setup-go` (última 1.26.x). Resultado: 0 vulnerabilidades.
+- **7.2.3/7.2.4 se cierran con verificación + guard, no implementando un renderer**: el proyecto nunca tuvo docs UI; montarla habría contradicho el objetivo de no exponerla. En su lugar se blinda la regla con test + auditoría estática.
+- **`security_audit.sh` excluye `*_test.go` del guard de docs**: el test de 7.2.3 contiene las cadenas `/docs`/`/swagger`/`/scalar` y dispararía un falso positivo; los tests no montan rutas de producción.
+
+**Verificación** (local, exit codes reales):
+- `gosec -severity high -confidence medium ./...` → **0 issues** (102 ficheros).
+- `govulncheck ./...` → `No vulnerabilities found.` (con `go1.26.8`).
+- `bash ops/scripts/security_audit.sh` → limpio; con un `bad.go` con `/docs` + `sk-…` → exit 1 con valor redactado (probado y borrado).
+- `printf '…' | bash ops/scripts/pii_audit.sh` → limpio.
+- `go build ./...`, `go vet ./...`, `go test -race -count=1 ./...` → OK; `gofmt -l` limpio.
+- YAML de `security.yml` validado; los 4 workflows parsean.
+
+**Bloqueos / acciones humanas**: ninguna crítica. El upload de SARIF es `continue-on-error` para no bloquear si Code Scanning no está habilitado en el repo. Requiere el primer run real en GitHub para cerrar el gate.
+
+**Próximo paso**: Fase 7.3 — Documentación (`ARCHITECTURE.md`, `RUNBOOK.md`, `PRODUCTION_ENV.md`, `SECRET_ROTATION.md`, `SECURITY_DEBT.md`, README de portafolio y `docs/bugs/`). Nota: `README.md` aún dice "Fase 1" (se reescribe en `7.3.3`).
+
+---
+
 ## 2026-09-21 — Fase 7.1: CI/CD (7.1.1–7.1.5)
 
 **Estado**: bloque CI/CD completado. `7.1.1`, `7.1.2`, `7.1.3`, `7.1.4` y `7.1.5` implementados. Verificación local en verde (YAML, generación idempotente, dry-runs de build); **los workflows no se han ejecutado** (GitHub Actions no corre en local) y las imágenes no se han construido (falta `buildx`), así que el *Gate de salida* de Fase 7 queda a expensas del primer run real en GitHub.

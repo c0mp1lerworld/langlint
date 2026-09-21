@@ -16,10 +16,10 @@
 
 ## 7.2 Seguridad
 
-- [ ] `7.2.1` Crear `.github/workflows/security.yml` con `gosec` y `govulncheck`.
-- [ ] `7.2.2` Crear `ops/scripts/pii_audit.sh` y `ops/scripts/security_audit.sh`.
-- [ ] `7.2.3` Verificar que `/docs` (Scalar/Swagger) **no** se expone en producción desde el backend (AP-MR9).
-- [ ] `7.2.4` Endpoints marcados `x-internal: true` filtrados del render de docs (AP-MR9).
+- [x] `7.2.1` Crear `.github/workflows/security.yml` con `gosec` y `govulncheck` (pin `v2.29.0`/`v1.8.0`; SARIF de gosec a Code Scanning).
+- [x] `7.2.2` Crear `ops/scripts/pii_audit.sh` (ya existía, 6.3) y `ops/scripts/security_audit.sh` (secretos + guard de docs/x-internal).
+- [x] `7.2.3` Verificar que `/docs` (Scalar/Swagger) **no** se expone en producción desde el backend (AP-MR9): sin handler de docs + test `TestGeneratedRouter_DocsEndpoints_NotFound` + guard en `security_audit.sh`.
+- [x] `7.2.4` Endpoints marcados `x-internal: true` filtrados del render de docs (AP-MR9): el contrato no tiene endpoints `x-internal` (N/A); el guard de `security_audit.sh` lo exige si se añaden.
 
 ## 7.3 Documentación
 
