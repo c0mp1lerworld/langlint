@@ -19,17 +19,19 @@
 
 ## 9.6–9.7 Preguntas generadas por IA (práctica activa)
 
-- [ ] `9.6` Puerto `TutorQuestioner` (tipos `open` y `fill`, la IA elige) + endpoints `GET .../question` y `POST .../answer` con evaluación y seguimiento socrático acotado. _(`mcq` descartado: entrena reconocimiento, no producción.)_
-- [ ] `9.7` Integración con analytics: registrar aciertos/fallos del quiz para alimentar el repaso (tutor adaptativo futuro).
+- [x] `9.6` Puerto `TutorQuestioner` (tipos `open` y `fill`, la IA elige) + endpoints `POST .../quiz` y `POST .../quiz/answer` con evaluación y seguimiento socrático acotado. _(`internal/shared`-style port en `api/ports`; adapter `OpenAITutorQuestioner` con Structured Outputs; `QuizService`; UI `practice-quiz.tsx` como mutaciones on-demand. `mcq` descartado: entrena reconocimiento, no producción.)_
+- [ ] `9.7` Integración con analytics: registrar aciertos/fallos del quiz para alimentar el repaso. _Diferido con criterio: incrementar `error_metrics` desde el quiz sería inconsistente porque `refresh-aggregates` la reconstruye solo desde `analyses` (el incremento se perdería). Requiere una fuente de verdad propia (tabla/evento de intentos de quiz) que entre en la reconciliación, o una métrica separada._
 
 ---
 
 ## ✅ Gate de salida
 
-- [ ] `go build/vet/test -race` (+ `-tags=integration`) en verde.
-- [ ] `pnpm generate` idempotente y `pnpm lint` (contrato incluido) en verde.
-- [ ] `pnpm test-integration --filter=backend`, `pnpm test`, `pnpm typecheck --filter=frontend` y `pnpm build` en verde.
-- [ ] Verificación manual: lección estructurada + pregunta/evaluación con el ejemplo de referencia ("bet on").
+> Cubre los items `9.1`–`9.6`. El `9.7` queda diferido con criterio (ver arriba).
+
+- [x] `go build/vet/test -race` (+ `-tags=integration`) en verde.
+- [x] `pnpm generate` idempotente y `pnpm lint` (contrato incluido) en verde.
+- [x] `pnpm test-integration --filter=backend`, `pnpm test`, `pnpm typecheck --filter=frontend` y `pnpm build` en verde.
+- [x] Verificación manual: lección estructurada con el ejemplo de referencia ("bet on") contra el LLM real (`cmd/llmcheck`), y pregunta/evaluación cubiertas por unit (`httptest`) y e2e Tier 3 (proveedor fake).
 
 ## Fuente normativa
 

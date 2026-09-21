@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: LangLint API
-  version: 2.0.0
+  version: 2.1.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -159,6 +159,69 @@ paths:
           $ref: '#/components/responses/AnalysisPending'
         '404':
           $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/LLMUnavailable'
+
+  /practices/{practiceId}/quiz:
+    parameters:
+      - $ref: '#/components/parameters/PracticeId'
+    post:
+      operationId: create_quiz_question
+      summary: Genera una pregunta de práctica activa sobre un fragmento
+      description: |
+        Genera, con IA y anclada al error del fragmento, una pregunta de
+        práctica activa (PRODUCT_DOMAIN §1.2). El tipo lo elige el modelo:
+        `open` (explicar el porqué) o `fill` (completar). Es bajo demanda, fuera
+        de la ruta crítica del análisis.
+      tags: [practices]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizQuestionRequest'
+      responses:
+        '200':
+          description: Pregunta generada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizQuestion'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/LLMUnavailable'
+
+  /practices/{practiceId}/quiz/answer:
+    parameters:
+      - $ref: '#/components/parameters/PracticeId'
+    post:
+      operationId: evaluate_quiz_answer
+      summary: Evalúa la respuesta del alumno a una pregunta de práctica
+      description: |
+        Evalúa la respuesta (correcta, parcial o incorrecta), da feedback en
+        español y, si procede, una pregunta de seguimiento socrática. La
+        evaluación es sin estado: el cliente reenvía la pregunta evaluada.
+      tags: [practices]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizAnswerRequest'
+      responses:
+        '200':
+          description: Evaluación de la respuesta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizEvaluation'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
         '503':
           $ref: '#/components/responses/LLMUnavailable'
 
@@ -644,6 +707,60 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Fragment'
+
+    # --- Práctica activa con IA (PRODUCT_DOMAIN §1.2, §12.1) ---
+    QuizQuestionKind:
+      type: string
+      description: Tipo de pregunta elegido por el modelo.
+      enum: [open, fill]
+
+    QuizQuestionRequest:
+      type: object
+      required: [fragment_index]
+      properties:
+        fragment_index:
+          type: integer
+          minimum: 0
+          description: Índice del fragmento analizado sobre el que preguntar.
+
+    QuizQuestion:
+      type: object
+      required: [kind, prompt]
+      properties:
+        kind:
+          $ref: '#/components/schemas/QuizQuestionKind'
+        prompt:
+          type: string
+          description: Enunciado de la pregunta, en español.
+
+    QuizAnswerRequest:
+      type: object
+      required: [fragment_index, question, answer]
+      properties:
+        fragment_index:
+          type: integer
+          minimum: 0
+          description: Índice del fragmento evaluado.
+        question:
+          type: string
+          description: Pregunta que se está respondiendo (devuelta por el servidor).
+        answer:
+          type: string
+          description: Respuesta del alumno.
+
+    QuizEvaluation:
+      type: object
+      required: [correct, feedback, follow_up]
+      properties:
+        correct:
+          type: boolean
+          description: Si la respuesta es correcta.
+        feedback:
+          type: string
+          description: Retroalimentación en español.
+        follow_up:
+          type: string
+          description: Pregunta de seguimiento socrática; cadena vacía si no aplica.
 
     # --- Analítica (PRODUCT_DOMAIN §4.2.4 y §7) ---
     Window:

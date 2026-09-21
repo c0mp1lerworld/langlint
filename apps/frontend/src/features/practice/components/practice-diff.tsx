@@ -8,14 +8,14 @@ import { PracticeStatusBadge } from "./status-badge";
 
 type Fragment = components["schemas"]["Fragment"];
 
-function Fragments({ fragments }: { fragments: Fragment[] }) {
+function Fragments({ fragments, practiceId }: { fragments: Fragment[]; practiceId: string }) {
   if (fragments.length === 0) {
     return <p className="text-gray-600">El análisis no contiene fragmentos.</p>;
   }
   return (
     <ul className="space-y-4" aria-label="Fragmentos del análisis">
       {fragments.map((fragment, index) => (
-        <FragmentDiff key={index} fragment={fragment} />
+        <FragmentDiff key={index} fragment={fragment} practiceId={practiceId} index={index} />
       ))}
     </ul>
   );
@@ -85,7 +85,7 @@ export function PracticeDiff({ id }: { id: string }) {
       ) : null}
 
       {practice !== undefined && practice.status === "completed" ? (
-        <Fragments fragments={practice.analysis?.fragments ?? []} />
+        <Fragments fragments={practice.analysis?.fragments ?? []} practiceId={id} />
       ) : null}
     </section>
   );

@@ -53,6 +53,7 @@ func Module() fx.Option {
 			newUnitOfWork,
 			newOutbox,
 			newExtractor,
+			newTutorQuestioner,
 			newDispatcher,
 			newRelay,
 		),
@@ -61,6 +62,7 @@ func Module() fx.Option {
 			services.NewPracticeService,
 			services.NewAnalyticsService,
 			services.NewIdentityService,
+			services.NewQuizService,
 			newAnalysisRunner,
 			event_handlers.NewAnalysisRequestedHandler,
 			event_handlers.NewAnalysisCompletedHandler,
@@ -137,6 +139,15 @@ func newExtractor(cfg config.OpenAIConfig) ports.LLMExtractor {
 		option.WithBaseURL(llm.BaseURLOrDefault(cfg.BaseURL)),
 	}
 	return llm.NewOpenAIExtractor(openai.NewClient(options...), cfg.Model, cfg.ModelVersion)
+}
+
+// newTutorQuestioner builds the active-practice engine over the same provider.
+func newTutorQuestioner(cfg config.OpenAIConfig) ports.TutorQuestioner {
+	options := []option.RequestOption{
+		option.WithAPIKey(cfg.APIKey),
+		option.WithBaseURL(llm.BaseURLOrDefault(cfg.BaseURL)),
+	}
+	return llm.NewOpenAITutorQuestioner(openai.NewClient(options...), cfg.Model)
 }
 
 func newDispatcher() *events.InMemoryEventDispatcher {

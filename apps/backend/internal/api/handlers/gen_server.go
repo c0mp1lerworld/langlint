@@ -47,6 +47,12 @@ type ServerInterface interface {
 	// AnalyzePractice Dispara el análisis asíncrono de una práctica
 	// (POST /practices/{practiceId}/analyze)
 	AnalyzePractice(w http.ResponseWriter, r *http.Request, practiceId PracticeId)
+	// CreateQuizQuestion Genera una pregunta de práctica activa sobre un fragmento
+	// (POST /practices/{practiceId}/quiz)
+	CreateQuizQuestion(w http.ResponseWriter, r *http.Request, practiceId PracticeId)
+	// EvaluateQuizAnswer Evalúa la respuesta del alumno a una pregunta de práctica
+	// (POST /practices/{practiceId}/quiz/answer)
+	EvaluateQuizAnswer(w http.ResponseWriter, r *http.Request, practiceId PracticeId)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -116,6 +122,18 @@ func (_ Unimplemented) UpdatePractice(w http.ResponseWriter, r *http.Request, pr
 // AnalyzePractice Dispara el análisis asíncrono de una práctica
 // (POST /practices/{practiceId}/analyze)
 func (_ Unimplemented) AnalyzePractice(w http.ResponseWriter, r *http.Request, practiceId PracticeId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateQuizQuestion Genera una pregunta de práctica activa sobre un fragmento
+// (POST /practices/{practiceId}/quiz)
+func (_ Unimplemented) CreateQuizQuestion(w http.ResponseWriter, r *http.Request, practiceId PracticeId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// EvaluateQuizAnswer Evalúa la respuesta del alumno a una pregunta de práctica
+// (POST /practices/{practiceId}/quiz/answer)
+func (_ Unimplemented) EvaluateQuizAnswer(w http.ResponseWriter, r *http.Request, practiceId PracticeId) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -432,6 +450,58 @@ func (siw *ServerInterfaceWrapper) AnalyzePractice(w http.ResponseWriter, r *htt
 	handler.ServeHTTP(w, r)
 }
 
+// CreateQuizQuestion operation middleware
+func (siw *ServerInterfaceWrapper) CreateQuizQuestion(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "practiceId" -------------
+	var practiceId PracticeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "practiceId", chi.URLParam(r, "practiceId"), &practiceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "practiceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateQuizQuestion(w, r, practiceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// EvaluateQuizAnswer operation middleware
+func (siw *ServerInterfaceWrapper) EvaluateQuizAnswer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "practiceId" -------------
+	var practiceId PracticeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "practiceId", chi.URLParam(r, "practiceId"), &practiceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "practiceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.EvaluateQuizAnswer(w, r, practiceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -562,6 +632,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/practices/{practiceId}/analyze", wrapper.AnalyzePractice)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/practices/{practiceId}/quiz", wrapper.CreateQuizQuestion)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/practices/{practiceId}/quiz/answer", wrapper.EvaluateQuizAnswer)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/analytics/error-patterns", wrapper.GetErrorPatternStats)

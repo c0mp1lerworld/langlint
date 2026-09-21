@@ -11,6 +11,21 @@ vi.mock("@/lib/query/practices", () => ({
   useAnalyzePractice: vi.fn(),
 }));
 
+vi.mock("@/lib/query/quiz", () => ({
+  useGenerateQuizQuestion: vi.fn(() => ({
+    mutate: vi.fn(),
+    isPending: false,
+    isError: false,
+    error: null,
+  })),
+  useEvaluateQuizAnswer: vi.fn(() => ({
+    mutate: vi.fn(),
+    isPending: false,
+    isError: false,
+    error: null,
+  })),
+}));
+
 function mockPractice(result: unknown): void {
   vi.mocked(usePractice).mockReturnValue(result as ReturnType<typeof usePractice>);
 }

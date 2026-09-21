@@ -4,6 +4,39 @@
 
 ---
 
+## 2026-09-19 — Fase 9: feedback profundo y práctica activa (9.1–9.6; 9.7 diferido)
+
+**Estado**: bloque `9.1`–`9.6` completado; **Gate de Fase 9 en verde** para esos items. `go build/vet/test -race` (+ `-tags=integration`) OK; `pnpm test-integration --filter=backend`, `pnpm lint`, `pnpm test` (frontend 94), `pnpm typecheck --filter=frontend` y `pnpm build` OK; `pnpm generate` idempotente. Cambio de contrato A12: `2.0.0` (BREAKING, `Fragment` estructurado) + `2.1.0` (endpoints de quiz).
+
+**Contexto**: el feedback de la IA salía vago ("bet debe ir seguido de on" sin porqué). Se acordó (debate con el humano) mejorar la profundidad del feedback y añadir práctica activa con IA, sin romper axiomas.
+
+**Hecho**:
+- `9.1` Rúbrica de explicación en `systemPrompt` (`prompt.go`): regla nombrada, por qué, construcción, contra-ejemplo, excepción, contraste ES→EN y alternativas. Verificado con `cmd/llmcheck -show-prompt` y una llamada real con el ejemplo "bet on".
+- `9.2` A12: `Fragment` deja de tener 3 `string` y pasa a `TargetVerbReview`/`LexicalClarification`/`GrammarExplanation` (objetos). `api.yaml` + `pnpm generate` (Go y TS). Bump `apps/contracts` a 2.0.0 + `CHANGELOG.md`.
+- `9.3` Dominio `analysis` (structs anidados), `schema.go` (JSON Schema anidado strict), `validate.go` (sub-campos obligatorios; `alternatives` puede ir vacía) y conversión dominio→wire en `handlers/server.go`.
+- `9.4` Frontend: `fragment-diff.tsx` renderiza tarjetas etiquetadas (`dl`/`dt`/`dd`, `h3` bajo las columnas `h2`); fixtures y tests Vitest/e2e actualizados.
+- `9.5` Límites de práctica: máx. 5 `TargetRules` y 2000 runes en `source_text`/`draft_text` (dominio, `ValidationError`), espejo en Zod y botón "Añadir regla" acotado.
+- `9.6` Práctica activa con IA: puerto `TutorQuestioner` (tipos `open`/`fill`; `mcq` descartado por ser reconocimiento, no producción), adapter `OpenAITutorQuestioner` con Structured Outputs, `QuizService`, endpoints `POST /practices/{id}/quiz` y `/quiz/answer` (evaluación sin estado + follow-up socrático) e UI `practice-quiz.tsx` (mutaciones on-demand). Bump contracts a 2.1.0.
+
+**Decisiones**:
+- **Pseudonimizar/estructurar sin tocar los bounded contexts**: el adapter LLM sigue siendo un puerto; el dominio añade value objects puros.
+- **Explicaciones estructuradas en el wire** (opcional en wire, obligatorio en el schema LLM): el frontend pinta tarjetas y el modelo no puede dejar campos vacíos (validación local).
+- **Quiz sin estado**: el cliente reenvía la pregunta evaluada; evita una tabla/estado de conversación en el MVP.
+- **`9.7` diferido con criterio**: incrementar `error_metrics` desde el quiz sería inconsistente porque `refresh-aggregates` la reconstruye solo desde `analyses` (el incremento se perdería). Requiere una fuente de verdad propia (tabla/evento de intentos) que entre en la reconciliación, o una métrica separada.
+
+**Verificación**:
+- `go build/vet/test -race ./...` (+ `-tags=integration`) → OK; `gofmt -l` limpio.
+- `pnpm test-integration --filter=backend` → OK (incluye e2e del quiz).
+- `pnpm lint` (3/3) · `pnpm test` (frontend 94) · `pnpm typecheck --filter=frontend` · `pnpm build` (3/3) → OK.
+- `pnpm generate` idempotente (hashes estables).
+- Manual: `go run ./cmd/llmcheck` con el ejemplo "bet on" devuelve la explicación estructurada completa.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: retomar Fase 7 (Hardening) o cerrar `9.7` con una tabla/evento de intentos de quiz.
+
+---
+
 ## 2026-09-19 — Ops: reconciliación de goose y CORS en dev (`:3001`)
 
 **Estado**: nota operativa (incidencias de entorno local). Sin cambios de código ni de contrato (A12); con esto el backend arranca y el frontend recibe CORS.

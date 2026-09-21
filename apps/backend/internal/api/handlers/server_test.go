@@ -37,7 +37,16 @@ func wireID(id domain.ID) PracticeId {
 
 func newTestServer(ctrl *gomock.Controller, practices *mocks.MockPracticeRepository, analyses *mocks.MockAnalysisRepository, metrics *mocks.MockErrorMetricRepository, outbox *mocks.MockOutbox) *Server {
 	practiceSvc := services.NewPracticeService(runUoW(ctrl), practices, analyses, outbox)
-	return NewServer(practiceSvc, services.NewAnalyticsService(metrics), testIdentityService(ctrl))
+	return NewServer(practiceSvc, services.NewAnalyticsService(metrics), testIdentityService(ctrl), testQuizService(ctrl))
+}
+
+// testQuizService builds a QuizService over throwaway mocks.
+func testQuizService(ctrl *gomock.Controller) *services.QuizService {
+	return services.NewQuizService(
+		mocks.NewMockPracticeRepository(ctrl),
+		mocks.NewMockAnalysisRepository(ctrl),
+		mocks.NewMockTutorQuestioner(ctrl),
+	)
 }
 
 // testEmail is the configured single-user email used by the handler tests.
@@ -324,6 +333,7 @@ func TestServer_ExportData_ReturnsDataExport(t *testing.T) {
 		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
 		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
 		identitySvc,
+		testQuizService(ctrl),
 	)
 
 	rec := serve(userID, srv.ExportData, httptest.NewRequest(http.MethodGet, "/me/data/export", nil))
@@ -360,6 +370,7 @@ func TestServer_ExportData_RepositoryError_Returns500(t *testing.T) {
 		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
 		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
 		services.NewIdentityService(mustEmail(t, testEmail), practices, mocks.NewMockDeletionRequestRepository(ctrl), mocks.NewMockAccessLogRepository(ctrl)),
+		testQuizService(ctrl),
 	)
 
 	rec := serve(userID, srv.ExportData, httptest.NewRequest(http.MethodGet, "/me/data/export", nil))
@@ -380,6 +391,7 @@ func TestServer_DeleteData_NoPending_Returns202(t *testing.T) {
 		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
 		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
 		services.NewIdentityService(mustEmail(t, testEmail), mocks.NewMockPracticeRepository(ctrl), deletions, mocks.NewMockAccessLogRepository(ctrl)),
+		testQuizService(ctrl),
 	)
 
 	rec := serve(userID, srv.DeleteData, httptest.NewRequest(http.MethodDelete, "/me/data", nil))
@@ -400,6 +412,7 @@ func TestServer_DeleteData_AlreadyPending_Returns202Idempotent(t *testing.T) {
 		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
 		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
 		services.NewIdentityService(mustEmail(t, testEmail), mocks.NewMockPracticeRepository(ctrl), deletions, mocks.NewMockAccessLogRepository(ctrl)),
+		testQuizService(ctrl),
 	)
 
 	rec := serve(userID, srv.DeleteData, httptest.NewRequest(http.MethodDelete, "/me/data", nil))
@@ -424,6 +437,7 @@ func TestServer_GetAccessLog_ReturnsPage(t *testing.T) {
 		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
 		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
 		services.NewIdentityService(mustEmail(t, testEmail), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockDeletionRequestRepository(ctrl), accessLog),
+		testQuizService(ctrl),
 	)
 
 	rec := serve(userID, func(w http.ResponseWriter, r *http.Request) {
@@ -557,5 +571,96 @@ func TestGeneratedRouter_GetPractice_RoutesAndBindsParam(t *testing.T) {
 	}
 	if body.Id.String() != p.ID.String() {
 		t.Fatalf("id = %s, want %s", body.Id, p.ID)
+	}
+}
+
+func TestServer_CreateQuizQuestion_ReturnsQuestion(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	userID := domain.MustNewID()
+	p := draftPractice(userID)
+
+	practices := mocks.NewMockPracticeRepository(ctrl)
+	practices.EXPECT().GetByID(gomock.Any(), p.ID).Return(p, nil)
+	analyses := mocks.NewMockAnalysisRepository(ctrl)
+	analyses.EXPECT().GetByPracticeID(gomock.Any(), p.ID).Return(&analysis.Analysis{
+		ID:         domain.MustNewID(),
+		PracticeID: p.ID,
+		Status:     analysis.AnalysisStatusCompleted,
+		Fragments:  []analysis.Fragment{{SourceES: "x", UserDraft: "y", Correction: "z"}},
+	}, nil)
+	questioner := mocks.NewMockTutorQuestioner(ctrl)
+	questioner.EXPECT().Question(gomock.Any(), gomock.Any()).Return(
+		analysis.QuizQuestion{Kind: analysis.QuizKindFill, Prompt: "I bet ___ the races."}, nil)
+
+	srv := NewServer(
+		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
+		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
+		testIdentityService(ctrl),
+		services.NewQuizService(practices, analyses, questioner),
+	)
+
+	router := chi.NewRouter()
+	router.Use(httpx.UserResolver(userID))
+	HandlerFromMux(srv, router)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/practices/"+p.ID.String()+"/quiz", strings.NewReader(`{"fragment_index":0}`))
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %s)", rec.Code, rec.Body.String())
+	}
+	var question QuizQuestion
+	if err := json.Unmarshal(rec.Body.Bytes(), &question); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	if question.Kind != QuizQuestionKind(analysis.QuizKindFill) || question.Prompt != "I bet ___ the races." {
+		t.Fatalf("question = %+v", question)
+	}
+}
+
+func TestServer_EvaluateQuizAnswer_ReturnsEvaluation(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	userID := domain.MustNewID()
+	p := draftPractice(userID)
+
+	practices := mocks.NewMockPracticeRepository(ctrl)
+	practices.EXPECT().GetByID(gomock.Any(), p.ID).Return(p, nil)
+	analyses := mocks.NewMockAnalysisRepository(ctrl)
+	analyses.EXPECT().GetByPracticeID(gomock.Any(), p.ID).Return(&analysis.Analysis{
+		ID:         domain.MustNewID(),
+		PracticeID: p.ID,
+		Status:     analysis.AnalysisStatusCompleted,
+		Fragments:  []analysis.Fragment{{SourceES: "x", UserDraft: "y", Correction: "z"}},
+	}, nil)
+	questioner := mocks.NewMockTutorQuestioner(ctrl)
+	questioner.EXPECT().Evaluate(gomock.Any(), gomock.Any()).Return(
+		analysis.QuizEvaluation{Correct: true, Feedback: "¡Correcto!"}, nil)
+
+	srv := NewServer(
+		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
+		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl)),
+		testIdentityService(ctrl),
+		services.NewQuizService(practices, analyses, questioner),
+	)
+
+	router := chi.NewRouter()
+	router.Use(httpx.UserResolver(userID))
+	HandlerFromMux(srv, router)
+
+	body := `{"fragment_index":0,"question":"I bet ___ the races.","answer":"on"}`
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/practices/"+p.ID.String()+"/quiz/answer", strings.NewReader(body))
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %s)", rec.Code, rec.Body.String())
+	}
+	var evaluation QuizEvaluation
+	if err := json.Unmarshal(rec.Body.Bytes(), &evaluation); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	if !evaluation.Correct || evaluation.Feedback != "¡Correcto!" {
+		t.Fatalf("evaluation = %+v", evaluation)
 	}
 }

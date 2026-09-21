@@ -24,5 +24,6 @@ mocks: tools
 	$(MOCKGEN) -package mocks -destination $(MOCKS_DIR)/storage.go $(MODULE)/internal/api/ports/storage PracticeRepository,AnalysisRepository,ErrorMetricRepository,DeletionRequestRepository,AccessLogRepository,UnitOfWork
 	$(MOCKGEN) -package mocks -destination $(MOCKS_DIR)/events.go $(MODULE)/internal/api/ports/events EventDispatcher,EventHandler,Outbox
 	$(MOCKGEN) -package mocks -destination $(MOCKS_DIR)/llm_extractor.go $(MODULE)/internal/api/ports LLMExtractor
+	$(MOCKGEN) -package mocks -destination $(MOCKS_DIR)/tutor_questioner.go $(MODULE)/internal/api/ports TutorQuestioner
 	mkdir -p $(PROVISIONER_MOCKS_DIR)
 	$(MOCKGEN) -package mocks -destination $(PROVISIONER_MOCKS_DIR)/storage.go $(MODULE)/internal/provisioner/ports/storage AnalyticsSourceRepository,ErrorMetricRepository,RawDataRepository,DeletionRepository

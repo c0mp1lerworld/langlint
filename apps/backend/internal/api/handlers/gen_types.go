@@ -150,6 +150,24 @@ func (e PracticeStatus) Valid() bool {
 	}
 }
 
+// Defines values for QuizQuestionKind.
+const (
+	Fill QuizQuestionKind = "fill"
+	Open QuizQuestionKind = "open"
+)
+
+// Valid indicates whether the value is a known member of the QuizQuestionKind enum.
+func (e QuizQuestionKind) Valid() bool {
+	switch e {
+	case Fill:
+		return true
+	case Open:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Window.
 const (
 	Day   Window = "day"
@@ -364,6 +382,48 @@ type ProgressSeries struct {
 	Window Window          `json:"window"`
 }
 
+// QuizAnswerRequest defines model for QuizAnswerRequest.
+type QuizAnswerRequest struct {
+	// Answer Respuesta del alumno.
+	Answer string `json:"answer"`
+
+	// FragmentIndex Índice del fragmento evaluado.
+	FragmentIndex int `json:"fragment_index"`
+
+	// Question Pregunta que se está respondiendo (devuelta por el servidor).
+	Question string `json:"question"`
+}
+
+// QuizEvaluation defines model for QuizEvaluation.
+type QuizEvaluation struct {
+	// Correct Si la respuesta es correcta.
+	Correct bool `json:"correct"`
+
+	// Feedback Retroalimentación en español.
+	Feedback string `json:"feedback"`
+
+	// FollowUp Pregunta de seguimiento socrática; cadena vacía si no aplica.
+	FollowUp string `json:"follow_up"`
+}
+
+// QuizQuestion defines model for QuizQuestion.
+type QuizQuestion struct {
+	// Kind Tipo de pregunta elegido por el modelo.
+	Kind QuizQuestionKind `json:"kind"`
+
+	// Prompt Enunciado de la pregunta, en español.
+	Prompt string `json:"prompt"`
+}
+
+// QuizQuestionKind Tipo de pregunta elegido por el modelo.
+type QuizQuestionKind string
+
+// QuizQuestionRequest defines model for QuizQuestionRequest.
+type QuizQuestionRequest struct {
+	// FragmentIndex Índice del fragmento analizado sobre el que preguntar.
+	FragmentIndex int `json:"fragment_index"`
+}
+
 // TargetRule defines model for TargetRule.
 type TargetRule struct {
 	Note  *string `json:"note,omitempty"`
@@ -470,3 +530,9 @@ type CreatePracticeJSONRequestBody = CreatePracticeRequest
 
 // UpdatePracticeJSONRequestBody defines body for UpdatePractice for application/json ContentType.
 type UpdatePracticeJSONRequestBody = UpdatePracticeRequest
+
+// CreateQuizQuestionJSONRequestBody defines body for CreateQuizQuestion for application/json ContentType.
+type CreateQuizQuestionJSONRequestBody = QuizQuestionRequest
+
+// EvaluateQuizAnswerJSONRequestBody defines body for EvaluateQuizAnswer for application/json ContentType.
+type EvaluateQuizAnswerJSONRequestBody = QuizAnswerRequest

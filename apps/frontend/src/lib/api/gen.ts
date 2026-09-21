@@ -85,6 +85,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/practices/{practiceId}/quiz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador de la práctica (UUID v7). */
+                practiceId: components["parameters"]["PracticeId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Genera una pregunta de práctica activa sobre un fragmento
+         * @description Genera, con IA y anclada al error del fragmento, una pregunta de
+         *     práctica activa (PRODUCT_DOMAIN §1.2). El tipo lo elige el modelo:
+         *     `open` (explicar el porqué) o `fill` (completar). Es bajo demanda, fuera
+         *     de la ruta crítica del análisis.
+         */
+        post: operations["create_quiz_question"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/practices/{practiceId}/quiz/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador de la práctica (UUID v7). */
+                practiceId: components["parameters"]["PracticeId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Evalúa la respuesta del alumno a una pregunta de práctica
+         * @description Evalúa la respuesta (correcta, parcial o incorrecta), da feedback en
+         *     español y, si procede, una pregunta de seguimiento socrática. La
+         *     evaluación es sin estado: el cliente reenvía la pregunta evaluada.
+         */
+        post: operations["evaluate_quiz_answer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/analytics/error-patterns": {
         parameters: {
             query?: never;
@@ -330,6 +381,36 @@ export interface components {
             /** @enum {string} */
             status: "pending" | "completed" | "failed";
             fragments: components["schemas"]["Fragment"][];
+        };
+        /**
+         * @description Tipo de pregunta elegido por el modelo.
+         * @enum {string}
+         */
+        QuizQuestionKind: "open" | "fill";
+        QuizQuestionRequest: {
+            /** @description Índice del fragmento analizado sobre el que preguntar. */
+            fragment_index: number;
+        };
+        QuizQuestion: {
+            kind: components["schemas"]["QuizQuestionKind"];
+            /** @description Enunciado de la pregunta, en español. */
+            prompt: string;
+        };
+        QuizAnswerRequest: {
+            /** @description Índice del fragmento evaluado. */
+            fragment_index: number;
+            /** @description Pregunta que se está respondiendo (devuelta por el servidor). */
+            question: string;
+            /** @description Respuesta del alumno. */
+            answer: string;
+        };
+        QuizEvaluation: {
+            /** @description Si la respuesta es correcta. */
+            correct: boolean;
+            /** @description Retroalimentación en español. */
+            feedback: string;
+            /** @description Pregunta de seguimiento socrática; cadena vacía si no aplica. */
+            follow_up: string;
         };
         /** @enum {string} */
         Window: "day" | "week" | "month";
@@ -614,6 +695,66 @@ export interface operations {
             };
             404: components["responses"]["NotFound"];
             409: components["responses"]["AnalysisPending"];
+            503: components["responses"]["LLMUnavailable"];
+        };
+    };
+    create_quiz_question: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador de la práctica (UUID v7). */
+                practiceId: components["parameters"]["PracticeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizQuestionRequest"];
+            };
+        };
+        responses: {
+            /** @description Pregunta generada. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizQuestion"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["LLMUnavailable"];
+        };
+    };
+    evaluate_quiz_answer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador de la práctica (UUID v7). */
+                practiceId: components["parameters"]["PracticeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizAnswerRequest"];
+            };
+        };
+        responses: {
+            /** @description Evaluación de la respuesta. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizEvaluation"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
             503: components["responses"]["LLMUnavailable"];
         };
     };

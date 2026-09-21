@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import type { ReactNode } from "react";
 import { ErrorPatternBadge } from "./error-pattern-badge";
+import { PracticeQuiz } from "./practice-quiz";
 import type { components } from "@/lib/api/gen";
 import { diffWords, type DiffToken } from "@/lib/utils/diff";
 
@@ -68,7 +69,15 @@ function ExplanationCard({ title, children }: { title: string; children: ReactNo
   );
 }
 
-export function FragmentDiff({ fragment }: { fragment: Fragment }) {
+export function FragmentDiff({
+  fragment,
+  practiceId,
+  index,
+}: {
+  fragment: Fragment;
+  practiceId?: string;
+  index?: number;
+}) {
   const [open, setOpen] = useState(false);
   const detailsId = useId();
   const tokens = diffWords(fragment.user_draft, fragment.correction);
@@ -159,6 +168,10 @@ export function FragmentDiff({ fragment }: { fragment: Fragment }) {
                 ))}
               </ul>
             </section>
+          ) : null}
+
+          {practiceId !== undefined && index !== undefined ? (
+            <PracticeQuiz practiceId={practiceId} fragmentIndex={index} />
           ) : null}
         </div>
       </div>

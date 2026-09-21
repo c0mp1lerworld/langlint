@@ -72,6 +72,17 @@ func (fakeExtractor) Extract(_ context.Context, req ports.ExtractRequest) ([]ana
 func (fakeExtractor) Model() string        { return "fake" }
 func (fakeExtractor) ModelVersion() string { return "test" }
 
+// fakeQuestioner returns a deterministic question/evaluation without the LLM.
+type fakeQuestioner struct{}
+
+func (fakeQuestioner) Question(_ context.Context, _ ports.QuestionRequest) (analysis.QuizQuestion, error) {
+	return analysis.QuizQuestion{Kind: analysis.QuizKindFill, Prompt: "Completa: I bet ___ my team."}, nil
+}
+
+func (fakeQuestioner) Evaluate(_ context.Context, _ ports.EvaluateRequest) (analysis.QuizEvaluation, error) {
+	return analysis.QuizEvaluation{Correct: true, Feedback: "¡Correcto!", FollowUp: "¿Por qué no 'in'?"}, nil
+}
+
 func newRouter(t *testing.T, pool *pgxpool.Pool, userID domain.ID) http.Handler {
 	t.Helper()
 
@@ -113,7 +124,7 @@ func newRouter(t *testing.T, pool *pgxpool.Pool, userID domain.ID) http.Handler 
 	dispatcher.Run(ctx)
 	go relay.Run(ctx, 25*time.Millisecond)
 
-	server := httpapi.NewServer(practiceSvc, analyticsSvc, identitySvc)
+	server := httpapi.NewServer(practiceSvc, analyticsSvc, identitySvc, services.NewQuizService(practices, analyses, fakeQuestioner{}))
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	router := httpx.NewRouter(log)
 	router.Use(httpx.UserResolver(userID))
@@ -202,5 +213,42 @@ func TestHTTPFlow_CreateAnalyzePollAnalytics(t *testing.T) {
 	}
 	if stats.Patterns[0].Code != httpapi.ErrorPatternCode(domain.ErrorPatternCodeTenseAgreement) {
 		t.Fatalf("pattern code = %q", stats.Patterns[0].Code)
+	}
+
+	// [5] The active-practice quiz generates a question and evaluates an answer.
+	resp, err = http.Post(api.URL+"/practices/"+created.Id.String()+"/quiz", "application/json",
+		bytes.NewBufferString(`{"fragment_index":0}`))
+	if err != nil {
+		t.Fatalf("POST quiz error = %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST quiz status = %d, want 200 (%s)", resp.StatusCode, body)
+	}
+	var question httpapi.QuizQuestion
+	if err := json.NewDecoder(resp.Body).Decode(&question); err != nil {
+		t.Fatalf("decode quiz question: %v", err)
+	}
+	resp.Body.Close()
+	if question.Prompt == "" {
+		t.Fatal("quiz question prompt is empty")
+	}
+
+	resp, err = http.Post(api.URL+"/practices/"+created.Id.String()+"/quiz/answer", "application/json",
+		bytes.NewBufferString(`{"fragment_index":0,"question":"I bet ___ my team.","answer":"on"}`))
+	if err != nil {
+		t.Fatalf("POST quiz answer error = %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST quiz answer status = %d, want 200 (%s)", resp.StatusCode, body)
+	}
+	var evaluation httpapi.QuizEvaluation
+	if err := json.NewDecoder(resp.Body).Decode(&evaluation); err != nil {
+		t.Fatalf("decode quiz evaluation: %v", err)
+	}
+	resp.Body.Close()
+	if !evaluation.Correct || evaluation.Feedback == "" {
+		t.Fatalf("quiz evaluation = %+v", evaluation)
 	}
 }

@@ -25,13 +25,14 @@ type Server struct {
 	practices *services.PracticeService
 	analytics *services.AnalyticsService
 	identity  *services.IdentityService
+	quiz      *services.QuizService
 }
 
 var _ ServerInterface = (*Server)(nil)
 
 // NewServer wires the HTTP handlers through the application services.
-func NewServer(practices *services.PracticeService, analytics *services.AnalyticsService, identity *services.IdentityService) *Server {
-	return &Server{practices: practices, analytics: analytics, identity: identity}
+func NewServer(practices *services.PracticeService, analytics *services.AnalyticsService, identity *services.IdentityService, quiz *services.QuizService) *Server {
+	return &Server{practices: practices, analytics: analytics, identity: identity, quiz: quiz}
 }
 
 // CreatePractice handles POST /practices.
@@ -186,6 +187,50 @@ func (s *Server) AnalyzePractice(w http.ResponseWriter, r *http.Request, practic
 	}
 	w.Header().Set("Retry-After", retryAfterSeconds)
 	w.WriteHeader(http.StatusAccepted)
+}
+
+// CreateQuizQuestion handles POST /practices/{practiceId}/quiz.
+func (s *Server) CreateQuizQuestion(w http.ResponseWriter, r *http.Request, practiceID PracticeId) {
+	id, err := toDomainID(practiceID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+
+	var req QuizQuestionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeDomainError(w, &domain.ValidationError{Field: "body", Message: "malformed JSON"})
+		return
+	}
+
+	question, err := s.quiz.Question(r.Context(), id, req.FragmentIndex)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, quizQuestionToWire(question))
+}
+
+// EvaluateQuizAnswer handles POST /practices/{practiceId}/quiz/answer.
+func (s *Server) EvaluateQuizAnswer(w http.ResponseWriter, r *http.Request, practiceID PracticeId) {
+	id, err := toDomainID(practiceID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+
+	var req QuizAnswerRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeDomainError(w, &domain.ValidationError{Field: "body", Message: "malformed JSON"})
+		return
+	}
+
+	evaluation, err := s.quiz.Evaluate(r.Context(), id, req.FragmentIndex, req.Question, req.Answer)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, quizEvaluationToWire(evaluation))
 }
 
 // GetErrorPatternStats handles GET /analytics/error-patterns.
@@ -455,6 +500,16 @@ func nonNilStrings(values []string) []string {
 		return []string{}
 	}
 	return values
+}
+
+// quizQuestionToWire converts a generated question to its wire representation.
+func quizQuestionToWire(q analysis.QuizQuestion) QuizQuestion {
+	return QuizQuestion{Kind: QuizQuestionKind(q.Kind), Prompt: q.Prompt}
+}
+
+// quizEvaluationToWire converts an evaluation to its wire representation.
+func quizEvaluationToWire(e analysis.QuizEvaluation) QuizEvaluation {
+	return QuizEvaluation{Correct: e.Correct, Feedback: e.Feedback, FollowUp: e.FollowUp}
 }
 
 // errorPatternToWire converts a domain error pattern to its wire representation.
