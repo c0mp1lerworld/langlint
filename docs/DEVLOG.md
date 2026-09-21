@@ -4,6 +4,20 @@
 
 ---
 
+## 2026-09-19 — Ops: reconciliación de goose y CORS en dev (`:3001`)
+
+**Estado**: nota operativa (incidencias de entorno local). Sin cambios de código ni de contrato (A12); con esto el backend arranca y el frontend recibe CORS.
+
+**Hecho**:
+- **Drift de goose**: la base de dev tenía `deletion_requests` y `access_events` creadas, pero `goose_db_version` solo registraba `000001`, así que `go run ./cmd/api` fallaba al arrancar con `42P07 relation "deletion_requests" already exists`. Se verificó que el esquema de esas tablas **coincidía** con las migraciones `000002`/`000003` y que `error_metrics.user_id` seguía en `uuid` (la `000004` no estaba aplicada). Se marcaron 2 y 3 como aplicadas en `goose_db_version` y se dejó que goose corriera solo la 4 (`goose: successfully migrated database to version: 4`). `error_metrics` estaba vacía: sin filas huérfanas. **No requiere cambio de código**; en una base limpia (o reseteando el volumen `langlint_pgdata`) aplica en orden sin intervención.
+- **CORS en `:3001`**: el dev server de Next arrancó en `:3001`, pero el backend solo permitía `:3000` por defecto (`APP_CORS_ALLOWED_ORIGINS`), de ahí el `No 'Access-Control-Allow-Origin' header`. Se añadió `http://localhost:3000,http://localhost:3001` al `.env` local (gitignored). Verificado con preflight `OPTIONS` y `GET` (`Access-Control-Allow-Origin: http://localhost:3001`). El `404` de `/favicon.ico` y `Can't add file system: <illegal path>` son ruidos del navegador/extensión, ajenos al proyecto.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 7 (Hardening).
+
+---
+
 ## 2026-09-19 — Fase 6.3: retención y pseudonimización — Gate de Fase 6 (6.3.1–6.3.3)
 
 **Estado**: bloque `6.3` completado y **Gate de Fase 6 en verde**. `go build/vet/test -race` (Tier 1+2+3) OK; `pnpm test-integration --filter=backend` OK; `pnpm lint` (3/3), `pnpm test`, `pnpm typecheck --filter=frontend` y `pnpm build` (3/3) en verde. Sin cambio de wire (A12; `pnpm generate` idempotente).
