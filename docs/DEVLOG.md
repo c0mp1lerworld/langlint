@@ -4,6 +4,40 @@
 
 ---
 
+## 2026-09-21 — Fase 7.1: CI/CD (7.1.1–7.1.5)
+
+**Estado**: bloque CI/CD completado. `7.1.1`, `7.1.2`, `7.1.3`, `7.1.4` y `7.1.5` implementados. Verificación local en verde (YAML, generación idempotente, dry-runs de build); **los workflows no se han ejecutado** (GitHub Actions no corre en local) y las imágenes no se han construido (falta `buildx`), así que el *Gate de salida* de Fase 7 queda a expensas del primer run real en GitHub.
+
+**Hecho**:
+- `7.1.1` `.github/workflows/ci.yml`: `detect-changes` (`dorny/paths-filter@v3`) + jobs `contracts` (redocly), `backend` (`build lint test`) y `frontend` (`build lint typecheck test`); triggers PR, push `main`, nightly (`0 3 * * *`) y manual.
+- `7.1.5` El job `backend` corre siempre en nightly y ejecuta `test-integration` (Tier 3) cuando el evento es `schedule`, `push` o el PR lleva el label `ready-for-release` (fiel a §6.5). Se implementa dentro de `ci.yml` (no un workflow aparte).
+- `7.1.2` `.github/workflows/contracts.yml`: en cambios de `apps/contracts/**` regenera Go+TS (`pnpm generate`), falla por drift (`git diff --exit-code` sobre `gen_*.go`/`gen.ts`) y valida `info.version == package.json` con `apps/contracts/scripts/check-version.sh`.
+- `7.1.4` Remote cache **self-hosted** (decisión del humano en lugar de Vercel): servicio `turbo-cache` (`ducktors/turborepo-remote-cache`, storage local en volumen, puerto `3300`) en `ops/docker/docker-compose.yml`; `TURBO_API`/`TURBO_TEAM`/`TURBO_TOKEN` cablados desde secrets en los tres jobs de `ci.yml`; guía en `ops/docker/README.md` (KPI cache hit >80%).
+- `7.1.3` `apps/backend/Dockerfile` (multi-stage `golang:1.26` → `distroless/static-debian12:nonroot`; construye `api`/`provisioner`/`migrate`; migraciones embebidas con `go:embed`) + `.dockerignore`; `apps/frontend/Dockerfile` (`node:22-alpine` + `turbo prune` + Next `output: standalone`) + `.dockerignore` raíz; `.github/workflows/deploy-staging.yml` (build+push a GHCR con tags `staging`/`sha`).
+
+**Decisiones**:
+- **Fix del drift de versión del contrato**: `api.yaml` `info.version` estaba en `2.1.0` mientras `package.json`/`CHANGELOG` en `3.0.0` (el commit de arrays no lo subió). Se alinea a `3.0.0` y se convierte en invariante verificada por CI (A12/AP-MR6).
+- **`contracts` en `ci.yml` hace solo lint del spec**; la regeneración + drift + versión viven en `contracts.yml` para no duplicar responsabilidades.
+- **Remote cache self-hosted con storage local** (volumen) para dev; en staging migra a S3. Caveat documentado: los runners *hosted* solo alcanzan la caché si el endpoint es público; si no, se usan self-hosted runners (o la caché remota se omite sin fallar).
+- **Contextos Docker por imagen**: backend con `context=apps/backend` (`apps/backend/.dockerignore`); frontend con `context=.` (raíz) porque `turbo prune` y el workspace pnpm lo exigen (`.dockerignore` raíz). `next.config.js` añade `output: standalone` y `public/` lleva `.gitkeep` (estaba vacío y sin trackear, y el `COPY` del `public` fallaría en un checkout limpio).
+- **`pnpm/action-setup@v4` sin `version`**: toma `packageManager` de `package.json` (evita drift y el error de "múltiples versiones").
+
+**Verificación** (local):
+- `python3 -c "yaml.safe_load(...)"` → OK en `ci.yml`, `contracts.yml`, `deploy-staging.yml`.
+- `pnpm generate` idempotente (`git status` sin cambios en `gen_*.go`/`gen.ts`); `check-version.sh` → `3.0.0`; `pnpm turbo run lint --filter=@langlint/contracts` → válido (6 warnings conocidos).
+- Backend: `CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w"` de `cmd/{api,provisioner,migrate}` → binarios **estáticamente enlazados** (aptos para distroless static).
+- Frontend: `pnpm --filter frontend build` con `output: standalone` → OK; `.next/standalone/apps/frontend/server.js` existe (coincide con el `CMD` de la imagen).
+- `docker compose -f ops/docker/docker-compose.yml config` → OK.
+- Pendiente (no reproducible en local): run real de los workflows en GitHub y `docker build` de las imágenes (`buildx` no instalado).
+
+**Bloqueos / acciones humanas**:
+- Crear los secrets `TURBO_API`, `TURBO_TEAM`, `TURBO_TOKEN` (y la variable `STAGING_API_URL`) en el repo; sin ellos la caché remota se omite (no falla).
+- Endurecer el endpoint de caché (TLS) o usar self-hosted runners para que el CI lo alcance.
+
+**Próximo paso**: Fase 7.2 — Seguridad (`security.yml` con `gosec`/`govulncheck`, `ops/scripts/security_audit.sh`, `/docs` no expuesto en prod y `x-internal: true` filtrado). Nota: `ops/scripts/pii_audit.sh` ya existe y `README.md` aún está desactualizado (Fase 1), ambos listados como pendientes en `7.2.2`/`7.3.3`: reconciliar antes de ejecutar.
+
+---
+
 ## 2026-09-20 — Fix: alineación español↔borrador (extracción por frase)
 
 **Estado**: bug de alineación diagnosticado y corregido. `go build/vet/test -race` (+ `-tags=integration`), `pnpm test-integration --filter=backend`, `pnpm lint` (3/3), `pnpm test`, `pnpm typecheck --filter=frontend` y `pnpm build` (3/3) en verde. **Sin cambio de contrato** (A12): el wire ya admitía arrays.

@@ -8,11 +8,11 @@
 
 ## 7.1 CI/CD
 
-- [ ] `7.1.1` Crear `.github/workflows/ci.yml` con `detect-changes` (dorny/paths-filter) + jobs de contracts/backend/frontend (§6.5).
-- [ ] `7.1.2` Crear `.github/workflows/contracts.yml` (valida que backend y frontend usen la misma versión del OpenAPI).
-- [ ] `7.1.3` Crear `.github/workflows/deploy-staging.yml` (build + push imágenes).
-- [ ] `7.1.4` Configurar remote cache: `TURBO_TOKEN` + `TURBO_TEAM` en secrets (AP-MR7); objetivo cache hit >80%.
-- [ ] `7.1.5` Tier 3 (`test-integration`) en schedule nightly + push `main` + label `ready-for-release` (§6.5).
+- [x] `7.1.1` Crear `.github/workflows/ci.yml` con `detect-changes` (dorny/paths-filter) + jobs de contracts/backend/frontend (§6.5).
+- [x] `7.1.2` Crear `.github/workflows/contracts.yml` (regenera Go+TS y falla por drift; valida `info.version == package.json`).
+- [x] `7.1.3` Crear `.github/workflows/deploy-staging.yml` (build + push imágenes; Dockerfiles backend distroless y frontend standalone).
+- [x] `7.1.4` Remote cache **self-hosted** (`ducktors/turborepo-remote-cache` en `ops/docker/`); `TURBO_API`/`TURBO_TEAM`/`TURBO_TOKEN` cablados desde secrets (AP-MR7); objetivo cache hit >80% documentado.
+- [x] `7.1.5` Tier 3 (`test-integration`) en schedule nightly + push `main` + label `ready-for-release` (§6.5).
 
 ## 7.2 Seguridad
 
