@@ -261,23 +261,53 @@ type ErrorResponseCode string
 // Fragment defines model for Fragment.
 type Fragment struct {
 	// Correction Corrección directa.
-	Correction    string         `json:"correction"`
-	ErrorPatterns []ErrorPattern `json:"error_patterns"`
-
-	// GrammarExplanation Regla gramatical profunda.
-	GrammarExplanation string `json:"grammar_explanation"`
-
-	// LexicalClarification Aclaración léxica.
-	LexicalClarification string `json:"lexical_clarification"`
+	Correction           string               `json:"correction"`
+	ErrorPatterns        []ErrorPattern       `json:"error_patterns"`
+	GrammarExplanation   GrammarExplanation   `json:"grammar_explanation"`
+	LexicalClarification LexicalClarification `json:"lexical_clarification"`
 
 	// SourceEs Frase base en español.
-	SourceEs string `json:"source_es"`
-
-	// TargetVerbReview Revisión del verbo objetivo.
-	TargetVerbReview string `json:"target_verb_review"`
+	SourceEs         string           `json:"source_es"`
+	TargetVerbReview TargetVerbReview `json:"target_verb_review"`
 
 	// UserDraft Borrador del usuario (inglés).
 	UserDraft string `json:"user_draft"`
+}
+
+// GrammarExplanation defines model for GrammarExplanation.
+type GrammarExplanation struct {
+	// Construction Cómo se construye (patrón).
+	Construction string `json:"construction"`
+
+	// Counterexample Contra-ejemplo con la frase del alumno corregida.
+	Counterexample string `json:"counterexample"`
+
+	// EsContrast Contraste con el español.
+	EsContrast string `json:"es_contrast"`
+
+	// Exception Cuándo NO aplica la regla (excepciones).
+	Exception string `json:"exception"`
+
+	// Explanation La lógica de la regla (el porqué).
+	Explanation string `json:"explanation"`
+
+	// RuleName Nombre de la regla gramatical.
+	RuleName string `json:"rule_name"`
+}
+
+// LexicalClarification defines model for LexicalClarification.
+type LexicalClarification struct {
+	// Alternatives Alternativas admisibles y su matiz.
+	Alternatives []string `json:"alternatives"`
+
+	// Meaning Qué significa la forma correcta.
+	Meaning string `json:"meaning"`
+
+	// Term Término o expresión analizada.
+	Term string `json:"term"`
+
+	// WhyWrong Por qué la elección del alumno no encaja.
+	WhyWrong string `json:"why_wrong"`
 }
 
 // Practice defines model for Practice.
@@ -339,6 +369,27 @@ type TargetRule struct {
 	Note  *string `json:"note,omitempty"`
 	Tense *string `json:"tense,omitempty"`
 	Verb  string  `json:"verb"`
+}
+
+// TargetVerbReview defines model for TargetVerbReview.
+type TargetVerbReview struct {
+	// Alternatives Formas alternativas admisibles y su matiz.
+	Alternatives []string `json:"alternatives"`
+
+	// CorrectForm Forma correcta del verbo en el contexto de la frase.
+	CorrectForm string `json:"correct_form"`
+
+	// EsContrast Contraste con el español (interferencia L1).
+	EsContrast string `json:"es_contrast"`
+
+	// Rule Nombre de la regla (p. ej. "verbo + preposición fija").
+	Rule string `json:"rule"`
+
+	// Verb El verbo objetivo tal como aparece en el borrador.
+	Verb string `json:"verb"`
+
+	// Why Por qué la regla aplica a este caso.
+	Why string `json:"why"`
 }
 
 // UpdatePracticeRequest defines model for UpdatePracticeRequest.

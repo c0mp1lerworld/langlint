@@ -33,12 +33,30 @@ func testPractice() *practice.Practice {
 func testFragments() []analysis.Fragment {
 	return []analysis.Fragment{
 		{
-			SourceES:             "El perro corre.",
-			UserDraft:            "The dog run.",
-			Correction:           "The dog runs.",
-			TargetVerbReview:     "run (run/ran/run)",
-			LexicalClarification: "correr = to run",
-			GrammarExplanation:   "Third person singular takes -s.",
+			SourceES:   "El perro corre.",
+			UserDraft:  "The dog run.",
+			Correction: "The dog runs.",
+			TargetVerbReview: analysis.TargetVerbReview{
+				Verb:         "run",
+				CorrectForm:  "runs",
+				Rule:         "tercera persona singular",
+				Why:          "el sujeto es singular",
+				ESContrast:   "en español no cambia",
+				Alternatives: []string{"runs"},
+			},
+			LexicalClarification: analysis.LexicalClarification{
+				Term:     "run",
+				Meaning:  "correr",
+				WhyWrong: "falta la -s de tercera persona",
+			},
+			GrammarExplanation: analysis.GrammarExplanation{
+				RuleName:       "tercera persona singular",
+				Explanation:    "el verbo añade -s",
+				Construction:   "verbo + -s",
+				Counterexample: "run -> runs",
+				Exception:      "verbos irregulares",
+				ESContrast:     "no aplica en español",
+			},
 			ErrorPatterns: []domain.ErrorPattern{
 				{
 					Code:     domain.ErrorPatternCodeInfinitiveConjugation,

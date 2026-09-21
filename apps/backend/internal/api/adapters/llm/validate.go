@@ -24,18 +24,17 @@ func validateFragments(fragments []analysis.Fragment) error {
 
 // validateFragment checks a single fragment against the §5.2 contract.
 func validateFragment(fragment analysis.Fragment) error {
-	required := []string{
-		fragment.SourceES,
-		fragment.UserDraft,
-		fragment.Correction,
-		fragment.TargetVerbReview,
-		fragment.LexicalClarification,
-		fragment.GrammarExplanation,
+	if !nonEmpty(fragment.SourceES, fragment.UserDraft, fragment.Correction) {
+		return invalidOutput()
 	}
-	for _, value := range required {
-		if strings.TrimSpace(value) == "" {
-			return invalidOutput()
-		}
+	if !validTargetVerbReview(fragment.TargetVerbReview) {
+		return invalidOutput()
+	}
+	if !validLexicalClarification(fragment.LexicalClarification) {
+		return invalidOutput()
+	}
+	if !validGrammarExplanation(fragment.GrammarExplanation) {
+		return invalidOutput()
 	}
 
 	for _, pattern := range fragment.ErrorPatterns {
@@ -45,6 +44,53 @@ func validateFragment(fragment analysis.Fragment) error {
 	}
 
 	return nil
+}
+
+// validTargetVerbReview requires the rule, the why and the Spanish contrast to
+// carry content. Alternatives may be empty but must not contain blanks.
+func validTargetVerbReview(review analysis.TargetVerbReview) bool {
+	return nonEmpty(review.Verb, review.CorrectForm, review.Rule, review.Why, review.ESContrast) &&
+		validAlternatives(review.Alternatives)
+}
+
+// validLexicalClarification requires the term, its meaning and the reason the
+// learner's choice does not fit.
+func validLexicalClarification(clarification analysis.LexicalClarification) bool {
+	return nonEmpty(clarification.Term, clarification.Meaning, clarification.WhyWrong) &&
+		validAlternatives(clarification.Alternatives)
+}
+
+// validGrammarExplanation requires every pedagogical ingredient of the rule.
+func validGrammarExplanation(explanation analysis.GrammarExplanation) bool {
+	return nonEmpty(
+		explanation.RuleName,
+		explanation.Explanation,
+		explanation.Construction,
+		explanation.Counterexample,
+		explanation.Exception,
+		explanation.ESContrast,
+	)
+}
+
+// nonEmpty reports whether every value carries non-whitespace content.
+func nonEmpty(values ...string) bool {
+	for _, value := range values {
+		if strings.TrimSpace(value) == "" {
+			return false
+		}
+	}
+	return true
+}
+
+// validAlternatives reports whether every alternative carries content. An empty
+// list is allowed (not every error has an alternative).
+func validAlternatives(alternatives []string) bool {
+	for _, alternative := range alternatives {
+		if strings.TrimSpace(alternative) == "" {
+			return false
+		}
+	}
+	return true
 }
 
 // invalidOutput wraps a schema violation as a provider failure so the raw

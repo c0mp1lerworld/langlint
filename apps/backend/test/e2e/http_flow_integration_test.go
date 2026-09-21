@@ -37,12 +37,30 @@ type fakeExtractor struct{}
 
 func (fakeExtractor) Extract(_ context.Context, req ports.ExtractRequest) ([]analysis.Fragment, error) {
 	return []analysis.Fragment{{
-		SourceES:             req.SourceText,
-		UserDraft:            req.DraftText,
-		Correction:           "corrected",
-		TargetVerbReview:     "review",
-		LexicalClarification: "lexical",
-		GrammarExplanation:   "grammar",
+		SourceES:   req.SourceText,
+		UserDraft:  req.DraftText,
+		Correction: "corrected",
+		TargetVerbReview: analysis.TargetVerbReview{
+			Verb:         "run",
+			CorrectForm:  "ran",
+			Rule:         "past simple",
+			Why:          "acción pasada",
+			ESContrast:   "en español varía",
+			Alternatives: []string{"ran"},
+		},
+		LexicalClarification: analysis.LexicalClarification{
+			Term:     "run",
+			Meaning:  "correr",
+			WhyWrong: "tiempo incorrecto",
+		},
+		GrammarExplanation: analysis.GrammarExplanation{
+			RuleName:       "past simple",
+			Explanation:    "se usa para acciones terminadas",
+			Construction:   "verbo + -ed / irregular",
+			Counterexample: "run -> ran",
+			Exception:      "verbos irregulares",
+			ESContrast:     "en español el pretérito",
+		},
 		ErrorPatterns: []domain.ErrorPattern{{
 			Code:     domain.ErrorPatternCodeTenseAgreement,
 			Severity: domain.ErrorPatternSeverityMinor,

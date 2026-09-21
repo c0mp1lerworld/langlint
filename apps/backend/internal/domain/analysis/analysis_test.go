@@ -19,13 +19,30 @@ func testFragments(t *testing.T) []analysis.Fragment {
 		t.Fatalf("NewErrorPattern() error = %v", err)
 	}
 	return []analysis.Fragment{{
-		SourceES:             "El gato duerme.",
-		UserDraft:            "The cat sleep.",
-		Correction:           "The cat sleeps.",
-		TargetVerbReview:     "sleep -> sleeps",
-		LexicalClarification: "cat / gato",
-		GrammarExplanation:   "third person singular adds -s",
-		ErrorPatterns:        []domain.ErrorPattern{pattern},
+		SourceES:   "El gato duerme.",
+		UserDraft:  "The cat sleep.",
+		Correction: "The cat sleeps.",
+		TargetVerbReview: analysis.TargetVerbReview{
+			Verb:         "sleep",
+			CorrectForm:  "sleeps",
+			Rule:         "tercera persona singular",
+			Why:          "el sujeto es singular",
+			ESContrast:   "en español no cambia",
+			Alternatives: []string{"sleeps"},
+		},
+		LexicalClarification: analysis.LexicalClarification{
+			Term:    "cat",
+			Meaning: "gato",
+		},
+		GrammarExplanation: analysis.GrammarExplanation{
+			RuleName:       "tercera persona singular",
+			Explanation:    "el verbo añade -s",
+			Construction:   "verbo + -s",
+			Counterexample: "sleep -> sleeps",
+			Exception:      "irregulares",
+			ESContrast:     "no aplica en español",
+		},
+		ErrorPatterns: []domain.ErrorPattern{pattern},
 	}}
 }
 

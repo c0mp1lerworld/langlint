@@ -10,13 +10,32 @@ import (
 
 func TestFragment_MarshalJSON_UsesSnakeCase(t *testing.T) {
 	fragment := analysis.Fragment{
-		SourceES:             "El gato duerme.",
-		UserDraft:            "The cat sleep.",
-		Correction:           "The cat sleeps.",
-		TargetVerbReview:     "sleep -> sleeps",
-		LexicalClarification: "cat / gato",
-		GrammarExplanation:   "third person singular adds -s",
-		ErrorPatterns:        []domain.ErrorPattern{},
+		SourceES:   "El gato duerme.",
+		UserDraft:  "The cat sleep.",
+		Correction: "The cat sleeps.",
+		TargetVerbReview: analysis.TargetVerbReview{
+			Verb:         "sleep",
+			CorrectForm:  "sleeps",
+			Rule:         "tercera persona singular",
+			Why:          "el sujeto es singular",
+			ESContrast:   "en español no cambia la forma",
+			Alternatives: []string{"sleeps"},
+		},
+		LexicalClarification: analysis.LexicalClarification{
+			Term:         "cat",
+			Meaning:      "gato",
+			WhyWrong:     "",
+			Alternatives: nil,
+		},
+		GrammarExplanation: analysis.GrammarExplanation{
+			RuleName:       "tercera persona singular",
+			Explanation:    "el verbo añade -s",
+			Construction:   "verbo + -s",
+			Counterexample: "sleep -> sleeps",
+			Exception:      "irregulares",
+			ESContrast:     "no aplica en español",
+		},
+		ErrorPatterns: []domain.ErrorPattern{},
 	}
 
 	raw, err := json.Marshal(fragment)
@@ -38,5 +57,15 @@ func TestFragment_MarshalJSON_UsesSnakeCase(t *testing.T) {
 	}
 	if len(got) != 7 {
 		t.Fatalf("payload %s has %d keys, want exactly 7", raw, len(got))
+	}
+
+	review, ok := got["target_verb_review"].(map[string]any)
+	if !ok {
+		t.Fatalf("target_verb_review is not an object: %s", raw)
+	}
+	for _, key := range []string{"verb", "correct_form", "rule", "why", "es_contrast", "alternatives"} {
+		if _, ok := review[key]; !ok {
+			t.Fatalf("target_verb_review missing key %q: %s", key, raw)
+		}
 	}
 }

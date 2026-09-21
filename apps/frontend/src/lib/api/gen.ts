@@ -270,6 +270,44 @@ export interface components {
             /** @description Explicación breve del error. */
             note?: string;
         };
+        TargetVerbReview: {
+            /** @description El verbo objetivo tal como aparece en el borrador. */
+            verb: string;
+            /** @description Forma correcta del verbo en el contexto de la frase. */
+            correct_form: string;
+            /** @description Nombre de la regla (p. ej. "verbo + preposición fija"). */
+            rule: string;
+            /** @description Por qué la regla aplica a este caso. */
+            why: string;
+            /** @description Contraste con el español (interferencia L1). */
+            es_contrast: string;
+            /** @description Formas alternativas admisibles y su matiz. */
+            alternatives: string[];
+        };
+        LexicalClarification: {
+            /** @description Término o expresión analizada. */
+            term: string;
+            /** @description Qué significa la forma correcta. */
+            meaning: string;
+            /** @description Por qué la elección del alumno no encaja. */
+            why_wrong: string;
+            /** @description Alternativas admisibles y su matiz. */
+            alternatives: string[];
+        };
+        GrammarExplanation: {
+            /** @description Nombre de la regla gramatical. */
+            rule_name: string;
+            /** @description La lógica de la regla (el porqué). */
+            explanation: string;
+            /** @description Cómo se construye (patrón). */
+            construction: string;
+            /** @description Contra-ejemplo con la frase del alumno corregida. */
+            counterexample: string;
+            /** @description Cuándo NO aplica la regla (excepciones). */
+            exception: string;
+            /** @description Contraste con el español. */
+            es_contrast: string;
+        };
         Fragment: {
             /** @description Frase base en español. */
             source_es: string;
@@ -277,12 +315,9 @@ export interface components {
             user_draft: string;
             /** @description Corrección directa. */
             correction: string;
-            /** @description Revisión del verbo objetivo. */
-            target_verb_review: string;
-            /** @description Aclaración léxica. */
-            lexical_clarification: string;
-            /** @description Regla gramatical profunda. */
-            grammar_explanation: string;
+            target_verb_review: components["schemas"]["TargetVerbReview"];
+            lexical_clarification: components["schemas"]["LexicalClarification"];
+            grammar_explanation: components["schemas"]["GrammarExplanation"];
             error_patterns: components["schemas"]["ErrorPattern"][];
         };
         Analysis: {

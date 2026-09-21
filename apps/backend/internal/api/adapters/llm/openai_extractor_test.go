@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -66,12 +67,30 @@ func assertLLMUnavailable(t *testing.T, err error) {
 func TestOpenAIExtractor_Extract_ValidResponse_ReturnsFragments(t *testing.T) {
 	want := []analysis.Fragment{
 		{
-			SourceES:             "El perro corre.",
-			UserDraft:            "The dog run.",
-			Correction:           "The dog runs.",
-			TargetVerbReview:     "run (run/ran/run)",
-			LexicalClarification: "correr = to run",
-			GrammarExplanation:   "Third person singular takes -s.",
+			SourceES:   "El perro corre.",
+			UserDraft:  "The dog run.",
+			Correction: "The dog runs.",
+			TargetVerbReview: analysis.TargetVerbReview{
+				Verb:         "run",
+				CorrectForm:  "runs",
+				Rule:         "tercera persona singular",
+				Why:          "el sujeto es singular",
+				ESContrast:   "en español la forma no cambia",
+				Alternatives: []string{"runs"},
+			},
+			LexicalClarification: analysis.LexicalClarification{
+				Term:     "run",
+				Meaning:  "correr",
+				WhyWrong: "falta la -s de tercera persona",
+			},
+			GrammarExplanation: analysis.GrammarExplanation{
+				RuleName:       "tercera persona singular",
+				Explanation:    "el verbo añade -s",
+				Construction:   "verbo + -s",
+				Counterexample: "run -> runs",
+				Exception:      "verbos irregulares",
+				ESContrast:     "no aplica en español",
+			},
 			ErrorPatterns: []domain.ErrorPattern{
 				{
 					Code:     domain.ErrorPatternCodeInfinitiveConjugation,
@@ -110,6 +129,12 @@ func TestOpenAIExtractor_Extract_ValidResponse_ReturnsFragments(t *testing.T) {
 	}
 	if got[0].Correction != want[0].Correction {
 		t.Fatalf("Correction = %q, want %q", got[0].Correction, want[0].Correction)
+	}
+	if !reflect.DeepEqual(got[0].TargetVerbReview, want[0].TargetVerbReview) {
+		t.Fatalf("TargetVerbReview = %+v, want %+v", got[0].TargetVerbReview, want[0].TargetVerbReview)
+	}
+	if !reflect.DeepEqual(got[0].GrammarExplanation, want[0].GrammarExplanation) {
+		t.Fatalf("GrammarExplanation = %+v, want %+v", got[0].GrammarExplanation, want[0].GrammarExplanation)
 	}
 	if len(got[0].ErrorPatterns) != 1 || got[0].ErrorPatterns[0] != want[0].ErrorPatterns[0] {
 		t.Fatalf("ErrorPatterns = %v, want %v", got[0].ErrorPatterns, want[0].ErrorPatterns)
@@ -192,7 +217,7 @@ func TestOpenAIExtractor_Extract_NoChoices_ReturnsLLMUnavailableError(t *testing
 }
 
 func TestOpenAIExtractor_Extract_InvalidErrorCode_ReturnsLLMUnavailableError(t *testing.T) {
-	content := `{"fragments":[{"source_es":"El perro corre.","user_draft":"The dog run.","correction":"The dog runs.","target_verb_review":"run","lexical_clarification":"correr = to run","grammar_explanation":"third person -s","error_patterns":[{"code":"invented_code","severity":"minor","note":"x"}]}]}`
+	content := `{"fragments":[{"source_es":"El perro corre.","user_draft":"The dog run.","correction":"The dog runs.","target_verb_review":{"verb":"run","correct_form":"runs","rule":"tercera persona","why":"sujeto singular","es_contrast":"no cambia","alternatives":["runs"]},"lexical_clarification":{"term":"run","meaning":"correr","why_wrong":"falta -s","alternatives":[]},"grammar_explanation":{"rule_name":"tercera persona","explanation":"añade -s","construction":"verbo + -s","counterexample":"run -> runs","exception":"irregulares","es_contrast":"no aplica"},"error_patterns":[{"code":"invented_code","severity":"minor","note":"x"}]}]}`
 	extractor := newExtractorForHandler(t, func(w http.ResponseWriter, _ *http.Request) {
 		writeChatCompletion(t, w, content)
 	})

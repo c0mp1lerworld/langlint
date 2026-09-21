@@ -70,9 +70,9 @@ func fragmentItemSchema() map[string]any {
 			"source_es":             map[string]any{"type": "string"},
 			"user_draft":            map[string]any{"type": "string"},
 			"correction":            map[string]any{"type": "string"},
-			"target_verb_review":    map[string]any{"type": "string"},
-			"lexical_clarification": map[string]any{"type": "string"},
-			"grammar_explanation":   map[string]any{"type": "string"},
+			"target_verb_review":    targetVerbReviewSchema(),
+			"lexical_clarification": lexicalClarificationSchema(),
+			"grammar_explanation":   grammarExplanationSchema(),
 			"error_patterns": map[string]any{
 				"type": "array",
 				"items": map[string]any{
@@ -96,6 +96,65 @@ func fragmentItemSchema() map[string]any {
 			"grammar_explanation",
 			"error_patterns",
 		},
+		"additionalProperties": false,
+	}
+}
+
+// stringProp is a JSON Schema string property.
+func stringProp() map[string]any { return map[string]any{"type": "string"} }
+
+// stringArrayProp is a JSON Schema array-of-strings property.
+func stringArrayProp() map[string]any {
+	return map[string]any{"type": "array", "items": map[string]any{"type": "string"}}
+}
+
+// targetVerbReviewSchema mirrors TargetVerbReview: the rule, the why, the
+// Spanish contrast and the alternatives (4.2.1, Beyond Correction §1.2).
+func targetVerbReviewSchema() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"verb":         stringProp(),
+			"correct_form": stringProp(),
+			"rule":         stringProp(),
+			"why":          stringProp(),
+			"es_contrast":  stringProp(),
+			"alternatives": stringArrayProp(),
+		},
+		"required":             []string{"verb", "correct_form", "rule", "why", "es_contrast", "alternatives"},
+		"additionalProperties": false,
+	}
+}
+
+// lexicalClarificationSchema mirrors LexicalClarification.
+func lexicalClarificationSchema() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"term":         stringProp(),
+			"meaning":      stringProp(),
+			"why_wrong":    stringProp(),
+			"alternatives": stringArrayProp(),
+		},
+		"required":             []string{"term", "meaning", "why_wrong", "alternatives"},
+		"additionalProperties": false,
+	}
+}
+
+// grammarExplanationSchema mirrors GrammarExplanation: name, why, construction,
+// counterexample, exceptions and the Spanish contrast.
+func grammarExplanationSchema() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"rule_name":      stringProp(),
+			"explanation":    stringProp(),
+			"construction":   stringProp(),
+			"counterexample": stringProp(),
+			"exception":      stringProp(),
+			"es_contrast":    stringProp(),
+		},
+		"required":             []string{"rule_name", "explanation", "construction", "counterexample", "exception", "es_contrast"},
 		"additionalProperties": false,
 	}
 }

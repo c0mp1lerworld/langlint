@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: LangLint API
-  version: 1.0.0
+  version: 2.0.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -520,6 +520,78 @@ components:
           type: string
           description: Explicación breve del error.
 
+    # Revisión estructurada del verbo objetivo (PRODUCT_DOMAIN §1.2 "Beyond
+    # Correction"): nombra la regla, explica el porqué, contrasta con el español
+    # y ofrece alternativas, en lugar de un párrafo genérico.
+    TargetVerbReview:
+      type: object
+      required: [verb, correct_form, rule, why, es_contrast, alternatives]
+      properties:
+        verb:
+          type: string
+          description: El verbo objetivo tal como aparece en el borrador.
+        correct_form:
+          type: string
+          description: Forma correcta del verbo en el contexto de la frase.
+        rule:
+          type: string
+          description: Nombre de la regla (p. ej. "verbo + preposición fija").
+        why:
+          type: string
+          description: Por qué la regla aplica a este caso.
+        es_contrast:
+          type: string
+          description: Contraste con el español (interferencia L1).
+        alternatives:
+          type: array
+          description: Formas alternativas admisibles y su matiz.
+          items:
+            type: string
+
+    # Aclaración léxica estructurada (elección de vocabulario o colocación).
+    LexicalClarification:
+      type: object
+      required: [term, meaning, why_wrong, alternatives]
+      properties:
+        term:
+          type: string
+          description: Término o expresión analizada.
+        meaning:
+          type: string
+          description: Qué significa la forma correcta.
+        why_wrong:
+          type: string
+          description: Por qué la elección del alumno no encaja.
+        alternatives:
+          type: array
+          description: Alternativas admisibles y su matiz.
+          items:
+            type: string
+
+    # Explicación gramatical profunda y estructurada (Beyond Correction).
+    GrammarExplanation:
+      type: object
+      required: [rule_name, explanation, construction, counterexample, exception, es_contrast]
+      properties:
+        rule_name:
+          type: string
+          description: Nombre de la regla gramatical.
+        explanation:
+          type: string
+          description: La lógica de la regla (el porqué).
+        construction:
+          type: string
+          description: Cómo se construye (patrón).
+        counterexample:
+          type: string
+          description: Contra-ejemplo con la frase del alumno corregida.
+        exception:
+          type: string
+          description: Cuándo NO aplica la regla (excepciones).
+        es_contrast:
+          type: string
+          description: Contraste con el español.
+
     Fragment:
       type: object
       required:
@@ -541,14 +613,11 @@ components:
           type: string
           description: Corrección directa.
         target_verb_review:
-          type: string
-          description: Revisión del verbo objetivo.
+          $ref: '#/components/schemas/TargetVerbReview'
         lexical_clarification:
-          type: string
-          description: Aclaración léxica.
+          $ref: '#/components/schemas/LexicalClarification'
         grammar_explanation:
-          type: string
-          description: Regla gramatical profunda.
+          $ref: '#/components/schemas/GrammarExplanation'
         error_patterns:
           type: array
           items:

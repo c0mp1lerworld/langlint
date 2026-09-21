@@ -59,6 +59,17 @@ func TestFragmentSchema_MirrorsFragmentContract(t *testing.T) {
 	if !ok {
 		t.Fatalf("items.properties = %v, want object", items["properties"])
 	}
+
+	assertNestedObject(t, itemProperties["target_verb_review"], []string{
+		"verb", "correct_form", "rule", "why", "es_contrast", "alternatives",
+	})
+	assertNestedObject(t, itemProperties["lexical_clarification"], []string{
+		"term", "meaning", "why_wrong", "alternatives",
+	})
+	assertNestedObject(t, itemProperties["grammar_explanation"], []string{
+		"rule_name", "explanation", "construction", "counterexample", "exception", "es_contrast",
+	})
+
 	patterns, ok := itemProperties["error_patterns"].(map[string]any)
 	if !ok {
 		t.Fatalf("error_patterns = %v, want object", itemProperties["error_patterns"])
@@ -124,6 +135,23 @@ func TestFragmentResponseFormat_IsStrictJSONSchema(t *testing.T) {
 	if _, ok := jsonSchema["schema"].(map[string]any); !ok {
 		t.Fatalf("json_schema.schema = %v, want object", jsonSchema["schema"])
 	}
+}
+
+// assertNestedObject checks an object property is strict (additionalProperties
+// false) and has exactly the expected required keys.
+func assertNestedObject(t *testing.T, got any, wantRequired []string) {
+	t.Helper()
+	obj, ok := got.(map[string]any)
+	if !ok {
+		t.Fatalf("nested schema = %v (%T), want object", got, got)
+	}
+	if obj["type"] != "object" {
+		t.Fatalf("nested schema.type = %v, want object", obj["type"])
+	}
+	if obj["additionalProperties"] != false {
+		t.Fatalf("nested schema.additionalProperties = %v, want false", obj["additionalProperties"])
+	}
+	assertStringList(t, obj["required"], wantRequired)
 }
 
 func assertStringList(t *testing.T, got any, want []string) {

@@ -408,11 +408,53 @@ func fragmentToWire(f analysis.Fragment) Fragment {
 		SourceEs:             f.SourceES,
 		UserDraft:            f.UserDraft,
 		Correction:           f.Correction,
-		TargetVerbReview:     f.TargetVerbReview,
-		LexicalClarification: f.LexicalClarification,
-		GrammarExplanation:   f.GrammarExplanation,
+		TargetVerbReview:     targetVerbReviewToWire(f.TargetVerbReview),
+		LexicalClarification: lexicalClarificationToWire(f.LexicalClarification),
+		GrammarExplanation:   grammarExplanationToWire(f.GrammarExplanation),
 		ErrorPatterns:        patterns,
 	}
+}
+
+// targetVerbReviewToWire converts the structured verb review to the wire type.
+func targetVerbReviewToWire(r analysis.TargetVerbReview) TargetVerbReview {
+	return TargetVerbReview{
+		Verb:         r.Verb,
+		CorrectForm:  r.CorrectForm,
+		Rule:         r.Rule,
+		Why:          r.Why,
+		EsContrast:   r.ESContrast,
+		Alternatives: nonNilStrings(r.Alternatives),
+	}
+}
+
+// lexicalClarificationToWire converts the structured lexical note to the wire type.
+func lexicalClarificationToWire(l analysis.LexicalClarification) LexicalClarification {
+	return LexicalClarification{
+		Term:         l.Term,
+		Meaning:      l.Meaning,
+		WhyWrong:     l.WhyWrong,
+		Alternatives: nonNilStrings(l.Alternatives),
+	}
+}
+
+// grammarExplanationToWire converts the structured grammar rule to the wire type.
+func grammarExplanationToWire(g analysis.GrammarExplanation) GrammarExplanation {
+	return GrammarExplanation{
+		RuleName:       g.RuleName,
+		Explanation:    g.Explanation,
+		Construction:   g.Construction,
+		Counterexample: g.Counterexample,
+		Exception:      g.Exception,
+		EsContrast:     g.ESContrast,
+	}
+}
+
+// nonNilStrings guarantees a JSON array instead of null for a required list.
+func nonNilStrings(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+	return values
 }
 
 // errorPatternToWire converts a domain error pattern to its wire representation.
