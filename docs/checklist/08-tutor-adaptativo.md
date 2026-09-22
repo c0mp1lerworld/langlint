@@ -29,18 +29,18 @@
 
 ## 8.4 Integración sin rupturas
 
-- [ ] `8.4.1` Los 4 bounded contexts del MVP (`identity`, `practice`, `analysis`, `analytics`) **no cambian** (cero rupturas).
-- [ ] `8.4.2` Nuevo endpoint `POST /v1/study-sessions` (o equivalente) declarado primero en `api.yaml` (A12).
-- [ ] `8.4.3` Frontend: nueva feature `study-session` consumiendo el cliente generado, sin lógica de negocio duplicada (F11).
+- [x] `8.4.1` Los 4 bounded contexts del MVP (`identity`, `practice`, `analysis`, `analytics`) **no cambian** (cero rupturas).
+- [x] `8.4.2` Nuevo endpoint `POST /v1/study-sessions` (o equivalente) declarado primero en `api.yaml` (A12).
+- [x] `8.4.3` Frontend: nueva feature `study-session` consumiendo el cliente generado, sin lógica de negocio duplicada (F11).
 
 ---
 
 ## ✅ Gate de salida
 
-- [ ] `tutor/` funciona sin modificar `identity`, `practice`, `analysis`, `analytics`.
-- [ ] Evento `WeaknessDetected` entregado end-to-end vía outbox (test Tier 3).
-- [ ] Sesión generada con Structured Outputs validada; PII anonimizado (A8).
-- [ ] Cobertura del nuevo dominio 100% y services ≥90% (A10).
+- [x] `tutor/` funciona sin modificar `identity`, `practice`, `analysis`, `analytics`.
+- [x] Evento `WeaknessDetected` entregado end-to-end vía outbox (test Tier 3).
+- [x] Sesión generada con Structured Outputs validada; PII anonimizado (A8).
+- [x] Cobertura del nuevo dominio 100% y services ≥90% (A10).
 
 ## Fuente normativa
 

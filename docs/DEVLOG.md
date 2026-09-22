@@ -4,6 +4,35 @@
 
 ---
 
+## 2026-09-22 — Fase 8.4: integración sin rupturas (8.4.1–8.4.3) — Gate de Fase 8
+
+**Estado**: bloque 8.4 completado y **Gate de Fase 8 en verde**. El tutor adaptativo queda integrado end-to-end sin romper ninguno de los 4 bounded contexts del MVP: endpoint `POST /v1/study-sessions` (A12, contrato `3.3.0`), `StudySessionService` + repositorio/migración `study_sessions` + mocks, y feature frontend `study-session`. `go build/vet`, `go test -race -count=1 ./...` (Tier 1+2) y `go test -race -count=1 -tags=integration ./...` (Tier 3 + e2e HTTP) en verde; `pnpm generate` idempotente, `pnpm lint` (contrato válido, 6 warnings conocidos), `pnpm test` (frontend **98**), `pnpm typecheck`, `pnpm build` y `pnpm test:e2e` en verde; `gofmt -l` limpio.
+
+**Hecho**:
+- `8.4.1` **Cero rupturas**: `git diff --stat` sobre `internal/domain/{identity,practice,analysis,analytics}` vacío. El tutor se integra solo por las capas api/services/handlers/adapters/migrations/contracts/frontend; el dominio `tutor/` no se toca.
+- `8.4.2` A12: `api.yaml` añade el tag `tutor` y `POST /study-sessions` (operationId `create_study_session`, param opcional `window` reutilizando `WindowQuery`, `201 StudySession` · `409 invalid_state` · `503`), con schemas `StudySession`, `WeaknessEntry`, `StudySessionTrap`, `StudySessionExercise`, `StudySessionStatus` y `ExerciseKind`. Bump `3.2.0 → 3.3.0` (aditivo) + `CHANGELOG.md` + `package.json`. Migración `000005_study_sessions.sql` (JSONB para `profile`/`traps`/`exercises`). Puerto `storage.StudySessionRepository` (solo `Save`) + adaptador `PostgresStudySessionRepository` + mocks (`StudySessionRepository`, `StudySessionGenerator`) y `Makefile`.
+- `StudySessionService.Generate(userID, window)`: lee `ErrorMetricRepository.ListByUser`, construye el `tutor.WeaknessProfile`, llama al `generator.Generate`, ensambla con `tutor.NewStudySession` y persiste con `Save`. Sin UoW ni outbox (guardado único; el LLM va fuera de transacción). Handler `CreateStudySession` + `studySessionToWire` + DI (`newStudySessionRepository`, `newStudySessionGenerator`, `NewStudySessionService`) y `NewServer` ampliado.
+- Tests: service (perfil+default severidad+guardado, caso vacío → `InvalidStateError`, error del generador), handler (`201`/`409`/`422`), repositorio Tier 3 (`Save`/upsert) y e2e HTTP (`[6]` paso `POST /study-sessions` con `fakeStudySessionGenerator`).
+- `8.4.3` Frontend: `lib/query/study-sessions.ts` (`useCreateStudySession`), feature `features/study-session/` (selector de ventana + render de teoría/trampas/ejercicios, tipos solo de `gen.ts`, F11), ruta `app/study-session/page.tsx` + enlace en `app/page.tsx`, y 3 tests RTL con accesibilidad.
+
+**Decisiones** (confirmadas por el humano):
+- **Severidad default `moderate`**: `error_metrics` no materializa severidad (solo vive en el payload de `WeaknessDetected`); tocarla implicaría cambiar el BC `analytics` (prohibido por 8.4.1). El service asigna `moderate` neutro y lo documenta (`defaultWeaknessSeverity`).
+- **Todas las métricas `count>0`** alimentan el perfil (no se reaplica `WeaknessThreshold`): el umbral gobierna la notificación proactiva; la generación es on-demand sobre el historial.
+- **`POST /study-sessions?window=week`** sin body; sin debilidades → `409 invalid_state` (reusa `domain.InvalidStateError`).
+- **Solo `Save`** en el repositorio (sin listado ni `GET`): el endpoint devuelve la sesión creada; el historial queda para una iteración futura si se pide.
+
+**Verificación** (local):
+- `go build ./...` · `go vet ./...` → OK; `go test -race -count=1 ./...` → OK; `go test -race -count=1 -tags=integration ./...` → OK (e2e incluido, 62s).
+- Cobertura: `tutor` **100 %**, services **94.8 %** (≥90 %); adaptador `llm` ya en 94.6 %.
+- `pnpm generate` idempotente (hashes md5 estables); `check-version.sh` → `3.3.0`; `redocly lint` válido (6 warnings conocidos, sin nuevos).
+- `pnpm test` (frontend 98) · `pnpm typecheck --filter=frontend` · `pnpm lint` · `pnpm build` · `pnpm test:e2e` (2) → OK.
+
+**Bloqueos**: ninguno. El *Gate de Fase 7* sigue pendiente del primer run real de CI en GitHub (acción humana, ajeno a la Fase 8).
+
+**Próximo paso**: opcional — listar el historial de sesiones (`GET /v1/study-sessions`) o cerrar el `9.7` (analytics del quiz). La Fase 8 queda completa.
+
+---
+
 ## 2026-09-22 — Fase 8.3: motor de generación de sesión (8.3.1–8.3.3)
 
 **Estado**: bloque 8.3 completado. Motor de generación de sesiones de estudio con IA (`ports.StudySessionGenerator` + `OpenAIStudySessionGenerator` con Structured Outputs estricto, `temperature=0`, manejo de truncado y validación local). **Solo motor**: sin DI, sin mocks, sin persistencia ni endpoint (8.4). Sin cambio de wire (A12). `go build/vet`, `go test -race -count=1 ./...` (Tier 1+2) y `go test -race -count=1 -tags=integration ./...` (Tier 3) en verde; `gofmt -l` limpio.
