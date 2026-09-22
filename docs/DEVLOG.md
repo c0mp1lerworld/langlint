@@ -4,6 +4,34 @@
 
 ---
 
+## 2026-09-22 — Fase 8.1: bounded context `tutor/` (8.1.1–8.1.4)
+
+**Estado**: primer bloque de la Fase 8 (tutor adaptativo, post-MVP) completado: el **quinto** bounded context `internal/domain/tutor/` con agregado y value objects, dominio puro y 100 % de cobertura. Sin cambios de wire (A12) ni de los 4 contexts existentes (cero rupturas). `go build/vet`, `go test -race -count=1 ./...` (Tier 1+2) y `go test -cover ./internal/domain/tutor/` → **100 %** en verde; `gofmt -l` limpio.
+
+**Hecho**:
+- `8.1.1` Paquete `internal/domain/tutor/` con `doc.go` documentando el aislamiento A3 (solo stdlib + `domain` raíz).
+- `8.1.2` Agregado `StudySession` (`ID`, `UserID`, `WeaknessProfile`, `Theory`, `Traps []Trap`, `Exercises []Exercise`, `Status`, `CreatedAt`) con constructor `NewStudySession` (→ `generated`) y transiciones `Start()` (→ `active`) y `Complete()` (→ `completed`); value objects `Trap` (`Code`+`Description`) y `Exercise` (`Kind open|fill`+`Prompt`+`Answer`), y enum `StudySessionStatus` (`generated`/`active`/`completed`).
+- `8.1.3` Value object `WeaknessProfile` (agrupación de `ErrorPattern` históricos) con `WeaknessEntry` (`Code`, `Severity`, `Count`, `LastSeenAt`); constructor valida y ordena por frecuencia descendente; método `Weakest()` (mayor frecuencia) que anticipa la regla de detección de 8.2.3.
+- `8.1.4` Verificado por diseño de tipos: `tutor/` importa **solo** stdlib + `domain` raíz (nunca `practice`/`analysis`/`analytics`), consumiendo agregados (`ErrorPatternCode` + frecuencia), no datos crudos. Comprobación estática con `grep` sobre los imports del paquete.
+
+**Decisiones**:
+- **`WeaknessProfile` agnóstico de ventana**: `Window` vive en `analytics/` y moverlo a la raíz (`domain`) para poder referenciarlo desde `tutor/` habría sido un refactor que toca analytics + wire. El perfil agrupa frecuencia histórica plana; el `Window` aparecerá recién en el payload del evento `WeaknessDetected` (8.2), donde se resolverá su representación sin romper A3.
+- **Status con ciclo de vida** (`generated → active → completed`): confirmado por el humano (opción "Completos + StudySessionStatus").
+- **`ExerciseKind` espeja el quiz** (`open`/`fill`, sin `mcq`): coherente con el principio de producción activa de la Fase 9; son tipos propios de `tutor/` por A3 (sin reimportar `analysis.QuizQuestion`).
+- **Validación de entradas en `WeaknessProfile`** reutilizada desde `WeaknessEntry.validate()` para que literales de struct no puedan saltarse los invariantes; consistente con el patrón del resto del dominio.
+
+**Verificación** (local):
+- `go build ./...` · `go vet ./...` → OK.
+- `go test -race -count=1 ./internal/domain/tutor/` → OK; `go test -cover ./internal/domain/tutor/` → **100.0 %**.
+- `go test -race -count=1 ./...` → OK (regresión total); `gofmt -l internal/domain/tutor/` limpio.
+- Aislamiento A3: `grep` de imports del paquete solo muestra stdlib + `domain` raíz.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 8.2 — detección de debilidades (evento `WeaknessDetected` vía outbox desde `analytics/`, suscripción de `tutor/` como `EventHandler`, regla de umbral de frecuencia 8.2.3). Queda decidir la representación de `Window` en el payload del evento sin romper A3.
+
+---
+
 ## 2026-09-21 — Cierre de gaps pre-post-MVP: GAP-1/BUG-003, BUG-002 y BUG-001
 
 **Estado**: los tres bugs abiertos de `docs/bugs/` quedan **cerrados** y el único gap contrato↔dominio funcional (`GAP-1`) también. Contratos `3.1.0` (progress) y `3.2.0` (`llm_output_truncated`). `go build/vet/test -race` (Tier 1+2+3), `pnpm generate` idempotente, `pnpm lint` (contrato incluido, 6 warnings conocidos), `pnpm test` (frontend 95), `pnpm typecheck`, `pnpm build` y `pnpm test:e2e` en verde. Queda como único bloqueo del *Gate de Fase 7* el primer run real de CI en GitHub (acción humana).

@@ -10,10 +10,10 @@
 
 ## 8.1 Bounded context `tutor/`
 
-- [ ] `8.1.1` Crear `internal/domain/tutor/` como **quinto** bounded context, aislado por A3 (sin imports cruzados).
-- [ ] `8.1.2` Definir agregado `StudySession` (teoría resumida, trampas comunes, ejercicios interactivos).
-- [ ] `8.1.3` Definir value object `WeaknessProfile` (agrupación de `ErrorPattern` históricos).
-- [ ] `8.1.4` Verificar que `tutor/` consume agregados de `analytics/` (no datos crudos).
+- [x] `8.1.1` Crear `internal/domain/tutor/` como **quinto** bounded context, aislado por A3 (sin imports cruzados).
+- [x] `8.1.2` Definir agregado `StudySession` (teoría resumida, trampas comunes, ejercicios interactivos).
+- [x] `8.1.3` Definir value object `WeaknessProfile` (agrupación de `ErrorPattern` históricos).
+- [x] `8.1.4` Verificar que `tutor/` consume agregados de `analytics/` (no datos crudos).
 
 ## 8.2 Detección de debilidades
 
