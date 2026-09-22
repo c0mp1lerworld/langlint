@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: LangLint API
-  version: 3.2.0
+  version: 3.3.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -31,6 +31,8 @@ tags:
     description: Agregados históricos de errores y progreso.
   - name: identity
     description: Portabilidad y auditoría de los datos del usuario (A9).
+  - name: tutor
+    description: Tutor adaptativo. Sesiones de estudio generadas desde los puntos débiles.
 
 paths:
   /practices:
@@ -256,6 +258,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProgressSeries'
+
+  /study-sessions:
+    post:
+      operationId: create_study_session
+      summary: Genera una sesión de estudio personalizada
+      description: |
+        Genera con IA una sesión de estudio (teoría resumida + trampas comunes +
+        ejercicios interactivos) a partir del perfil de debilidades agregado del
+        usuario (PRODUCT_DOMAIN §12.1). Lee solo agregados de analytics —códigos,
+        frecuencias y recencia— nunca los datos crudos de práctica (A8). El LLM se
+        invoca bajo demanda; si aún no hay patrones de error, responde
+        `409 invalid_state`, y si el proveedor no responde, `503`.
+      tags: [tutor]
+      parameters:
+        - $ref: '#/components/parameters/WindowQuery'
+      responses:
+        '201':
+          description: Sesión de estudio generada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudySession'
+        '409':
+          $ref: '#/components/responses/InvalidState'
+        '503':
+          $ref: '#/components/responses/LLMUnavailable'
 
   /me/data/export:
     get:
@@ -767,6 +795,92 @@ components:
         follow_up:
           type: string
           description: Pregunta de seguimiento socrática; cadena vacía si no aplica.
+
+    # --- Tutor adaptativo (PRODUCT_DOMAIN §12.1) ---
+    StudySessionStatus:
+      type: string
+      description: Ciclo de vida de una sesión de estudio.
+      enum: [generated, active, completed]
+
+    ExerciseKind:
+      type: string
+      description: Tipo de ejercicio interactivo de una sesión.
+      enum: [open, fill]
+
+    WeaknessEntry:
+      type: object
+      required: [code, severity, count, last_seen_at]
+      properties:
+        code:
+          $ref: '#/components/schemas/ErrorPatternCode'
+        severity:
+          $ref: '#/components/schemas/ErrorPatternSeverity'
+        count:
+          type: integer
+          minimum: 0
+        last_seen_at:
+          type: string
+          format: date-time
+
+    StudySessionTrap:
+      type: object
+      required: [code, description]
+      properties:
+        code:
+          $ref: '#/components/schemas/ErrorPatternCode'
+        description:
+          type: string
+
+    StudySessionExercise:
+      type: object
+      required: [kind, prompt, answer]
+      properties:
+        kind:
+          $ref: '#/components/schemas/ExerciseKind'
+        prompt:
+          type: string
+        answer:
+          type: string
+
+    StudySession:
+      type: object
+      required:
+        - id
+        - user_id
+        - weaknesses
+        - theory
+        - traps
+        - exercises
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        weaknesses:
+          type: array
+          description: Puntos débiles agregados que alimentaron la sesión.
+          items:
+            $ref: '#/components/schemas/WeaknessEntry'
+        theory:
+          type: string
+          description: Resumen teórico en español del tema detrás de la debilidad principal.
+        traps:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudySessionTrap'
+        exercises:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudySessionExercise'
+        status:
+          $ref: '#/components/schemas/StudySessionStatus'
+        created_at:
+          type: string
+          format: date-time
 
     # --- Analítica (PRODUCT_DOMAIN §4.2.4 y §7) ---
     Window:

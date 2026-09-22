@@ -4,6 +4,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 El contrato OpenAPI es la SSOT del wire format (A12); todo cambio breaking sube
 la versión major y se anota aquí (AP-MR6).
 
+## [3.3.0] — 2026-09-22
+
+### Añadido
+
+- **`POST /v1/study-sessions`**: nuevo endpoint del tutor adaptativo
+  (PRODUCT_DOMAIN §12.1) que genera con IA una sesión de estudio (teoría +
+  trampas + ejercicios) desde el perfil de debilidades agregado. Añade los
+  schemas `StudySession`, `WeaknessEntry`, `StudySessionTrap`,
+  `StudySessionExercise`, `StudySessionStatus` y `ExerciseKind`, y el tag
+  `tutor`. No es breaking: es una operación y schemas nuevos.
+
 ## [3.2.0] — 2026-09-21
 
 ### Añadido

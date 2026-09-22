@@ -176,6 +176,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/study-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Genera una sesión de estudio personalizada
+         * @description Genera con IA una sesión de estudio (teoría resumida + trampas comunes +
+         *     ejercicios interactivos) a partir del perfil de debilidades agregado del
+         *     usuario (PRODUCT_DOMAIN §12.1). Lee solo agregados de analytics —códigos,
+         *     frecuencias y recencia— nunca los datos crudos de práctica (A8). El LLM se
+         *     invoca bajo demanda; si aún no hay patrones de error, responde
+         *     `409 invalid_state`, y si el proveedor no responde, `503`.
+         */
+        post: operations["create_study_session"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/data/export": {
         parameters: {
             query?: never;
@@ -414,6 +439,47 @@ export interface components {
             feedback: string;
             /** @description Pregunta de seguimiento socrática; cadena vacía si no aplica. */
             follow_up: string;
+        };
+        /**
+         * @description Ciclo de vida de una sesión de estudio.
+         * @enum {string}
+         */
+        StudySessionStatus: "generated" | "active" | "completed";
+        /**
+         * @description Tipo de ejercicio interactivo de una sesión.
+         * @enum {string}
+         */
+        ExerciseKind: "open" | "fill";
+        WeaknessEntry: {
+            code: components["schemas"]["ErrorPatternCode"];
+            severity: components["schemas"]["ErrorPatternSeverity"];
+            count: number;
+            /** Format: date-time */
+            last_seen_at: string;
+        };
+        StudySessionTrap: {
+            code: components["schemas"]["ErrorPatternCode"];
+            description: string;
+        };
+        StudySessionExercise: {
+            kind: components["schemas"]["ExerciseKind"];
+            prompt: string;
+            answer: string;
+        };
+        StudySession: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            user_id: string;
+            /** @description Puntos débiles agregados que alimentaron la sesión. */
+            weaknesses: components["schemas"]["WeaknessEntry"][];
+            /** @description Resumen teórico en español del tema detrás de la debilidad principal. */
+            theory: string;
+            traps: components["schemas"]["StudySessionTrap"][];
+            exercises: components["schemas"]["StudySessionExercise"][];
+            status: components["schemas"]["StudySessionStatus"];
+            /** Format: date-time */
+            created_at: string;
         };
         /** @enum {string} */
         Window: "day" | "week" | "month";
@@ -793,6 +859,31 @@ export interface operations {
                     "application/json": components["schemas"]["ProgressSeries"];
                 };
             };
+        };
+    };
+    create_study_session: {
+        parameters: {
+            query?: {
+                /** @description Ventana temporal de agregación (`day|week|month`). Por defecto `week`. */
+                window?: components["parameters"]["WindowQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sesión de estudio generada. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudySession"];
+                };
+            };
+            409: components["responses"]["InvalidState"];
+            503: components["responses"]["LLMUnavailable"];
         };
     };
     export_data: {

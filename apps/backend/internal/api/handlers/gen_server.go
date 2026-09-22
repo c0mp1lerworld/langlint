@@ -53,6 +53,9 @@ type ServerInterface interface {
 	// EvaluateQuizAnswer Evalúa la respuesta del alumno a una pregunta de práctica
 	// (POST /practices/{practiceId}/quiz/answer)
 	EvaluateQuizAnswer(w http.ResponseWriter, r *http.Request, practiceId PracticeId)
+	// CreateStudySession Genera una sesión de estudio personalizada
+	// (POST /study-sessions)
+	CreateStudySession(w http.ResponseWriter, r *http.Request, params CreateStudySessionParams)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -134,6 +137,12 @@ func (_ Unimplemented) CreateQuizQuestion(w http.ResponseWriter, r *http.Request
 // EvaluateQuizAnswer Evalúa la respuesta del alumno a una pregunta de práctica
 // (POST /practices/{practiceId}/quiz/answer)
 func (_ Unimplemented) EvaluateQuizAnswer(w http.ResponseWriter, r *http.Request, practiceId PracticeId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateStudySession Genera una sesión de estudio personalizada
+// (POST /study-sessions)
+func (_ Unimplemented) CreateStudySession(w http.ResponseWriter, r *http.Request, params CreateStudySessionParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -502,6 +511,39 @@ func (siw *ServerInterfaceWrapper) EvaluateQuizAnswer(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
+// CreateStudySession operation middleware
+func (siw *ServerInterfaceWrapper) CreateStudySession(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateStudySessionParams
+
+	// ------------- Optional query parameter "window" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "window", r.URL.Query(), &params.Window, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "window"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "window", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateStudySession(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -644,6 +686,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/analytics/progress", wrapper.GetProgressSeries)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/study-sessions", wrapper.CreateStudySession)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/me/data/export", wrapper.ExportData)

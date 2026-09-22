@@ -129,6 +129,24 @@ func (e ErrorResponseCode) Valid() bool {
 	}
 }
 
+// Defines values for ExerciseKind.
+const (
+	ExerciseKindFill ExerciseKind = "fill"
+	ExerciseKindOpen ExerciseKind = "open"
+)
+
+// Valid indicates whether the value is a known member of the ExerciseKind enum.
+func (e ExerciseKind) Valid() bool {
+	switch e {
+	case ExerciseKindFill:
+		return true
+	case ExerciseKindOpen:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PracticeStatus.
 const (
 	PracticeStatusAnalyzing PracticeStatus = "analyzing"
@@ -155,16 +173,37 @@ func (e PracticeStatus) Valid() bool {
 
 // Defines values for QuizQuestionKind.
 const (
-	Fill QuizQuestionKind = "fill"
-	Open QuizQuestionKind = "open"
+	QuizQuestionKindFill QuizQuestionKind = "fill"
+	QuizQuestionKindOpen QuizQuestionKind = "open"
 )
 
 // Valid indicates whether the value is a known member of the QuizQuestionKind enum.
 func (e QuizQuestionKind) Valid() bool {
 	switch e {
-	case Fill:
+	case QuizQuestionKindFill:
 		return true
-	case Open:
+	case QuizQuestionKindOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StudySessionStatus.
+const (
+	StudySessionStatusActive    StudySessionStatus = "active"
+	StudySessionStatusCompleted StudySessionStatus = "completed"
+	StudySessionStatusGenerated StudySessionStatus = "generated"
+)
+
+// Valid indicates whether the value is a known member of the StudySessionStatus enum.
+func (e StudySessionStatus) Valid() bool {
+	switch e {
+	case StudySessionStatusActive:
+		return true
+	case StudySessionStatusCompleted:
+		return true
+	case StudySessionStatusGenerated:
 		return true
 	default:
 		return false
@@ -278,6 +317,9 @@ type ErrorResponse struct {
 
 // ErrorResponseCode defines model for ErrorResponse.Code.
 type ErrorResponseCode string
+
+// ExerciseKind Tipo de ejercicio interactivo de una sesión.
+type ExerciseKind string
 
 // Fragment defines model for Fragment.
 type Fragment struct {
@@ -433,6 +475,43 @@ type QuizQuestionRequest struct {
 	FragmentIndex int `json:"fragment_index"`
 }
 
+// StudySession defines model for StudySession.
+type StudySession struct {
+	CreatedAt time.Time              `json:"created_at"`
+	Exercises []StudySessionExercise `json:"exercises"`
+	Id        openapi_types.UUID     `json:"id"`
+
+	// Status Ciclo de vida de una sesión de estudio.
+	Status StudySessionStatus `json:"status"`
+
+	// Theory Resumen teórico en español del tema detrás de la debilidad principal.
+	Theory string             `json:"theory"`
+	Traps  []StudySessionTrap `json:"traps"`
+	UserId openapi_types.UUID `json:"user_id"`
+
+	// Weaknesses Puntos débiles agregados que alimentaron la sesión.
+	Weaknesses []WeaknessEntry `json:"weaknesses"`
+}
+
+// StudySessionExercise defines model for StudySessionExercise.
+type StudySessionExercise struct {
+	Answer string `json:"answer"`
+
+	// Kind Tipo de ejercicio interactivo de una sesión.
+	Kind   ExerciseKind `json:"kind"`
+	Prompt string       `json:"prompt"`
+}
+
+// StudySessionStatus Ciclo de vida de una sesión de estudio.
+type StudySessionStatus string
+
+// StudySessionTrap defines model for StudySessionTrap.
+type StudySessionTrap struct {
+	// Code Taxonomía de errores (PRODUCT_DOMAIN §4.6).
+	Code        ErrorPatternCode `json:"code"`
+	Description string           `json:"description"`
+}
+
 // TargetRule defines model for TargetRule.
 type TargetRule struct {
 	Note  *string `json:"note,omitempty"`
@@ -469,6 +548,15 @@ type UpdatePracticeRequest struct {
 	// SourceText Texto base en español.
 	SourceText  *string       `json:"source_text,omitempty"`
 	TargetRules *[]TargetRule `json:"target_rules,omitempty"`
+}
+
+// WeaknessEntry defines model for WeaknessEntry.
+type WeaknessEntry struct {
+	// Code Taxonomía de errores (PRODUCT_DOMAIN §4.6).
+	Code       ErrorPatternCode     `json:"code"`
+	Count      int                  `json:"count"`
+	LastSeenAt time.Time            `json:"last_seen_at"`
+	Severity   ErrorPatternSeverity `json:"severity"`
 }
 
 // Window defines model for Window.
@@ -529,6 +617,12 @@ type ListPracticesParams struct {
 
 	// Offset Desplazamiento desde el primer elemento. Por defecto `0`.
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// CreateStudySessionParams defines parameters for CreateStudySession.
+type CreateStudySessionParams struct {
+	// Window Ventana temporal de agregación (`day|week|month`). Por defecto `week`.
+	Window *WindowQuery `form:"window,omitempty" json:"window,omitempty"`
 }
 
 // CreatePracticeJSONRequestBody defines body for CreatePractice for application/json ContentType.
