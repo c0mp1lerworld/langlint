@@ -46,6 +46,7 @@ func testQuizService(ctrl *gomock.Controller) *services.QuizService {
 		mocks.NewMockPracticeRepository(ctrl),
 		mocks.NewMockAnalysisRepository(ctrl),
 		mocks.NewMockTutorQuestioner(ctrl),
+		mocks.NewMockQuizAttemptRepository(ctrl),
 	)
 }
 
@@ -651,7 +652,7 @@ func TestServer_CreateQuizQuestion_ReturnsQuestion(t *testing.T) {
 		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
 		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockProgressRepository(ctrl)),
 		testIdentityService(ctrl),
-		services.NewQuizService(practices, analyses, questioner),
+		services.NewQuizService(practices, analyses, questioner, mocks.NewMockQuizAttemptRepository(ctrl)),
 		testTutorService(ctrl),
 	)
 
@@ -692,12 +693,14 @@ func TestServer_EvaluateQuizAnswer_ReturnsEvaluation(t *testing.T) {
 	questioner := mocks.NewMockTutorQuestioner(ctrl)
 	questioner.EXPECT().Evaluate(gomock.Any(), gomock.Any()).Return(
 		analysis.QuizEvaluation{Correct: true, Feedback: "¡Correcto!"}, nil)
+	attempts := mocks.NewMockQuizAttemptRepository(ctrl)
+	attempts.EXPECT().Append(gomock.Any(), gomock.Any()).Return(nil)
 
 	srv := NewServer(
 		services.NewPracticeService(runUoW(ctrl), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockAnalysisRepository(ctrl), mocks.NewMockOutbox(ctrl)),
 		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockProgressRepository(ctrl)),
 		testIdentityService(ctrl),
-		services.NewQuizService(practices, analyses, questioner),
+		services.NewQuizService(practices, analyses, questioner, attempts),
 		testTutorService(ctrl),
 	)
 

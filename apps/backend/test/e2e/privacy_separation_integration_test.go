@@ -60,6 +60,14 @@ func TestPrivacy_RawDataSeparatedFromAnalytics(t *testing.T) {
 	require.Equal(t, 0, countRows(t, pool,
 		`SELECT count(*) FROM error_metrics WHERE user_id = $1`, userID.String()))
 
+	// Quiz attempts are owned data (raw user id, A9) and are purged too (9.7).
+	_, err = pool.Exec(ctx,
+		`INSERT INTO quiz_attempts (id, user_id, practice_id, correct, created_at) VALUES ($1, $2, $3, $4, $5)`,
+		domain.MustNewID().String(), userID.String(), practiceID.String(), true, now)
+	require.NoError(t, err)
+	require.Equal(t, 1, countRows(t, pool,
+		`SELECT count(*) FROM quiz_attempts WHERE user_id = $1`, userID.String()))
+
 	// The right to be forgotten removes the raw data and the pseudonymized
 	// analytics of the user.
 	req, err := identity.NewDeletionRequest(userID, now.Add(-31*day))
@@ -78,4 +86,6 @@ func TestPrivacy_RawDataSeparatedFromAnalytics(t *testing.T) {
 	require.Equal(t, 0, countRows(t, pool, `SELECT count(*) FROM analyses WHERE practice_id = $1`, practiceID.String()))
 	require.Equal(t, 0, countRows(t, pool,
 		`SELECT count(*) FROM error_metrics WHERE user_id = $1`, pseudonyms.Pseudonymize(userID.String())))
+	require.Equal(t, 0, countRows(t, pool,
+		`SELECT count(*) FROM quiz_attempts WHERE user_id = $1`, userID.String()))
 }

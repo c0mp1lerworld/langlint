@@ -146,7 +146,7 @@ func newRouter(t *testing.T, pool *pgxpool.Pool, userID domain.ID) http.Handler 
 	dispatcher.Run(ctx)
 	go relay.Run(ctx, 25*time.Millisecond)
 
-	server := httpapi.NewServer(practiceSvc, analyticsSvc, identitySvc, services.NewQuizService(practices, analyses, fakeQuestioner{}), services.NewStudySessionService(metrics, repositories.NewStudySessionRepository(pool), fakeStudySessionGenerator{}))
+	server := httpapi.NewServer(practiceSvc, analyticsSvc, identitySvc, services.NewQuizService(practices, analyses, fakeQuestioner{}, repositories.NewQuizAttemptRepository(pool)), services.NewStudySessionService(metrics, repositories.NewStudySessionRepository(pool), fakeStudySessionGenerator{}))
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	router := httpx.NewRouter(log)
 	router.Use(httpx.UserResolver(userID))
@@ -293,6 +293,24 @@ func TestHTTPFlow_CreateAnalyzePollAnalytics(t *testing.T) {
 	resp.Body.Close()
 	if !evaluation.Correct || evaluation.Feedback == "" {
 		t.Fatalf("quiz evaluation = %+v", evaluation)
+	}
+
+	// [5b] The quiz analytics reflect the recorded attempt (9.7).
+	resp, err = http.Get(api.URL + "/analytics/quiz")
+	if err != nil {
+		t.Fatalf("GET quiz stats error = %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("GET quiz stats status = %d, want 200 (%s)", resp.StatusCode, body)
+	}
+	var quizStats httpapi.QuizStats
+	if err := json.NewDecoder(resp.Body).Decode(&quizStats); err != nil {
+		t.Fatalf("decode quiz stats: %v", err)
+	}
+	resp.Body.Close()
+	if quizStats.TotalAttempts != 1 || quizStats.CorrectAttempts != 1 {
+		t.Fatalf("quiz stats = %+v, want total=1 correct=1", quizStats)
 	}
 
 	// [6] The adaptive tutor generates a study session from the aggregated
