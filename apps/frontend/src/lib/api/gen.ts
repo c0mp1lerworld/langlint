@@ -176,6 +176,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/analytics/quiz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Aciertos y fallos del quiz
+         * @description Agregado de aciertos/fallos del quiz de práctica activa (checklist 9.7).
+         *     Es una métrica separada de `error_metrics`: los intentos son una fuente
+         *     de verdad propia (ledger append-only) que no entra en la reconciliación
+         *     de `refresh-aggregates`.
+         */
+        get: operations["get_quiz_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/study-sessions": {
         parameters: {
             query?: never;
@@ -502,6 +525,11 @@ export interface components {
             period_start: string;
             total_fragments: number;
             error_count: number;
+            accuracy: number;
+        };
+        QuizStats: {
+            total_attempts: number;
+            correct_attempts: number;
             accuracy: number;
         };
         DataExport: {
@@ -857,6 +885,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProgressSeries"];
+                };
+            };
+        };
+    };
+    get_quiz_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Estadísticas de aciertos/fallos del quiz del usuario. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizStats"];
                 };
             };
         };

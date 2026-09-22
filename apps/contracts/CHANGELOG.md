@@ -4,6 +4,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 El contrato OpenAPI es la SSOT del wire format (A12); todo cambio breaking sube
 la versión major y se anota aquí (AP-MR6).
 
+## [3.4.0] — 2026-09-22
+
+### Añadido
+
+- **`GET /v1/analytics/quiz`**: nuevas estadísticas de aciertos/fallos del quiz de
+  práctica activa (checklist 9.7). Añade el schema `QuizStats`
+  (`total_attempts`, `correct_attempts`, `accuracy`). Es una métrica separada de
+  `error_metrics`: los intentos de quiz son un ledger append-only propio que no
+  entra en la reconciliación de `refresh-aggregates`. No es breaking: operación y
+  schema nuevos.
+
 ## [3.3.0] — 2026-09-22
 
 ### Añadido

@@ -20,6 +20,9 @@ type ServerInterface interface {
 	// GetProgressSeries Serie temporal de progreso
 	// (GET /analytics/progress)
 	GetProgressSeries(w http.ResponseWriter, r *http.Request, params GetProgressSeriesParams)
+	// GetQuizStats Aciertos y fallos del quiz
+	// (GET /analytics/quiz)
+	GetQuizStats(w http.ResponseWriter, r *http.Request)
 	// GetAccessLog Auditoría de accesos del usuario
 	// (GET /me/access-log)
 	GetAccessLog(w http.ResponseWriter, r *http.Request, params GetAccessLogParams)
@@ -71,6 +74,12 @@ func (_ Unimplemented) GetErrorPatternStats(w http.ResponseWriter, r *http.Reque
 // GetProgressSeries Serie temporal de progreso
 // (GET /analytics/progress)
 func (_ Unimplemented) GetProgressSeries(w http.ResponseWriter, r *http.Request, params GetProgressSeriesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetQuizStats Aciertos y fallos del quiz
+// (GET /analytics/quiz)
+func (_ Unimplemented) GetQuizStats(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -212,6 +221,20 @@ func (siw *ServerInterfaceWrapper) GetProgressSeries(w http.ResponseWriter, r *h
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetProgressSeries(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetQuizStats operation middleware
+func (siw *ServerInterfaceWrapper) GetQuizStats(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetQuizStats(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -686,6 +709,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/analytics/progress", wrapper.GetProgressSeries)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/analytics/quiz", wrapper.GetQuizStats)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/study-sessions", wrapper.CreateStudySession)

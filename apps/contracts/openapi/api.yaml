@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: LangLint API
-  version: 3.3.0
+  version: 3.4.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -258,6 +258,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProgressSeries'
+
+  /analytics/quiz:
+    get:
+      operationId: get_quiz_stats
+      summary: Aciertos y fallos del quiz
+      description: |
+        Agregado de aciertos/fallos del quiz de práctica activa (checklist 9.7).
+        Es una métrica separada de `error_metrics`: los intentos son una fuente
+        de verdad propia (ledger append-only) que no entra en la reconciliación
+        de `refresh-aggregates`.
+      tags: [analytics]
+      responses:
+        '200':
+          description: Estadísticas de aciertos/fallos del quiz del usuario.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizStats'
 
   /study-sessions:
     post:
@@ -933,6 +951,21 @@ components:
           type: integer
           minimum: 0
         error_count:
+          type: integer
+          minimum: 0
+        accuracy:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    QuizStats:
+      type: object
+      required: [total_attempts, correct_attempts, accuracy]
+      properties:
+        total_attempts:
+          type: integer
+          minimum: 0
+        correct_attempts:
           type: integer
           minimum: 0
         accuracy:

@@ -475,6 +475,13 @@ type QuizQuestionRequest struct {
 	FragmentIndex int `json:"fragment_index"`
 }
 
+// QuizStats defines model for QuizStats.
+type QuizStats struct {
+	Accuracy        float32 `json:"accuracy"`
+	CorrectAttempts int     `json:"correct_attempts"`
+	TotalAttempts   int     `json:"total_attempts"`
+}
+
 // StudySession defines model for StudySession.
 type StudySession struct {
 	CreatedAt time.Time              `json:"created_at"`
