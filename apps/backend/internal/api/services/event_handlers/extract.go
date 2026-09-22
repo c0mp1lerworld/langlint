@@ -41,3 +41,15 @@ func analysisFailed(event domain.DomainEvent) (domain.AnalysisFailed, bool) {
 		return domain.AnalysisFailed{}, false
 	}
 }
+
+// weaknessDetected accepts both value and pointer forms.
+func weaknessDetected(event domain.DomainEvent) (domain.WeaknessDetected, bool) {
+	switch e := event.(type) {
+	case domain.WeaknessDetected:
+		return e, true
+	case *domain.WeaknessDetected:
+		return *e, true
+	default:
+		return domain.WeaknessDetected{}, false
+	}
+}

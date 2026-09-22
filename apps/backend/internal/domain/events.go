@@ -65,6 +65,22 @@ type AnalysisCompleted struct {
 // EventName returns the stable wire name of the event.
 func (AnalysisCompleted) EventName() string { return EventNameAnalysisCompleted }
 
+// EventNameWeaknessDetected is the wire name of WeaknessDetected.
+const EventNameWeaknessDetected = "analytics.weakness_detected"
+
+// WeaknessDetected is emitted by the analytics bounded context when a learner's
+// error frequency for one or more patterns reaches the weakness threshold
+// (PRODUCT_DOMAIN §12.1, checklist 8.2). It feeds the tutor bounded context.
+type WeaknessDetected struct {
+	UserID        ID             `json:"user_id"`
+	ErrorPatterns []ErrorPattern `json:"error_patterns"`
+	Window        Window         `json:"window"`
+	Version       int            `json:"version"`
+}
+
+// EventName returns the stable wire name of the event.
+func (WeaknessDetected) EventName() string { return EventNameWeaknessDetected }
+
 // EventNameAnalysisFailed is the wire name of AnalysisFailed.
 const EventNameAnalysisFailed = "analysis.failed"
 
@@ -106,6 +122,8 @@ func NewEvent(eventType string) (DomainEvent, bool) {
 		return &AnalysisCompleted{}, true
 	case EventNameAnalysisFailed:
 		return &AnalysisFailed{}, true
+	case EventNameWeaknessDetected:
+		return &WeaknessDetected{}, true
 	default:
 		return nil, false
 	}

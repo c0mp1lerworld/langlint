@@ -113,12 +113,16 @@ func newRouter(t *testing.T, pool *pgxpool.Pool, userID domain.ID) http.Handler 
 		t.Fatalf("subscribe AnalysisRequested: %v", err)
 	}
 	if err := dispatcher.Subscribe(domain.EventNameAnalysisCompleted,
-		event_handlers.NewAnalysisCompletedHandler(practices, metrics)); err != nil {
+		event_handlers.NewAnalysisCompletedHandler(practices, metrics, outbox)); err != nil {
 		t.Fatalf("subscribe AnalysisCompleted: %v", err)
 	}
 	if err := dispatcher.Subscribe(domain.EventNameAnalysisFailed,
 		event_handlers.NewAnalysisFailedHandler(practices)); err != nil {
 		t.Fatalf("subscribe AnalysisFailed: %v", err)
+	}
+	if err := dispatcher.Subscribe(domain.EventNameWeaknessDetected,
+		event_handlers.NewWeaknessDetectedHandler(metrics)); err != nil {
+		t.Fatalf("subscribe WeaknessDetected: %v", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

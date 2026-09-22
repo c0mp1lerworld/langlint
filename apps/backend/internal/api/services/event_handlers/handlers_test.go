@@ -141,7 +141,7 @@ func TestAnalysisCompletedHandler_Analyzing_MarksCompletedAndUpsertsMetrics(t *t
 		return nil
 	}).Times(3)
 
-	h := NewAnalysisCompletedHandler(practices, metrics)
+	h := NewAnalysisCompletedHandler(practices, metrics, mocks.NewMockOutbox(ctrl))
 	event := domain.AnalysisCompleted{
 		UserID:        userID,
 		PracticeID:    p.ID,
@@ -162,7 +162,7 @@ func TestAnalysisCompletedHandler_NoPatterns_SkipsMetrics(t *testing.T) {
 	practices.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
 
 	// metrics repository is never touched: no ListByUser/Upsert expectations.
-	h := NewAnalysisCompletedHandler(practices, mocks.NewMockErrorMetricRepository(ctrl))
+	h := NewAnalysisCompletedHandler(practices, mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockOutbox(ctrl))
 	if err := h.Handle(context.Background(), domain.AnalysisCompleted{UserID: userID, PracticeID: p.ID}); err != nil {
 		t.Fatalf("Handle() error = %v", err)
 	}
@@ -176,7 +176,7 @@ func TestAnalysisCompletedHandler_NotAnalyzing_Skips(t *testing.T) {
 	practices := mocks.NewMockPracticeRepository(ctrl)
 	practices.EXPECT().GetByID(gomock.Any(), p.ID).Return(p, nil)
 
-	h := NewAnalysisCompletedHandler(practices, mocks.NewMockErrorMetricRepository(ctrl))
+	h := NewAnalysisCompletedHandler(practices, mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockOutbox(ctrl))
 	if err := h.Handle(context.Background(), domain.AnalysisCompleted{PracticeID: p.ID}); err != nil {
 		t.Fatalf("Handle() error = %v, want nil", err)
 	}
@@ -193,7 +193,7 @@ func TestAnalysisCompletedHandler_MetricsFail_ReturnsError(t *testing.T) {
 	metrics := mocks.NewMockErrorMetricRepository(ctrl)
 	metrics.EXPECT().ListByUser(gomock.Any(), userID, gomock.Any()).Return(nil, errors.New("db down"))
 
-	h := NewAnalysisCompletedHandler(practices, metrics)
+	h := NewAnalysisCompletedHandler(practices, metrics, mocks.NewMockOutbox(ctrl))
 	event := domain.AnalysisCompleted{UserID: userID, PracticeID: p.ID, ErrorPatterns: []domain.ErrorPattern{{Code: domain.ErrorPatternCodeWordOrder}}}
 	if err := h.Handle(context.Background(), event); err == nil {
 		t.Fatal("Handle() error = nil, want error")
@@ -291,7 +291,7 @@ func TestAnalysisCompletedHandler_PointerEvent_MarksCompleted(t *testing.T) {
 	practices.EXPECT().GetByID(gomock.Any(), p.ID).Return(p, nil)
 	practices.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
 
-	h := NewAnalysisCompletedHandler(practices, mocks.NewMockErrorMetricRepository(ctrl))
+	h := NewAnalysisCompletedHandler(practices, mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockOutbox(ctrl))
 	if err := h.Handle(context.Background(), &domain.AnalysisCompleted{UserID: userID, PracticeID: p.ID}); err != nil {
 		t.Fatalf("Handle() error = %v", err)
 	}
@@ -303,7 +303,7 @@ func TestAnalysisCompletedHandler_PracticeError_Propagates(t *testing.T) {
 	practices := mocks.NewMockPracticeRepository(ctrl)
 	practices.EXPECT().GetByID(gomock.Any(), id).Return(nil, &domain.InternalError{Field: "practice"})
 
-	h := NewAnalysisCompletedHandler(practices, mocks.NewMockErrorMetricRepository(ctrl))
+	h := NewAnalysisCompletedHandler(practices, mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockOutbox(ctrl))
 	if err := h.Handle(context.Background(), domain.AnalysisCompleted{PracticeID: id}); err == nil {
 		t.Fatal("Handle() error = nil, want error")
 	}
@@ -318,7 +318,7 @@ func TestAnalysisCompletedHandler_SaveFails_ReturnsError(t *testing.T) {
 	practices.EXPECT().GetByID(gomock.Any(), p.ID).Return(p, nil)
 	practices.EXPECT().Save(gomock.Any(), gomock.Any()).Return(errors.New("db down"))
 
-	h := NewAnalysisCompletedHandler(practices, mocks.NewMockErrorMetricRepository(ctrl))
+	h := NewAnalysisCompletedHandler(practices, mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockOutbox(ctrl))
 	if err := h.Handle(context.Background(), domain.AnalysisCompleted{PracticeID: p.ID}); err == nil {
 		t.Fatal("Handle() error = nil, want error")
 	}
@@ -330,7 +330,7 @@ func TestAnalysisCompletedHandler_PracticeGone_ReturnsNil(t *testing.T) {
 	practices := mocks.NewMockPracticeRepository(ctrl)
 	practices.EXPECT().GetByID(gomock.Any(), id).Return(nil, &domain.NotFoundError{Field: "practice"})
 
-	h := NewAnalysisCompletedHandler(practices, mocks.NewMockErrorMetricRepository(ctrl))
+	h := NewAnalysisCompletedHandler(practices, mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockOutbox(ctrl))
 	if err := h.Handle(context.Background(), domain.AnalysisCompleted{PracticeID: id}); err != nil {
 		t.Fatalf("Handle() error = %v, want nil", err)
 	}
@@ -383,5 +383,107 @@ func TestAnalysisFailedHandler_WrongEvent_ReturnsNil(t *testing.T) {
 	h := NewAnalysisFailedHandler(mocks.NewMockPracticeRepository(ctrl))
 	if err := h.Handle(context.Background(), domain.PracticeCreated{}); err != nil {
 		t.Fatalf("Handle() error = %v, want nil", err)
+	}
+}
+
+func TestAnalysisCompletedHandler_ThresholdReached_EmitsWeaknessDetected(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	userID := domain.MustNewID()
+	p := analysisPractice(userID, practice.PracticeStatusAnalyzing)
+
+	practices := mocks.NewMockPracticeRepository(ctrl)
+	practices.EXPECT().GetByID(gomock.Any(), p.ID).Return(p, nil)
+	practices.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+
+	metrics := mocks.NewMockErrorMetricRepository(ctrl)
+	// An existing count of 4 for word_order in every window, so the +1 of this
+	// analysis reaches the threshold (5) and triggers WeaknessDetected.
+	metrics.EXPECT().ListByUser(gomock.Any(), userID, gomock.Any()).
+		Return([]analytics.ErrorMetric{{Code: domain.ErrorPatternCodeWordOrder, Count: 4, LastSeenAt: time.Unix(0, 0).UTC()}}, nil).
+		Times(3)
+	metrics.EXPECT().Upsert(gomock.Any(), gomock.Any()).Return(nil).Times(3)
+
+	outbox := mocks.NewMockOutbox(ctrl)
+	outbox.EXPECT().Append(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, event domain.DomainEvent) error {
+		weakness, ok := event.(domain.WeaknessDetected)
+		if !ok {
+			t.Fatalf("appended event = %T, want WeaknessDetected", event)
+		}
+		if weakness.UserID != userID {
+			t.Fatalf("WeaknessDetected.UserID = %v, want %v", weakness.UserID, userID)
+		}
+		if len(weakness.ErrorPatterns) != 1 || weakness.ErrorPatterns[0].Code != domain.ErrorPatternCodeWordOrder {
+			t.Fatalf("WeaknessDetected.ErrorPatterns = %v, want [word_order]", weakness.ErrorPatterns)
+		}
+		if weakness.ErrorPatterns[0].Severity != domain.ErrorPatternSeverityModerate {
+			t.Fatalf("WeaknessDetected severity = %q, want moderate", weakness.ErrorPatterns[0].Severity)
+		}
+		return nil
+	}).Times(3)
+
+	h := NewAnalysisCompletedHandler(practices, metrics, outbox)
+	event := domain.AnalysisCompleted{
+		UserID:        userID,
+		PracticeID:    p.ID,
+		ErrorPatterns: []domain.ErrorPattern{{Code: domain.ErrorPatternCodeWordOrder, Severity: domain.ErrorPatternSeverityModerate}},
+	}
+	if err := h.Handle(context.Background(), event); err != nil {
+		t.Fatalf("Handle() error = %v", err)
+	}
+}
+
+func TestAnalysisCompletedHandler_BelowThreshold_DoesNotEmit(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	userID := domain.MustNewID()
+	p := analysisPractice(userID, practice.PracticeStatusAnalyzing)
+
+	practices := mocks.NewMockPracticeRepository(ctrl)
+	practices.EXPECT().GetByID(gomock.Any(), p.ID).Return(p, nil)
+	practices.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+
+	metrics := mocks.NewMockErrorMetricRepository(ctrl)
+	metrics.EXPECT().ListByUser(gomock.Any(), userID, gomock.Any()).Return(nil, nil).Times(3)
+	metrics.EXPECT().Upsert(gomock.Any(), gomock.Any()).Return(nil).Times(3)
+
+	// No Append expectation: with a single occurrence the threshold is not met.
+	outbox := mocks.NewMockOutbox(ctrl)
+
+	h := NewAnalysisCompletedHandler(practices, metrics, outbox)
+	event := domain.AnalysisCompleted{
+		UserID:        userID,
+		PracticeID:    p.ID,
+		ErrorPatterns: []domain.ErrorPattern{{Code: domain.ErrorPatternCodeWordOrder, Severity: domain.ErrorPatternSeverityModerate}},
+	}
+	if err := h.Handle(context.Background(), event); err != nil {
+		t.Fatalf("Handle() error = %v", err)
+	}
+}
+
+func TestSeverityByCode_ReturnsMaxSeverityPerCode(t *testing.T) {
+	patterns := []domain.ErrorPattern{
+		{Code: domain.ErrorPatternCodeWordOrder, Severity: domain.ErrorPatternSeverityMinor},
+		{Code: domain.ErrorPatternCodeWordOrder, Severity: domain.ErrorPatternSeverityCritical},
+		{Code: domain.ErrorPatternCodeFalseFriend, Severity: domain.ErrorPatternSeverityModerate},
+	}
+
+	got := severityByCode(patterns)
+
+	if got[domain.ErrorPatternCodeWordOrder] != domain.ErrorPatternSeverityCritical {
+		t.Fatalf("severityByCode(word_order) = %q, want critical", got[domain.ErrorPatternCodeWordOrder])
+	}
+	if got[domain.ErrorPatternCodeFalseFriend] != domain.ErrorPatternSeverityModerate {
+		t.Fatalf("severityByCode(false_friend) = %q, want moderate", got[domain.ErrorPatternCodeFalseFriend])
+	}
+}
+
+func TestSeverityRank_OrdersMinorModerateCritical(t *testing.T) {
+	if !(severityRank(domain.ErrorPatternSeverityMinor) < severityRank(domain.ErrorPatternSeverityModerate)) {
+		t.Fatal("minor must rank below moderate")
+	}
+	if !(severityRank(domain.ErrorPatternSeverityModerate) < severityRank(domain.ErrorPatternSeverityCritical)) {
+		t.Fatal("moderate must rank below critical")
+	}
+	if severityRank("unknown") != 0 {
+		t.Fatal("unknown severity must rank 0")
 	}
 }

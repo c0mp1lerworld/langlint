@@ -4,6 +4,34 @@
 
 ---
 
+## 2026-09-22 — Fase 8.2: detección de debilidades (8.2.1–8.2.3)
+
+**Estado**: bloque 8.2 completado. `analytics/` emite `WeaknessDetected` vía outbox cuando la frecuencia de un patrón cruza el umbral; `tutor/` se suscribe como `EventHandler` y construye un `tutor.WeaknessProfile` consultando los agregados. Sin cambio de wire (A12; los eventos de dominio son Go-only) y sin tocar el dispatcher/relay existentes. `go build/vet`, `go test -race -count=1 ./...` (Tier 1+2) y `go test -race -count=1 -tags=integration ./...` (Tier 3, incluido el e2e HTTP) en verde; `gofmt -l` limpio.
+
+**Hecho**:
+- **`Window` promovido a la raíz (alias)**: `domain.Window` (canónico: `type Window string` + `WindowDay/Week/Month` + `IsValid`/`String`) y `analytics` lo re-exporta como `type Window = domain.Window` + constantes + `AllWindows`. Cero cambios en los ~17 ficheros/mocks que usaban `analytics.Window`; sin regenerar mocks. Mismo criterio que `ErrorPattern` (raíz, compartido por dos contexts).
+- `8.2.1` `domain.WeaknessDetected` (`analytics.weakness_detected`, payload `UserID`+`[]ErrorPattern`+`Window`+`Version`) registrado en `NewEvent`; tests de `EventName`/snake_case. Emisión desde `AnalysisCompletedHandler` (ahora con `outbox portsevents.Outbox`): tras el upsert por ventana, `emitWeakness` usa `analytics.DetectWeakness` y `outbox.Append` (post-commit, sin transacción → el pool; no viola AP7). Idempotencia preservada por el guard `status != analyzing`.
+- `8.2.3` `analytics.DetectWeakness(freq map[code]int, threshold int)` (puro, orden determinista) + `const WeaknessThreshold = 5`. Umbral sobre el `Count` materializado (frecuencia); el "5 prácticas" del checklist es ilustrativo ("p. ej.").
+- `8.2.2` `WeaknessDetectedHandler` (en `api/services/event_handlers/`): al recibir el evento consulta `ErrorMetricRepository.ListByUser` y `buildWeaknessProfile` construye un `tutor.WeaknessProfile` validado (código + severidad del evento + `Count`/`LastSeenAt` del agregado). Sin persistencia: la generación de sesión es 8.3. Suscripción en `registerSubscriptions` y en el e2e HTTP (paso end-to-end outbox→relay→dispatcher→handler).
+- Severidad del evento = máxima vista en el análisis disparador (`severityByCode` + `severityRank`), porque `error_metrics` no materializa severidad.
+
+**Decisiones**:
+- **Alias `type Window = domain.Window`** (confirmado por el humano) en lugar del refactor completo: evita regenerar mocks y tocar 17 ficheros, mantiene `domain.Window` canónico y `analytics.Window` compatible.
+- **Handler que construye el perfil consultando métricas** (confirmado), sin persistir: el evento es la señal; el perfil se arma con los agregados (PRODUCT_DOMAIN §12.1). La sesión/persistencia llega en 8.3.
+- **`refresh-aggregates` (provisioner) no emite `WeaknessDetected`**: la detección es incremental (solo el camino `AnalysisCompleted`); la reconciliación reconstruye `error_metrics` sin disparar el tutor. Límite documentado de 8.2.
+
+**Verificación** (local):
+- `go build ./...` · `go vet ./...` → OK.
+- `go test -race -count=1 ./...` → OK; `go test -race -count=1 -tags=integration ./...` → OK (e2e HTTP incluido).
+- Cobertura del **nuevo** dominio: `tutor` **100 %**, `analytics.DetectWeakness` 100 %, `domain.Window`/`WeaknessDetected` 100 %; services `event_handlers` ≥90 % (93.2 %). `gofmt -l` limpio.
+- Sin `pnpm generate` (sin cambio de contrato wire).
+
+**Bloqueos**: ninguno. (Gaps de cobertura **preexistentes** y ajenos a 8.2: `LLMOutputTruncatedError.Error()` y el branch de error de `BuildProgressSeries`.)
+
+**Próximo paso**: Fase 8.3 — generación de la sesión con IA (Structured Outputs, reusando `LLMExtractor`), contenido teoría + 3 trampas + 5 ejercicios, anonimización previa al LLM (A8) y validación contra schema. Después 8.4 (integración sin rupturas + endpoint `POST /v1/study-sessions` en `api.yaml`).
+
+---
+
 ## 2026-09-22 — Fase 8.1: bounded context `tutor/` (8.1.1–8.1.4)
 
 **Estado**: primer bloque de la Fase 8 (tutor adaptativo, post-MVP) completado: el **quinto** bounded context `internal/domain/tutor/` con agregado y value objects, dominio puro y 100 % de cobertura. Sin cambios de wire (A12) ni de los 4 contexts existentes (cero rupturas). `go build/vet`, `go test -race -count=1 ./...` (Tier 1+2) y `go test -cover ./internal/domain/tutor/` → **100 %** en verde; `gofmt -l` limpio.

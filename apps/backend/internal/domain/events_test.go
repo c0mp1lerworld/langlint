@@ -194,6 +194,41 @@ func TestIdentityIssued_MarshalJSON_UsesSnakeCase(t *testing.T) {
 	}
 }
 
+func TestWeaknessDetected_EventName_ReturnsConstant(t *testing.T) {
+	event := domain.WeaknessDetected{UserID: domain.MustNewID(), Window: domain.WindowWeek, Version: 1}
+
+	if got := event.EventName(); got != domain.EventNameWeaknessDetected {
+		t.Fatalf("EventName() = %q, want %q", got, domain.EventNameWeaknessDetected)
+	}
+}
+
+func TestWeaknessDetected_MarshalJSON_UsesSnakeCase(t *testing.T) {
+	event := domain.WeaknessDetected{
+		UserID:        domain.MustNewID(),
+		ErrorPatterns: []domain.ErrorPattern{{Code: domain.ErrorPatternCodeWordOrder, Severity: domain.ErrorPatternSeverityModerate}},
+		Window:        domain.WindowWeek,
+		Version:       1,
+	}
+
+	raw, err := json.Marshal(event)
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	for _, key := range []string{"user_id", "error_patterns", "window", "version"} {
+		if _, ok := got[key]; !ok {
+			t.Fatalf("payload %s missing snake_case key %q", raw, key)
+		}
+	}
+	if _, ok := got["ErrorPatterns"]; ok {
+		t.Fatalf("payload %s leaked Go field name %q", raw, "ErrorPatterns")
+	}
+}
+
 func TestNewEvent_KnownType_ReturnsConcreteEvent(t *testing.T) {
 	for _, name := range []string{
 		domain.EventNameIdentityIssued,
@@ -201,6 +236,7 @@ func TestNewEvent_KnownType_ReturnsConcreteEvent(t *testing.T) {
 		domain.EventNameAnalysisRequested,
 		domain.EventNameAnalysisCompleted,
 		domain.EventNameAnalysisFailed,
+		domain.EventNameWeaknessDetected,
 	} {
 		t.Run(name, func(t *testing.T) {
 			event, ok := domain.NewEvent(name)

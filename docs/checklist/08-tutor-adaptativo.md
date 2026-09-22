@@ -17,9 +17,9 @@
 
 ## 8.2 Detección de debilidades
 
-- [ ] `8.2.1` `analytics/` emite evento `WeaknessDetected` (payload: `UserID`, `[]ErrorPattern`, `Window`) vía outbox.
-- [ ] `8.2.2` `tutor/` se suscribe a `WeaknessDetected` como `EventHandler` (mismo patrón del relay, sin tocar el dispatcher existente).
-- [ ] `8.2.3` Regla de detección: umbral de frecuencia (p. ej. "5 prácticas con el mismo `ErrorPattern.code`").
+- [x] `8.2.1` `analytics/` emite evento `WeaknessDetected` (payload: `UserID`, `[]ErrorPattern`, `Window`) vía outbox.
+- [x] `8.2.2` `tutor/` se suscribe a `WeaknessDetected` como `EventHandler` (mismo patrón del relay, sin tocar el dispatcher existente).
+- [x] `8.2.3` Regla de detección: umbral de frecuencia (p. ej. "5 prácticas con el mismo `ErrorPattern.code`").
 
 ## 8.3 Generación de sesión de estudio
 

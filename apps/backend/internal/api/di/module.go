@@ -69,6 +69,7 @@ func Module() fx.Option {
 			event_handlers.NewAnalysisRequestedHandler,
 			event_handlers.NewAnalysisCompletedHandler,
 			event_handlers.NewAnalysisFailedHandler,
+			event_handlers.NewWeaknessDetectedHandler,
 			httpapi.NewServer,
 		),
 		fx.Invoke(
@@ -181,6 +182,7 @@ func registerSubscriptions(
 	requested *event_handlers.AnalysisRequestedHandler,
 	completed *event_handlers.AnalysisCompletedHandler,
 	failed *event_handlers.AnalysisFailedHandler,
+	weakness *event_handlers.WeaknessDetectedHandler,
 ) error {
 	if err := dispatcher.Subscribe(domain.EventNameAnalysisRequested, requested); err != nil {
 		return err
@@ -188,7 +190,10 @@ func registerSubscriptions(
 	if err := dispatcher.Subscribe(domain.EventNameAnalysisCompleted, completed); err != nil {
 		return err
 	}
-	return dispatcher.Subscribe(domain.EventNameAnalysisFailed, failed)
+	if err := dispatcher.Subscribe(domain.EventNameAnalysisFailed, failed); err != nil {
+		return err
+	}
+	return dispatcher.Subscribe(domain.EventNameWeaknessDetected, weakness)
 }
 
 // runEventBus starts the dispatcher worker pool and the outbox relay with the
