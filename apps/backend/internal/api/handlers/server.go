@@ -332,6 +332,23 @@ func (s *Server) GetProgressSeries(w http.ResponseWriter, r *http.Request, param
 	writeJSON(w, http.StatusOK, ProgressSeries{Window: Window(window), Points: points})
 }
 
+// GetQuizStats handles GET /analytics/quiz: the learner's quiz hits and misses
+// (checklist 9.7), a separate metric from the error patterns.
+func (s *Server) GetQuizStats(w http.ResponseWriter, r *http.Request) {
+	userID, ok := httpx.UserFrom(r.Context())
+	if !ok {
+		writeDomainError(w, &domain.InternalError{Field: "user", Message: "missing user context"})
+		return
+	}
+
+	stats, err := s.quiz.Stats(r.Context(), userID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, quizStatsToWire(stats))
+}
+
 // GetAccessLog handles GET /me/access-log: the user's append-only audit (A9).
 func (s *Server) GetAccessLog(w http.ResponseWriter, r *http.Request, params GetAccessLogParams) {
 	userID, ok := httpx.UserFrom(r.Context())
@@ -581,6 +598,15 @@ func quizQuestionToWire(q analysis.QuizQuestion) QuizQuestion {
 // quizEvaluationToWire converts an evaluation to its wire representation.
 func quizEvaluationToWire(e analysis.QuizEvaluation) QuizEvaluation {
 	return QuizEvaluation{Correct: e.Correct, Feedback: e.Feedback, FollowUp: e.FollowUp}
+}
+
+// quizStatsToWire converts the quiz stats read model to its wire representation.
+func quizStatsToWire(stats analytics.QuizStats) QuizStats {
+	return QuizStats{
+		TotalAttempts:   stats.TotalAttempts,
+		CorrectAttempts: stats.CorrectAttempts,
+		Accuracy:        float32(stats.Accuracy),
+	}
 }
 
 // studySessionToWire converts the study session aggregate to its wire type.

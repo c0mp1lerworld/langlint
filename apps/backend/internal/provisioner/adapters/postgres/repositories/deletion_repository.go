@@ -101,6 +101,10 @@ WHERE practice_id IN (SELECT id FROM practices WHERE user_id = $1)`
 		return mapError("deletion_request", err)
 	}
 
+	if _, err := tx.Exec(ctx, `DELETE FROM quiz_attempts WHERE user_id = $1`, req.UserID.String()); err != nil {
+		return mapError("deletion_request", err)
+	}
+
 	if _, err := tx.Exec(ctx, `DELETE FROM error_metrics WHERE user_id = $1`, r.pseudonymizer.Pseudonymize(req.UserID.String())); err != nil {
 		return mapError("deletion_request", err)
 	}

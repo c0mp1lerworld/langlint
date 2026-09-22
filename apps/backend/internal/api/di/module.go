@@ -51,6 +51,7 @@ func Module() fx.Option {
 			newDeletionRequestRepository,
 			newAccessLogRepository,
 			newStudySessionRepository,
+			newQuizAttemptRepository,
 			newUserEmail,
 			newLLMTimeout,
 			newUnitOfWork,
@@ -132,6 +133,10 @@ func newAccessLogRepository(pool *pgxpool.Pool) storage.AccessLogRepository {
 
 func newStudySessionRepository(pool *pgxpool.Pool) storage.StudySessionRepository {
 	return repositories.NewStudySessionRepository(pool)
+}
+
+func newQuizAttemptRepository(pool *pgxpool.Pool) storage.QuizAttemptRepository {
+	return repositories.NewQuizAttemptRepository(pool)
 }
 
 // newUserEmail exposes the configured single-user email as an identity value.
