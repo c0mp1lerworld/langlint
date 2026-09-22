@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api/errors";
-import { useErrorPatternStats, useProgressSeries } from "@/lib/query/analytics";
+import { useErrorPatternStats, useProgressSeries, useQuizStats } from "@/lib/query/analytics";
 import { useAnalyticsStore } from "@/lib/store/analytics";
 import { expectNoA11yViolations } from "@/test/a11y";
 import { errorPatternAggregate } from "@/test/fixtures";
@@ -11,6 +11,7 @@ import { AnalyticsDashboard } from "./analytics-dashboard";
 vi.mock("@/lib/query/analytics", () => ({
   useErrorPatternStats: vi.fn(),
   useProgressSeries: vi.fn(),
+  useQuizStats: vi.fn(),
 }));
 
 function mockStats(result: unknown): void {
@@ -19,6 +20,10 @@ function mockStats(result: unknown): void {
 
 function mockProgress(result: unknown): void {
   vi.mocked(useProgressSeries).mockReturnValue(result as ReturnType<typeof useProgressSeries>);
+}
+
+function mockQuiz(result: unknown): void {
+  vi.mocked(useQuizStats).mockReturnValue(result as ReturnType<typeof useQuizStats>);
 }
 
 const statsData = {
@@ -35,12 +40,20 @@ const progressEmpty = {
   data: { window: "week", points: [] },
 };
 
+const quizData = {
+  isPending: false,
+  isError: false,
+  error: null,
+  data: { total_attempts: 5, correct_attempts: 4, accuracy: 0.8 },
+};
+
 describe("AnalyticsDashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useAnalyticsStore.setState({ window: "week" });
     mockStats(statsData);
     mockProgress(progressEmpty);
+    mockQuiz(quizData);
   });
 
   it("muestra los estados de carga", () => {
@@ -98,6 +111,12 @@ describe("AnalyticsDashboard", () => {
 
     expect(useAnalyticsStore.getState().window).toBe("day");
     expect(vi.mocked(useErrorPatternStats).mock.calls.at(-1)?.[0]).toBe("day");
+  });
+
+  it("muestra los aciertos del quiz", () => {
+    render(<AnalyticsDashboard />);
+    expect(screen.getByText(/80% de aciertos/)).toBeInTheDocument();
+    expect(screen.getByText(/4 de 5 respuestas correctas/)).toBeInTheDocument();
   });
 
   it("no tiene violaciones de accesibilidad", async () => {

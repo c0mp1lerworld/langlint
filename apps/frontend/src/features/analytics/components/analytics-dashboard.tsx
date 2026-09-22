@@ -1,7 +1,7 @@
 "use client";
 
 import { userMessage } from "@/lib/api/errors";
-import { useErrorPatternStats, useProgressSeries } from "@/lib/query/analytics";
+import { useErrorPatternStats, useProgressSeries, useQuizStats } from "@/lib/query/analytics";
 import { useAnalyticsStore } from "@/lib/store/analytics";
 import { mostFrequentPattern } from "@/lib/utils/error-patterns";
 import { ErrorPatternFrequency } from "./error-pattern-frequency";
@@ -118,6 +118,39 @@ function ProgressSection() {
   );
 }
 
+function QuizSection() {
+  const quiz = useQuizStats();
+
+  if (quiz.isPending) {
+    return (
+      <p role="status" className="text-gray-600">
+        Cargando aciertos del quiz…
+      </p>
+    );
+  }
+
+  if (quiz.isError) {
+    return (
+      <p role="alert" className="rounded-md bg-red-50 p-3 text-red-800">
+        {userMessage(quiz.error)}
+      </p>
+    );
+  }
+
+  return (
+    <p className="text-gray-900">
+      {quiz.data.total_attempts === 0 ? (
+        "Todavía no has respondido preguntas de práctica."
+      ) : (
+        <>
+          {Math.round(quiz.data.accuracy * 100)}% de aciertos · {quiz.data.correct_attempts} de{" "}
+          {quiz.data.total_attempts} respuestas correctas.
+        </>
+      )}
+    </p>
+  );
+}
+
 export function AnalyticsDashboard() {
   return (
     <section aria-labelledby="analytics-heading" className="space-y-6">
@@ -139,6 +172,11 @@ export function AnalyticsDashboard() {
       <div className="space-y-3">
         <h2 className="text-lg font-semibold text-gray-900">Progreso</h2>
         <ProgressSection />
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-lg font-semibold text-gray-900">Quiz</h2>
+        <QuizSection />
       </div>
     </section>
   );
