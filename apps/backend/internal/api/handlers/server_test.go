@@ -37,7 +37,7 @@ func wireID(id domain.ID) PracticeId {
 
 func newTestServer(ctrl *gomock.Controller, practices *mocks.MockPracticeRepository, analyses *mocks.MockAnalysisRepository, metrics *mocks.MockErrorMetricRepository, outbox *mocks.MockOutbox) *Server {
 	practiceSvc := services.NewPracticeService(runUoW(ctrl), practices, analyses, outbox)
-	return NewServer(practiceSvc, services.NewAnalyticsService(metrics, mocks.NewMockProgressRepository(ctrl)), testIdentityService(ctrl), testQuizService(ctrl))
+	return NewServer(practiceSvc, services.NewAnalyticsService(metrics, mocks.NewMockProgressRepository(ctrl)), testIdentityService(ctrl), testQuizService(ctrl), testTutorService(ctrl))
 }
 
 // testQuizService builds a QuizService over throwaway mocks.
@@ -46,6 +46,15 @@ func testQuizService(ctrl *gomock.Controller) *services.QuizService {
 		mocks.NewMockPracticeRepository(ctrl),
 		mocks.NewMockAnalysisRepository(ctrl),
 		mocks.NewMockTutorQuestioner(ctrl),
+	)
+}
+
+// testTutorService builds a StudySessionService over throwaway mocks.
+func testTutorService(ctrl *gomock.Controller) *services.StudySessionService {
+	return services.NewStudySessionService(
+		mocks.NewMockErrorMetricRepository(ctrl),
+		mocks.NewMockStudySessionRepository(ctrl),
+		mocks.NewMockStudySessionGenerator(ctrl),
 	)
 }
 
@@ -318,6 +327,7 @@ func TestServer_ProgressSeries_ReturnsSeries(t *testing.T) {
 		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), progress),
 		testIdentityService(ctrl),
 		testQuizService(ctrl),
+		testTutorService(ctrl),
 	)
 
 	rec := serve(userID,
@@ -374,6 +384,7 @@ func TestServer_ExportData_ReturnsDataExport(t *testing.T) {
 		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockProgressRepository(ctrl)),
 		identitySvc,
 		testQuizService(ctrl),
+		testTutorService(ctrl),
 	)
 
 	rec := serve(userID, srv.ExportData, httptest.NewRequest(http.MethodGet, "/me/data/export", nil))
@@ -411,6 +422,7 @@ func TestServer_ExportData_RepositoryError_Returns500(t *testing.T) {
 		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockProgressRepository(ctrl)),
 		services.NewIdentityService(mustEmail(t, testEmail), practices, mocks.NewMockDeletionRequestRepository(ctrl), mocks.NewMockAccessLogRepository(ctrl)),
 		testQuizService(ctrl),
+		testTutorService(ctrl),
 	)
 
 	rec := serve(userID, srv.ExportData, httptest.NewRequest(http.MethodGet, "/me/data/export", nil))
@@ -432,6 +444,7 @@ func TestServer_DeleteData_NoPending_Returns202(t *testing.T) {
 		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockProgressRepository(ctrl)),
 		services.NewIdentityService(mustEmail(t, testEmail), mocks.NewMockPracticeRepository(ctrl), deletions, mocks.NewMockAccessLogRepository(ctrl)),
 		testQuizService(ctrl),
+		testTutorService(ctrl),
 	)
 
 	rec := serve(userID, srv.DeleteData, httptest.NewRequest(http.MethodDelete, "/me/data", nil))
@@ -453,6 +466,7 @@ func TestServer_DeleteData_AlreadyPending_Returns202Idempotent(t *testing.T) {
 		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockProgressRepository(ctrl)),
 		services.NewIdentityService(mustEmail(t, testEmail), mocks.NewMockPracticeRepository(ctrl), deletions, mocks.NewMockAccessLogRepository(ctrl)),
 		testQuizService(ctrl),
+		testTutorService(ctrl),
 	)
 
 	rec := serve(userID, srv.DeleteData, httptest.NewRequest(http.MethodDelete, "/me/data", nil))
@@ -478,6 +492,7 @@ func TestServer_GetAccessLog_ReturnsPage(t *testing.T) {
 		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockProgressRepository(ctrl)),
 		services.NewIdentityService(mustEmail(t, testEmail), mocks.NewMockPracticeRepository(ctrl), mocks.NewMockDeletionRequestRepository(ctrl), accessLog),
 		testQuizService(ctrl),
+		testTutorService(ctrl),
 	)
 
 	rec := serve(userID, func(w http.ResponseWriter, r *http.Request) {
@@ -637,6 +652,7 @@ func TestServer_CreateQuizQuestion_ReturnsQuestion(t *testing.T) {
 		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockProgressRepository(ctrl)),
 		testIdentityService(ctrl),
 		services.NewQuizService(practices, analyses, questioner),
+		testTutorService(ctrl),
 	)
 
 	router := chi.NewRouter()
@@ -682,6 +698,7 @@ func TestServer_EvaluateQuizAnswer_ReturnsEvaluation(t *testing.T) {
 		services.NewAnalyticsService(mocks.NewMockErrorMetricRepository(ctrl), mocks.NewMockProgressRepository(ctrl)),
 		testIdentityService(ctrl),
 		services.NewQuizService(practices, analyses, questioner),
+		testTutorService(ctrl),
 	)
 
 	router := chi.NewRouter()

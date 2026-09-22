@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 func resetDB(t *testing.T) {
 	t.Helper()
 	_, err := pool.Exec(context.Background(),
-		"TRUNCATE practices, analyses, error_metrics, outbox_events, deletion_requests, access_events")
+		"TRUNCATE practices, analyses, error_metrics, outbox_events, deletion_requests, access_events, study_sessions")
 	require.NoError(t, err)
 }
 

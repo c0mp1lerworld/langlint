@@ -29,6 +29,7 @@ import (
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/analysis"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/analytics"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/identity"
+	"github.com/c0mp1lerworld/langlint/backend/internal/domain/tutor"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/httpx"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/testdb"
 )
@@ -84,6 +85,21 @@ func (fakeQuestioner) Evaluate(_ context.Context, _ ports.EvaluateRequest) (anal
 	return analysis.QuizEvaluation{Correct: true, Feedback: "¡Correcto!", FollowUp: "¿Por qué no 'in'?"}, nil
 }
 
+// fakeStudySessionGenerator returns deterministic session content without the LLM.
+type fakeStudySessionGenerator struct{}
+
+func (fakeStudySessionGenerator) Generate(_ context.Context, _ ports.StudySessionRequest) (ports.StudySessionContent, error) {
+	return ports.StudySessionContent{
+		Theory: "Regla del tiempo verbal: el pasado simple se usa para acciones terminadas.",
+		Traps: []tutor.Trap{
+			{Code: domain.ErrorPatternCodeTenseAgreement, Description: "Confundir presente y pasado simple."},
+		},
+		Exercises: []tutor.Exercise{
+			{Kind: tutor.ExerciseKindFill, Prompt: "Yesterday I ___ (run) to school.", Answer: "ran"},
+		},
+	}, nil
+}
+
 func newRouter(t *testing.T, pool *pgxpool.Pool, userID domain.ID) http.Handler {
 	t.Helper()
 
@@ -130,7 +146,7 @@ func newRouter(t *testing.T, pool *pgxpool.Pool, userID domain.ID) http.Handler 
 	dispatcher.Run(ctx)
 	go relay.Run(ctx, 25*time.Millisecond)
 
-	server := httpapi.NewServer(practiceSvc, analyticsSvc, identitySvc, services.NewQuizService(practices, analyses, fakeQuestioner{}))
+	server := httpapi.NewServer(practiceSvc, analyticsSvc, identitySvc, services.NewQuizService(practices, analyses, fakeQuestioner{}), services.NewStudySessionService(metrics, repositories.NewStudySessionRepository(pool), fakeStudySessionGenerator{}))
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	router := httpx.NewRouter(log)
 	router.Use(httpx.UserResolver(userID))
@@ -277,5 +293,27 @@ func TestHTTPFlow_CreateAnalyzePollAnalytics(t *testing.T) {
 	resp.Body.Close()
 	if !evaluation.Correct || evaluation.Feedback == "" {
 		t.Fatalf("quiz evaluation = %+v", evaluation)
+	}
+
+	// [6] The adaptive tutor generates a study session from the aggregated
+	// weakness profile (PRODUCT_DOMAIN §12.1).
+	resp, err = http.Post(api.URL+"/study-sessions", "application/json", nil)
+	if err != nil {
+		t.Fatalf("POST study-sessions error = %v", err)
+	}
+	if resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST study-sessions status = %d, want 201 (%s)", resp.StatusCode, body)
+	}
+	var session httpapi.StudySession
+	if err := json.NewDecoder(resp.Body).Decode(&session); err != nil {
+		t.Fatalf("decode study session: %v", err)
+	}
+	resp.Body.Close()
+	if session.Theory == "" || len(session.Traps) != 1 || len(session.Exercises) != 1 {
+		t.Fatalf("study session = %+v, want theory + 1 trap + 1 exercise", session)
+	}
+	if len(session.Weaknesses) != 1 || session.Weaknesses[0].Code != httpapi.ErrorPatternCode(domain.ErrorPatternCodeTenseAgreement) {
+		t.Fatalf("study session weaknesses = %+v, want tense_agreement", session.Weaknesses)
 	}
 }
