@@ -23,9 +23,9 @@
 
 ## 8.3 Generación de sesión de estudio
 
-- [ ] `8.3.1` Generar la sesión con IA (Structured Outputs, reusando el patrón del `LLMExtractor`).
-- [ ] `8.3.2` Contenido de la sesión: teoría resumida + 3 trampas comunes del usuario + 5 ejercicios interactivos personalizados.
-- [ ] `8.3.3` Anonimizar antes de enviar al LLM (A8) y validar el output contra su schema.
+- [x] `8.3.1` Generar la sesión con IA (Structured Outputs, reusando el patrón del `LLMExtractor`).
+- [x] `8.3.2` Contenido de la sesión: teoría resumida + 3 trampas comunes del usuario + 5 ejercicios interactivos personalizados.
+- [x] `8.3.3` Anonimizar antes de enviar al LLM (A8) y validar el output contra su schema.
 
 ## 8.4 Integración sin rupturas
 

@@ -4,6 +4,33 @@
 
 ---
 
+## 2026-09-22 — Fase 8.3: motor de generación de sesión (8.3.1–8.3.3)
+
+**Estado**: bloque 8.3 completado. Motor de generación de sesiones de estudio con IA (`ports.StudySessionGenerator` + `OpenAIStudySessionGenerator` con Structured Outputs estricto, `temperature=0`, manejo de truncado y validación local). **Solo motor**: sin DI, sin mocks, sin persistencia ni endpoint (8.4). Sin cambio de wire (A12). `go build/vet`, `go test -race -count=1 ./...` (Tier 1+2) y `go test -race -count=1 -tags=integration ./...` (Tier 3) en verde; `gofmt -l` limpio.
+
+**Hecho**:
+- `8.3.1` `ports.StudySessionGenerator` (`Generate(ctx, StudySessionRequest) (StudySessionContent, error)`) reusando el patrón del `LLMExtractor`/`TutorQuestioner`; `OpenAIStudySessionGenerator` (adaptador) con Structured Outputs estricto + `temperature=0` (greedy) + `finish_reason=length → *domain.LLMOutputTruncatedError`.
+- `8.3.2` Contenido: schema estricto `{theory, traps:[{code,description}], exercises:[{kind,prompt,answer}]}`; prompt que pide teoría resumida (español) + exactamente 3 trampas comunes + 5 ejercicios personalizados; los enums `code` (reutiliza `errorPatternCodeEnum()`) y `kind` (`open|fill`) derivan del dominio.
+- `8.3.3` Validación local (`buildSessionContent`): theory no vacío; cada trap vía `tutor.NewTrap`, cada ejercicio vía `tutor.NewExercise`; violación → `invalidOutput()` (`*domain.LLMUnavailableError`, A5). **Anonimización (A8) por construcción**: la entrada es el `WeaknessProfile` (códigos/severidades/recuentos agregados, sin texto crudo), así que no hay PII que enviar; blindado con test de prompt que verifica solo códigos+severidades+recuentos.
+
+**Decisiones**:
+- **Solo motor (confirmado por el humano)**: 8.3 entrega el port + adaptador + schema + validación, testeado con proveedor fake (`httptest`); el consumo real (endpoint `POST /v1/study-sessions`, persistencia y frontend) llega en 8.4.
+- **`StudySessionContent` como DTO en `ports/`** (no en `domain/tutor`): el adaptador devuelve solo el contenido generado (theory/traps/exercises); el `StudySession` agregado lo ensamblará el service de 8.4 con `tutor.NewStudySession` (id, user, status, timestamps).
+- **Sin hard-enforce de "exactamente 3/5" en código**: el prompt lo instruye (como "at most three entries" del extractor); la validación local solo exige no-vacío (invariante del dominio).
+- **A8 por construcción**: el tutor consume agregados (PRODUCT_DOMAIN §12.1), no datos crudos, así que anonimizar es trivial (no hay texto libre). Documentado y testado.
+
+**Verificación** (local):
+- `go build ./...` · `go vet ./...` → OK.
+- `go test -race -count=1 ./...` → OK; `go test -race -count=1 -tags=integration ./...` → OK.
+- Cobertura adaptador `llm` **94.6 %** (≥70 %); `gofmt -l` limpio.
+- Sin `pnpm generate` (sin cambio de wire); sin mocks nuevos (ningún service consume el port todavía).
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: Fase 8.4 — integración sin rupturas: endpoint `POST /v1/study-sessions` (A12, primero `api.yaml`), `StudySessionService` (lee el perfil agregado, genera con el motor y persiste), repositorio + migración `study_sessions`, mocks del port y frontend (`study-session`). Después cerrar el Gate de Fase 8.
+
+---
+
 ## 2026-09-22 — Fase 8.2: detección de debilidades (8.2.1–8.2.3)
 
 **Estado**: bloque 8.2 completado. `analytics/` emite `WeaknessDetected` vía outbox cuando la frecuencia de un patrón cruza el umbral; `tutor/` se suscribe como `EventHandler` y construye un `tutor.WeaknessProfile` consultando los agregados. Sin cambio de wire (A12; los eventos de dominio son Go-only) y sin tocar el dispatcher/relay existentes. `go build/vet`, `go test -race -count=1 ./...` (Tier 1+2) y `go test -race -count=1 -tags=integration ./...` (Tier 3, incluido el e2e HTTP) en verde; `gofmt -l` limpio.
