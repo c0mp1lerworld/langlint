@@ -50,12 +50,14 @@ func Module() fx.Option {
 			newProgressRepository,
 			newDeletionRequestRepository,
 			newAccessLogRepository,
+			newStudySessionRepository,
 			newUserEmail,
 			newLLMTimeout,
 			newUnitOfWork,
 			newOutbox,
 			newExtractor,
 			newTutorQuestioner,
+			newStudySessionGenerator,
 			newDispatcher,
 			newRelay,
 		),
@@ -65,6 +67,7 @@ func Module() fx.Option {
 			services.NewAnalyticsService,
 			services.NewIdentityService,
 			services.NewQuizService,
+			services.NewStudySessionService,
 			newAnalysisRunner,
 			event_handlers.NewAnalysisRequestedHandler,
 			event_handlers.NewAnalysisCompletedHandler,
@@ -127,6 +130,10 @@ func newAccessLogRepository(pool *pgxpool.Pool) storage.AccessLogRepository {
 	return repositories.NewAccessLogRepository(pool)
 }
 
+func newStudySessionRepository(pool *pgxpool.Pool) storage.StudySessionRepository {
+	return repositories.NewStudySessionRepository(pool)
+}
+
 // newUserEmail exposes the configured single-user email as an identity value.
 func newUserEmail(cfg config.ServerConfig) identity.Email {
 	return cfg.UserEmail
@@ -160,6 +167,15 @@ func newTutorQuestioner(cfg config.OpenAIConfig) ports.TutorQuestioner {
 		option.WithBaseURL(llm.BaseURLOrDefault(cfg.BaseURL)),
 	}
 	return llm.NewOpenAITutorQuestioner(openai.NewClient(options...), cfg.Model)
+}
+
+// newStudySessionGenerator builds the study-session engine over the same provider.
+func newStudySessionGenerator(cfg config.OpenAIConfig) ports.StudySessionGenerator {
+	options := []option.RequestOption{
+		option.WithAPIKey(cfg.APIKey),
+		option.WithBaseURL(llm.BaseURLOrDefault(cfg.BaseURL)),
+	}
+	return llm.NewOpenAIStudySessionGenerator(openai.NewClient(options...), cfg.Model)
 }
 
 func newDispatcher() *events.InMemoryEventDispatcher {

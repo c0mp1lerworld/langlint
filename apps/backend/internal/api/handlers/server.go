@@ -13,6 +13,7 @@ import (
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/analytics"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/identity"
 	"github.com/c0mp1lerworld/langlint/backend/internal/domain/practice"
+	"github.com/c0mp1lerworld/langlint/backend/internal/domain/tutor"
 	"github.com/c0mp1lerworld/langlint/backend/internal/shared/httpx"
 )
 
@@ -26,13 +27,14 @@ type Server struct {
 	analytics *services.AnalyticsService
 	identity  *services.IdentityService
 	quiz      *services.QuizService
+	tutor     *services.StudySessionService
 }
 
 var _ ServerInterface = (*Server)(nil)
 
 // NewServer wires the HTTP handlers through the application services.
-func NewServer(practices *services.PracticeService, analytics *services.AnalyticsService, identity *services.IdentityService, quiz *services.QuizService) *Server {
-	return &Server{practices: practices, analytics: analytics, identity: identity, quiz: quiz}
+func NewServer(practices *services.PracticeService, analytics *services.AnalyticsService, identity *services.IdentityService, quiz *services.QuizService, tutor *services.StudySessionService) *Server {
+	return &Server{practices: practices, analytics: analytics, identity: identity, quiz: quiz, tutor: tutor}
 }
 
 // CreatePractice handles POST /practices.
@@ -231,6 +233,33 @@ func (s *Server) EvaluateQuizAnswer(w http.ResponseWriter, r *http.Request, prac
 		return
 	}
 	writeJSON(w, http.StatusOK, quizEvaluationToWire(evaluation))
+}
+
+// CreateStudySession handles POST /study-sessions: it generates a personalized
+// study session from the learner's aggregated weakness profile (PRODUCT_DOMAIN
+// §12.1). The LLM call is synchronous and under demand.
+func (s *Server) CreateStudySession(w http.ResponseWriter, r *http.Request, params CreateStudySessionParams) {
+	userID, ok := httpx.UserFrom(r.Context())
+	if !ok {
+		writeDomainError(w, &domain.InternalError{Field: "user", Message: "missing user context"})
+		return
+	}
+
+	window := analytics.WindowWeek
+	if params.Window != nil {
+		window = analytics.Window(*params.Window)
+		if !window.IsValid() {
+			writeDomainError(w, &domain.ValidationError{Field: "window", Message: "must be day, week or month"})
+			return
+		}
+	}
+
+	session, err := s.tutor.Generate(r.Context(), userID, window)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, studySessionToWire(session))
 }
 
 // GetErrorPatternStats handles GET /analytics/error-patterns.
@@ -552,6 +581,44 @@ func quizQuestionToWire(q analysis.QuizQuestion) QuizQuestion {
 // quizEvaluationToWire converts an evaluation to its wire representation.
 func quizEvaluationToWire(e analysis.QuizEvaluation) QuizEvaluation {
 	return QuizEvaluation{Correct: e.Correct, Feedback: e.Feedback, FollowUp: e.FollowUp}
+}
+
+// studySessionToWire converts the study session aggregate to its wire type.
+func studySessionToWire(s *tutor.StudySession) StudySession {
+	weaknesses := make([]WeaknessEntry, 0, len(s.Profile.Entries))
+	for _, entry := range s.Profile.Entries {
+		weaknesses = append(weaknesses, WeaknessEntry{
+			Code:       ErrorPatternCode(entry.Code),
+			Severity:   ErrorPatternSeverity(entry.Severity),
+			Count:      entry.Count,
+			LastSeenAt: entry.LastSeenAt,
+		})
+	}
+	traps := make([]StudySessionTrap, 0, len(s.Traps))
+	for _, trap := range s.Traps {
+		traps = append(traps, StudySessionTrap{
+			Code:        ErrorPatternCode(trap.Code),
+			Description: trap.Description,
+		})
+	}
+	exercises := make([]StudySessionExercise, 0, len(s.Exercises))
+	for _, exercise := range s.Exercises {
+		exercises = append(exercises, StudySessionExercise{
+			Kind:   ExerciseKind(exercise.Kind),
+			Prompt: exercise.Prompt,
+			Answer: exercise.Answer,
+		})
+	}
+	return StudySession{
+		Id:         openapi_types.UUID(s.ID),
+		UserId:     openapi_types.UUID(s.UserID),
+		Weaknesses: weaknesses,
+		Theory:     s.Theory,
+		Traps:      traps,
+		Exercises:  exercises,
+		Status:     StudySessionStatus(s.Status),
+		CreatedAt:  s.CreatedAt,
+	}
 }
 
 // errorPatternToWire converts a domain error pattern to its wire representation.
