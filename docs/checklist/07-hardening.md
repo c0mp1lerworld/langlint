@@ -32,11 +32,11 @@
 
 ## ✅ Gate de salida
 
-- [ ] CI verde en PR (lint + test + build de todo el monorepo). *(requiere el primer run real en GitHub; no corre en local)*
-- [ ] `pnpm test-integration` verde en nightly (Tier 3 con testcontainers). *(idem)*
+- [x] CI verde en PR (lint + test + build de todo el monorepo). *(primer run real en GitHub confirmado sin errores — 2026-09-22)*
+- [x] `pnpm test-integration` verde en nightly (Tier 3 con testcontainers). *(idem, sin errores en el primer run)*
 - [x] `gosec` + `govulncheck` sin hallazgos críticos. *(verificado en local: 0 hallazgos)*
 - [x] Documentación canónica completa y consistente con los manifiestos.
-- [ ] **Definition of Done del MVP** (PRODUCT_DOMAIN §11) íntegramente cumplida. *(alcance funcional completo; el cierre formal depende del gate de CI)*
+- [x] **Definition of Done del MVP** (PRODUCT_DOMAIN §11) íntegramente cumplida. *(alcance funcional completo; el gate de CI quedó verde)*
 
 ## Fuente normativa
 

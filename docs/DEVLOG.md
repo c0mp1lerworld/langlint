@@ -4,6 +4,35 @@
 
 ---
 
+## 2026-09-22 — Cierre del `9.7` (analytics del quiz) + Gate de Fase 7 en verde
+
+**Estado**: el `9.7` (diferido por diseño desde Fase 9) queda **cerrado** con una **métrica separada**, y el *Gate de salida* de Fase 7 se marca en **verde** tras el primer run real de CI en GitHub sin errores (confirmado por el humano). Contrato `3.4.0` (`GET /v1/analytics/quiz`). `go build/vet`, `go test -race -count=1 ./...` (Tier 1+2) y `go test -race -count=1 -tags=integration ./...` (Tier 3 + e2e) en verde; `pnpm generate` idempotente, `pnpm lint` (contrato válido, 7 warnings), `pnpm test` (frontend **99**), `pnpm typecheck`, `pnpm build` y `pnpm test:e2e` en verde; `gofmt -l` limpio.
+
+**Hecho (`9.7`)**:
+- **Métrica separada** (decisión del diferido): ledger append-only `quiz_attempts` (migración `000006`) que **no** entra en `refresh-aggregates` (que reconstruye `error_metrics` solo desde `analyses`), evitando la inconsistencia señalada en el diferido.
+- Dominio `analytics.QuizAttempt` (append-only, ID UUID v7) + `QuizStats`/`BuildQuizStats` (puro, `accuracy = correct/total`, vacío ⇒ 1) con 100 % de cobertura nueva.
+- Puerto `storage.QuizAttemptRepository` (`Append`/`ListByUser`) + adaptador `PostgresQuizAttemptRepository` + mock (Makefile).
+- `QuizService.Evaluate` registra el intento (acierto/fallo) tras la evaluación; `QuizService.Stats` deriva `QuizStats` on-read. `NewQuizService` gana el puerto `attempts` (A2); DI con `newQuizAttemptRepository`.
+- Handler `GetQuizStats` (`GET /analytics/quiz`) + `quizStatsToWire`; `analytics_service.go` sin cambios.
+- **Privacidad (A9)**: `DeletionRepository.Execute` borra `quiz_attempts` por `user_id`; el test `TestPrivacy_RawDataSeparatedFromAnalytics` lo cubre.
+- Frontend: `useQuizStats` + sección "Quiz" en `analytics-dashboard.tsx` (aciertos/aciertos-totales/precisión, F11) + test.
+
+**Verificación del endpoint** (manual, contra el Postgres de dev `langlint-postgres` + LLM real):
+- `GET /analytics/quiz` → `200 {"accuracy":1,"correct_attempts":0,"total_attempts":0}`.
+- `POST /study-sessions?window=week` → sesión real generada por gpt-4o-mini (teoría + 3 trampas + 5 ejercicios) y persistida en `study_sessions` (1 fila). Las migraciones `000005`/`000006` se aplicaron a la base de dev al arrancar.
+
+**Decisiones**:
+- **Registro directo (sin outbox)**: el intento es un ledger append-only single-user sin consumidor cross-context; el fallo al persistir se propaga (no se pierde silenciosamente el acierto/fallo).
+- **Sin `code` por intento**: el modelo no informa a qué `ErrorPattern` ancla la pregunta (el fragmento puede tener varios), así que la métrica es agregada por usuario (aciertos/fallos totales), no por patrón.
+- **`quiz_attempts` sin FK a `practices`** (documentado): los intentos sobreviven al soft-delete de la práctica (como `access_events`) y solo los purga el olvido.
+- **`GET /analytics/quiz` sin `window`**: métrica acumulada (la serie temporal no aporta aquí); si se pide, se añade bucketing como en `progress`.
+
+**Bloqueos**: ninguno. (El contrato pasa de 6 a 7 warnings de redocly por el nuevo endpoint sin 4xx — no bloqueante.)
+
+**Próximo paso**: opcional — `GET /v1/study-sessions` (historial) o abordar la deuda de seguridad `SD-3`.
+
+---
+
 ## 2026-09-22 — Fase 8.4: integración sin rupturas (8.4.1–8.4.3) — Gate de Fase 8
 
 **Estado**: bloque 8.4 completado y **Gate de Fase 8 en verde**. El tutor adaptativo queda integrado end-to-end sin romper ninguno de los 4 bounded contexts del MVP: endpoint `POST /v1/study-sessions` (A12, contrato `3.3.0`), `StudySessionService` + repositorio/migración `study_sessions` + mocks, y feature frontend `study-session`. `go build/vet`, `go test -race -count=1 ./...` (Tier 1+2) y `go test -race -count=1 -tags=integration ./...` (Tier 3 + e2e HTTP) en verde; `pnpm generate` idempotente, `pnpm lint` (contrato válido, 6 warnings conocidos), `pnpm test` (frontend **98**), `pnpm typecheck`, `pnpm build` y `pnpm test:e2e` en verde; `gofmt -l` limpio.

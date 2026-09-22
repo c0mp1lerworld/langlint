@@ -20,13 +20,12 @@
 ## 9.6–9.7 Preguntas generadas por IA (práctica activa)
 
 - [x] `9.6` Puerto `TutorQuestioner` (tipos `open` y `fill`, la IA elige) + endpoints `POST .../quiz` y `POST .../quiz/answer` con evaluación y seguimiento socrático acotado. _(`internal/shared`-style port en `api/ports`; adapter `OpenAITutorQuestioner` con Structured Outputs; `QuizService`; UI `practice-quiz.tsx` como mutaciones on-demand. `mcq` descartado: entrena reconocimiento, no producción.)_
-- [ ] `9.7` Integración con analytics: registrar aciertos/fallos del quiz para alimentar el repaso. _Diferido con criterio: incrementar `error_metrics` desde el quiz sería inconsistente porque `refresh-aggregates` la reconstruye solo desde `analyses` (el incremento se perdería). Requiere una fuente de verdad propia (tabla/evento de intentos de quiz) que entre en la reconciliación, o una métrica separada._
-
+- [x] `9.7` Integración con analytics: registrar aciertos/fallos del quiz para alimentar el repaso. _Cerrado (2026-09-22) con una **métrica separada**: ledger append-only `quiz_attempts` (fuente de verdad propia, no entra en `refresh-aggregates`), `analytics.QuizAttempt`/`QuizStats` (dominio puro), registro en `QuizService.Evaluate`, `GET /analytics/quiz`, purga en `execute-deletions` (A9) y sección "Quiz" en el dashboard._
 ---
 
 ## ✅ Gate de salida
 
-> Cubre los items `9.1`–`9.6`. El `9.7` queda diferido con criterio (ver arriba).
+> Cubre los items `9.1`–`9.7` (el `9.7` se cerró el 2026-09-22 con una métrica separada).
 
 - [x] `go build/vet/test -race` (+ `-tags=integration`) en verde.
 - [x] `pnpm generate` idempotente y `pnpm lint` (contrato incluido) en verde.
