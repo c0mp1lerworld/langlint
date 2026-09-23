@@ -4,6 +4,30 @@
 
 ---
 
+## 2026-09-22 — Fix: desalineación de fragmentos (elipsis, transición y sobre-corrección)
+
+**Estado**: corregida la desalineación fuente↔borrador↔corrección reportada por el humano en los análisis importados. El diagnóstico distinguió **tres mecanismos** en el extractor (`internal/api/adapters/llm/prompt.go`), no un bug del import: (1) los `...` de continuación se convertían en fragmento propio, (2) la subdivisión de run-ons despegaba un "Then," de 1 palabra, y (3) gpt-4o-mini sobre-corregía (incluía la frase siguiente). `go build/vet`, `go test -race -count=1 ./...` (Tier 1+2) y `-tags=integration` (Tier 3 + e2e) en verde; los 16 análisis regenerados con `cmd/import -reset -attempts 4` (0 fallos, con reintentos en 2 prácticas) y `refresh-aggregates` (21 métricos).
+
+**Hecho**:
+- `stripEllipsis`/`trimLeadingEllipsis`/`trimTrailingEllipsis` en `prompt.go`: quita `...`/`…` de inicio/fin del borrador antes de segmentar (un `.` final normal se conserva); ya no emerge un fragmento "…".
+- `splitAtClauseBoundaries` con `minClauseWords = 3`: no corta en "coma + conector" si la cláusula inicial queda con < 3 palabras, así "Then," permanece unido a su cláusula.
+- `systemPrompt` endurecido: "corrige SOLO esa frase; nunca incluyas frases anterior/posterior" + `source_es`/`correction` "solo la cláusula que cubre esta frase, no la fuente completa".
+- `validate.go`: guard `overCorrects` — rechaza (`invalidOutput`) cuando `len(SplitSentences(correction)) > len(SplitSentences(user_draft)) + 1` (tolerancia +1 para el split legítimo de un run-on). El retry del import (y del flujo) reintenta estos rechazos; `cmd/import -attempts` ya acota el número de intentos (sin bucle infinito).
+- Tests nuevos: `stripEllipsis` (casos), `splitSegments` con `...` inicial, `splitSegments` de borradores cortos ("Por supuesto.", "Yes.") → 1 segmento, `splitRunOns` no despega "Then,", y `validate` sobre-corrección→inválido / run-on→2 frases→válido.
+
+**Verificación (DB real)**: sin fragmentos degenerados (`user_draft` ≤8 chars o solo puntuación = 0 filas); el caso "Ayer estaba hablando" ya no sobre-corrige (la corrección del fragmento 1 termina en "put aside", sin el "Then, I left him…" de la frase 2) y `source_es` es el tramo correcto (no la fuente completa).
+
+**Decisiones**:
+- **Determinista primero, prompt después**: se arregla en Go (segmentación + validación) antes que depender del modelo; el prompt se refuerza como segunda capa.
+- **`minClauseWords = 3`** aplica solo a frases ≥25 palabras (run-ons), así que los borradores cortos legítimos nunca se ven afectados.
+- **Guard de sobre-corrección con tolerancia +1**: un run-on puede corregirse legítimamente en 2 frases; solo se rechaza cuando la corrección abarca más frases que el borrador + 1.
+
+**Riesgo residual (honesto)**: gpt-4o-mini puede fallar puntualmente en frases fuente=1 vs borrador=N muy dispares; queda como `failed`/reintento, no como bug de código.
+
+**Próximo paso**: uso real. Sugerido el opcional `GET /v1/study-sessions` (historial) o abordar la deuda `SD-3`.
+
+---
+
 ## 2026-09-22 — Migración de prácticas manuales (tool `cmd/import`)
 
 **Estado**: importadas **16 prácticas reales** con sus fechas (2026-09-11 ×5, 09-12 ×7, 09-15 ×4), análisis regenerado con el LLM actual y analytics reconstruidos vía `refresh-aggregates`. Se añade el tool one-off `cmd/import` (commiteado) con TDD en el parser; `import.json` queda **gitignored** (datos personales). `go build/vet`, `go test -race ./cmd/import/...` en verde.
