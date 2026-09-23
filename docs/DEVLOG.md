@@ -4,6 +4,33 @@
 
 ---
 
+## 2026-09-22 — Migración de prácticas manuales (tool `cmd/import`)
+
+**Estado**: importadas **16 prácticas reales** con sus fechas (2026-09-11 ×5, 09-12 ×7, 09-15 ×4), análisis regenerado con el LLM actual y analytics reconstruidos vía `refresh-aggregates`. Se añade el tool one-off `cmd/import` (commiteado) con TDD en el parser; `import.json` queda **gitignored** (datos personales). `go build/vet`, `go test -race ./cmd/import/...` en verde.
+
+**Hecho**:
+- `cmd/import` (`main.go` + `import_test.go`): lee un JSON (`{date, source_text, draft_text, target_rules}`), valida vía value objects del dominio (máx 5 reglas, 2000 runes, verb no vacío), ordena por fecha (mediodía UTC) y por cada práctica: `practice.NewPractice(..., fecha)` → `Save`, anonimiza (A8, reusa `services.Anonymize*`) + `LLMExtractor.Extract` (reusa `llm.NewOpenAIExtractor`, `temperature=0`), `analysis.NewAnalysis(..., fecha)` → `Complete` → `Save`, y `StartAnalysis`+`MarkCompleted` con la fecha real. Flags: `-input`, `-reset` (TRUNCATE de las 6 tablas de datos, conserva auditoría), `-validate` (dry-run), `-attempts` (reintentos) y `-timeout`.
+- **Reintentos** (`-attempts`, default 3): gpt-4o-mini a `temperature=0` emite *ocasionalmente* un fragmento que falla la validación local estricta (p. ej. `es_contrast`/`exception` vacíos); el retry con backoff de 3s lo resuelve. De los 16, 2 fallaron transitoriamente y pasaron al reintentar.
+- Tras importar, `go run ./cmd/provisioner refresh-aggregates` reconstruyó `error_metrics` (**18 métricos**, 6 códigos distintos; `last_seen_at` = 2026-09-15). `progress` (on-read) refleja 2 semanas históricas.
+
+**Verificación (endpoint real, Postgres dev + LLM real)**:
+- `GET /analytics/error-patterns?window=week` → `tense_agreement` 47, `infinitive_conjugation` 22, `lexical_choice` 16, `word_order` 7, `pronoun_possession` 2, `preposition_infinitive` 1.
+- `GET /analytics/progress?window=week` → 2 puntos (semana del 07-09 y del 14-09).
+- `GET /practices?limit=100` → `total: 16`.
+- Estado DB: 16 `completed`, 0 `failed`, 16 `analyses`.
+
+**Decisiones / notas**:
+- **No se reusa `AnalysisService`**: usa `now()` interno y emite eventos del outbox; el import back-datea `created_at`/`updated_at`, así que ensambla `Practice`/`Analysis` directo vía dominio + repos (A2, A4).
+- **Feedback regenerado, no migrado**: solo había textos (source/draft/reglas); el análisis se genera con el prompt/esquema actual (los fragments anonimizan nombres/emails como en la app).
+- **`import.json` gitignored**: contiene el historial de estudio real del dueño (A9/A8); no se commitea.
+- **Matiz de `accuracy`**: puede verse en 0% cuando `error_count > total_fragments` (un fragmento puede acumular 2-3 patrones de error); es la fórmula previa (1 − errores/fragmentos con clamp a 0), no un bug del import.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: el perfil real ya alimenta el tutor; sugerido arrancar el uso real (`POST /study-sessions`), o el opcional `GET /v1/study-sessions` (historial) / deuda `SD-3`.
+
+---
+
 ## 2026-09-22 — Cierre del `9.7` (analytics del quiz) + Gate de Fase 7 en verde
 
 **Estado**: el `9.7` (diferido por diseño desde Fase 9) queda **cerrado** con una **métrica separada**, y el *Gate de salida* de Fase 7 se marca en **verde** tras el primer run real de CI en GitHub sin errores (confirmado por el humano). Contrato `3.4.0` (`GET /v1/analytics/quiz`). `go build/vet`, `go test -race -count=1 ./...` (Tier 1+2) y `go test -race -count=1 -tags=integration ./...` (Tier 3 + e2e) en verde; `pnpm generate` idempotente, `pnpm lint` (contrato válido, 7 warnings), `pnpm test` (frontend **99**), `pnpm typecheck`, `pnpm build` y `pnpm test:e2e` en verde; `gofmt -l` limpio.
