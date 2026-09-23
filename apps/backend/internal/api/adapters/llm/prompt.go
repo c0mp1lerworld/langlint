@@ -46,6 +46,7 @@ var errorPatternSeverities = []domain.ErrorPatternSeverity{
 // alignment when the source and the draft have different sentence counts.
 const systemPrompt = `You are a native English teacher and professional editor helping a Spanish-speaking learner improve their written English.
 You receive the full Spanish source text and ONE English sentence the learner wrote as part of their draft. Produce exactly one fragment for that sentence: the Spanish source it translates, the corrected English, and a structured explanation of the mistakes that need review.
+Correct ONLY that one sentence: never include in the correction or in source_es any content from the sentences that come before or after it in the draft.
 The correction is in English. Write every explanation field in Spanish (the learner's native language).
 Explain as an experienced teacher would: never give a generic note. Name the rule, explain the why, show how it is built, give a counterexample, say when it does NOT apply, contrast with Spanish, and offer alternatives.
 A fragment may have several entries of each kind; never merge unrelated issues into one entry. Keep every field to one short sentence (max 20 words): this is a report, not an essay.
@@ -58,9 +59,9 @@ Error pattern severities (severity): %s
 
 Respond with ONLY a JSON object of the shape {"fragments": [ <fragment> ]} containing exactly one fragment. Do not wrap it in markdown code fences and do not add any prose.
 The fragment is an object with exactly these keys:
-- source_es (string): the Spanish source that this English sentence translates, copied verbatim from the source text. Include every Spanish sentence or clause it covers.
+- source_es (string): the Spanish source that this English sentence translates, copied verbatim from the source text. Copy only the clause(s) this sentence actually covers; never copy the whole source when this sentence is only part of it.
 - user_draft (string): the learner's English sentence, copied verbatim.
-- correction (string): the corrected English sentence.
+- correction (string): the corrected English sentence (this sentence only, never the surrounding sentences).
 - target_verb_reviews (array of objects, in Spanish): one entry per target verb or verb construction in the sentence that needs review; never collapse several verb problems into one entry. Return at most three entries; if there are more, keep the three most important. Use an empty array when there is no relevant target verb. Each object has keys:
   - verb (string): the target verb as it appears in the draft.
   - correct_form (string): its correct form in this context.
@@ -175,6 +176,12 @@ func SplitSentences(text string) []string {
 // sentence is handled as a single fragment.
 const runOnMinWords = 25
 
+// minClauseWords is the minimum word count a clause must have before a
+// comma+connector (or semicolon) boundary is accepted as a split point. It keeps
+// a bare transition word such as "Then," or "However," from becoming a
+// degenerate fragment of its own (fix de alineación, DEVLOG 2026-09-22).
+const minClauseWords = 3
+
 // clauseConnectors are the words that, after a comma, mark a clause boundary. A
 // bare conjunction without a comma is not a boundary ("black and white").
 var clauseConnectors = map[string]bool{
@@ -188,12 +195,42 @@ var clauseConnectors = map[string]bool{
 // sentences first, then long run-ons subdivided by sub-clauses. The order and
 // the coverage of the draft are preserved by construction (BUG-001).
 func splitSegments(text string) []string {
-	sentences := SplitSentences(text)
+	sentences := SplitSentences(stripEllipsis(text))
 	segments := make([]string, 0, len(sentences))
 	for _, sentence := range sentences {
 		segments = append(segments, splitRunOns(sentence)...)
 	}
 	return segments
+}
+
+// stripEllipsis removes the leading and trailing ellipsis ("...", "…") the
+// learner uses as continuation markers between practices. They carry no
+// grammatical content and must never become a fragment of their own (fix de
+// alineación, DEVLOG 2026-09-22). A single trailing period is a normal sentence
+// terminator and is left intact.
+func stripEllipsis(text string) string {
+	text = strings.TrimSpace(text)
+	text = trimLeadingEllipsis(text)
+	text = trimTrailingEllipsis(text)
+	return strings.TrimSpace(text)
+}
+
+// trimLeadingEllipsis strips a leading run of three or more dots, or of the
+// unicode ellipsis character.
+func trimLeadingEllipsis(text string) string {
+	if strings.HasPrefix(text, "...") {
+		return strings.TrimLeft(text, ".")
+	}
+	return strings.TrimLeft(text, "…")
+}
+
+// trimTrailingEllipsis strips a trailing run of three or more dots, or of the
+// unicode ellipsis character.
+func trimTrailingEllipsis(text string) string {
+	if strings.HasSuffix(text, "...") {
+		return strings.TrimRight(text, ".")
+	}
+	return strings.TrimRight(text, "…")
 }
 
 // splitRunOns subdivides a long sentence at deterministic clause boundaries. It
@@ -214,7 +251,9 @@ func splitRunOns(sentence string) []string {
 // splitAtClauseBoundaries cuts the sentence after a clause separator: a
 // semicolon, or a comma followed by a coordinating conjunction or relative
 // pronoun. The separator stays attached to the preceding clause so joining the
-// pieces with a single space reproduces the original.
+// pieces with a single space reproduces the original. A boundary whose leading
+// clause is shorter than minClauseWords is skipped, so a bare transition word
+// ("Then,") is never detached into its own fragment.
 func splitAtClauseBoundaries(sentence string) []string {
 	runes := []rune(sentence)
 	var parts []string
@@ -229,9 +268,11 @@ func splitAtClauseBoundaries(sentence string) []string {
 				continue
 			}
 		}
-		if piece := strings.TrimSpace(string(runes[start : i+1])); piece != "" {
-			parts = append(parts, piece)
+		piece := strings.TrimSpace(string(runes[start : i+1]))
+		if wordCount(piece) < minClauseWords {
+			continue
 		}
+		parts = append(parts, piece)
 		start = i + 1
 	}
 	if start < len(runes) {

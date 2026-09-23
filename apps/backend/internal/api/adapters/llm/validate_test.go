@@ -127,3 +127,21 @@ func TestValidateFragments_UnknownSeverity_ReturnsError(t *testing.T) {
 
 	assertInvalidOutput(t, validateFragments([]analysis.Fragment{fragment}))
 }
+
+func TestValidateFragments_OverCorrectedCorrection_ReturnsError(t *testing.T) {
+	fragment := validFragment()
+	fragment.UserDraft = "The dog run."
+	fragment.Correction = "The dog runs. Then he left home. After that he slept."
+
+	assertInvalidOutput(t, validateFragments([]analysis.Fragment{fragment}))
+}
+
+func TestValidateFragments_RunOnCorrectedToTwoSentences_IsAllowed(t *testing.T) {
+	fragment := validFragment()
+	fragment.UserDraft = "The dog run in the park and he were very happy about it."
+	fragment.Correction = "The dog ran in the park. He was very happy about it."
+
+	if err := validateFragments([]analysis.Fragment{fragment}); err != nil {
+		t.Fatalf("validateFragments() error = %v, want nil", err)
+	}
+}

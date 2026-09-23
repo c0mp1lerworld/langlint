@@ -27,6 +27,9 @@ func validateFragment(fragment analysis.Fragment) error {
 	if !nonEmpty(fragment.SourceES, fragment.UserDraft, fragment.Correction) {
 		return invalidOutput()
 	}
+	if overCorrects(fragment) {
+		return invalidOutput()
+	}
 	for _, review := range fragment.TargetVerbReviews {
 		if !validTargetVerbReview(review) {
 			return invalidOutput()
@@ -86,6 +89,14 @@ func nonEmpty(values ...string) bool {
 		}
 	}
 	return true
+}
+
+// overCorrects reports whether the correction spans more sentences than the
+// learner's draft segment, which would mean the model corrected content that
+// belongs to other segments (over-correction guard). A run-on draft may
+// legitimately be corrected into two sentences, hence the +1 tolerance.
+func overCorrects(fragment analysis.Fragment) bool {
+	return len(SplitSentences(fragment.Correction)) > len(SplitSentences(fragment.UserDraft))+1
 }
 
 // validAlternatives reports whether every alternative carries content. An empty

@@ -28,6 +28,57 @@ func TestSplitSentences_EmptyText_ReturnsNil(t *testing.T) {
 	}
 }
 
+func TestStripEllipsis_LeadingTrailingAndUnicode(t *testing.T) {
+	cases := map[string]string{
+		"...this continues.": "this continues.",
+		"that continues...":  "that continues",
+		"…this too…":         "this too",
+		"normal sentence.":   "normal sentence.",
+		"...":                "",
+	}
+	for in, want := range cases {
+		if got := stripEllipsis(in); got != want {
+			t.Errorf("stripEllipsis(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestSplitSegments_StripsLeadingEllipsis(t *testing.T) {
+	text := "...this will allow us to tie the commitments. In the end, I prefer not to lose hope."
+
+	got := splitSegments(text)
+	if len(got) != 2 {
+		t.Fatalf("splitSegments() = %q, want 2 segments", got)
+	}
+	if strings.HasPrefix(got[0], "...") || got[0] == "..." {
+		t.Fatalf("splitSegments()[0] = %q, want the leading ellipsis stripped", got[0])
+	}
+}
+
+func TestSplitSegments_ShortDraft_SingleSegment(t *testing.T) {
+	for _, text := range []string{"Por supuesto.", "Yes.", "No."} {
+		got := splitSegments(text)
+		if len(got) != 1 || got[0] != text {
+			t.Errorf("splitSegments(%q) = %q, want a single segment [%q]", text, got, text)
+		}
+	}
+}
+
+func TestSplitRunOns_DoesNotDetachTransitionWord(t *testing.T) {
+	sentence := "Then, while I arrange to sweep the backyard where the peasants swept in the afternoon, I understand the sadness that makes me weep, and I remember the secrets that I always kept with care."
+
+	got := splitRunOns(sentence)
+	if len(got) != 2 {
+		t.Fatalf("splitRunOns() = %q, want 2 sub-clauses", got)
+	}
+	if !strings.HasPrefix(got[0], "Then, while ") {
+		t.Fatalf("first sub-clause = %q, want it to keep \"Then,\" attached to the clause", got[0])
+	}
+	if !reconstructs(sentence, got) {
+		t.Fatalf("splitRunOns() pieces do not reconstruct the original: %q", got)
+	}
+}
+
 func TestSplitRunOns_ShortSentence_Unchanged(t *testing.T) {
 	sentence := "The dog runs in the park."
 
