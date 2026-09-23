@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-09-22 — Backlog del tutor (checklist Fase 10)
+
+**Estado**: solo documentación. Se crea `docs/checklist/10-tutor-mejoras.md` para evidenciar que el tutor necesita más trabajo (post-MVP): historial de sesiones (`GET /v1/study-sessions`), elección del tema intensivo a reforzar, ciclo de vida completo, repetición espaciada e integración quiz→repaso. Ningún item está implementado; son mejoras aditivas sobre la Fase 8. `AGENTS.md` actualizado para apuntar a este backlog. Sin cambios de código ni de contrato (A12).
+
+**Próximo paso**: cuando se retome, atacar `10.1` (historial) y `10.2` (elección de tema), o la deuda de seguridad `SD-3`.
+
+---
+
 ## 2026-09-22 — Fix: desalineación de fragmentos (elipsis, transición y sobre-corrección)
 
 **Estado**: corregida la desalineación fuente↔borrador↔corrección reportada por el humano en los análisis importados. El diagnóstico distinguió **tres mecanismos** en el extractor (`internal/api/adapters/llm/prompt.go`), no un bug del import: (1) los `...` de continuación se convertían en fragmento propio, (2) la subdivisión de run-ons despegaba un "Then," de 1 palabra, y (3) gpt-4o-mini sobre-corregía (incluía la frase siguiente). `go build/vet`, `go test -race -count=1 ./...` (Tier 1+2) y `-tags=integration` (Tier 3 + e2e) en verde; los 16 análisis regenerados con `cmd/import -reset -attempts 4` (0 fallos, con reintentos en 2 prácticas) y `refresh-aggregates` (21 métricos).
