@@ -32,6 +32,9 @@ npm-debug.log*
 # Templates de sesión IA (scratch local)
 docs/promnt*.txt
 
+# Datos personales de la migración one-off (cmd/import)
+apps/backend/import.json
+
 # Sistema
 .DS_Store
 Thumbs.db
