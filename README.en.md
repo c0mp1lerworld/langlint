@@ -4,7 +4,7 @@
 
 [Español](README.md) · **English**
 
-[![Contract](https://img.shields.io/badge/contract-3.0.0-informational)](apps/contracts/CHANGELOG.md)
+[![Contract](https://img.shields.io/badge/contract-3.4.0-informational)](apps/contracts/CHANGELOG.md)
 [![Go](https://img.shields.io/badge/Go-1.26.8-00ADD8)](apps/backend/go.mod)
 [![Next.js](https://img.shields.io/badge/Next.js-15-black)](apps/frontend/package.json)
 
@@ -48,10 +48,15 @@ eliminate blind spots.
 
 - **Functional MVP complete**: Phases 1–6 (foundations, pure domain, ports and
   adapters, AI engine, frontend, provisioner/privacy) are green.
-- **Phase 7 — Hardening**: CI/CD (`7.1`) and Security (`7.2`) complete;
-  documentation (`7.3`) being closed out. Code, tests and local gates are green.
-- **Post-MVP enhancement — Phase 9**: structured deep feedback and active
-  practice (AI quiz) complete (`9.1`–`9.6`).
+- **Phase 7 — Hardening**: CI/CD (`7.1`), Security (`7.2`) and Documentation
+  (`7.3`) complete; **Phase 7 gate is green** (first real CI run without errors).
+- **Phase 8 — Adaptive Tutor (post-MVP)**: fifth bounded context `tutor/`,
+  weakness detection (`WeaknessDetected` via outbox) and on-demand study-session
+  generation (`POST /v1/study-sessions`), additive and non-breaking.
+- **Phase 9 — Deep feedback and active practice**: structured explanations, AI
+  quiz and quiz analytics (`9.1`–`9.7`, contract `3.4.0`).
+- **Phase 10 — Tutor backlog**: session history, topic selection and spaced
+  repetition (see [`docs/checklist/10-tutor-mejoras.md`](docs/checklist/10-tutor-mejoras.md)).
 - **MVP non-goals**: real multi-user, multi-language and streaming
   (see [`PRODUCT_DOMAIN.md §3.2`](docs/PRODUCT_DOMAIN.md)).
 
@@ -101,6 +106,7 @@ cmd  →  adapters  →  services  →  ports  →  domain
 | `practice` | The exercise: source text, draft and target rules. | `Practice` |
 | `analysis` | The fragment-level analysis produced by the AI. | `Analysis` |
 | `analytics` | Materialization of error patterns and progress. | `ErrorMetric` |
+| `tutor` | Adaptive tutor (post-MVP): weaknesses and study sessions. | `StudySession` |
 
 They communicate through ports and **domain events** via the outbox, never
 through cross-imports. Details live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
@@ -147,10 +153,10 @@ langlint/
 | Services coverage | **91–98 %** | `go test -cover ./internal/api/services/...` |
 | Backend tests (Tier 1+2) | green | `pnpm test` (`go test -race`) |
 | Integration (Tier 3) | green | `pnpm test-integration --filter=backend` (testcontainers) |
-| Frontend tests (Vitest) | **95** | `pnpm --filter frontend test` |
+| Frontend tests (Vitest) | **99** | `pnpm --filter frontend test` |
 | e2e (Playwright) | 2 | `pnpm test:e2e` |
 | Static security analysis | **0 findings** | `gosec` / `govulncheck` (CI `security.yml`) |
-| Contract | **3.0.0** | `contracts.yml`: drift + `info.version` |
+| Contract | **3.4.0** | `contracts.yml`: drift + `info.version` |
 
 ---
 
@@ -206,15 +212,19 @@ See [`docs/RUNBOOK.md`](docs/RUNBOOK.md) for troubleshooting and
 | 4 | AI engine (Structured Outputs) | ✅ |
 | 5 | Frontend (3-column diff + analytics) | ✅ |
 | 6 | Provisioner and privacy (A9) | ✅ |
-| 7 | Hardening (CI/CD, security, documentation) | closing |
+| 7 | Hardening (CI/CD, security, documentation) | ✅ |
+| 8 | Adaptive Tutor (post-MVP: `tutor/`, `POST /v1/study-sessions`) | ✅ |
+| 9 | Deep feedback and active practice (quiz + analytics) | ✅ |
 
-### Future (post-MVP): Adaptive Tutor
+### Adaptive Tutor (Phase 8) and backlog (Phase 10)
 
-The natural evolution is to turn LangLint into an **adaptive, personalized
-English tutor** with *spaced repetition* and learning intelligence driven by the
-user's **real errors**. It is added as a fifth bounded context (`tutor/`) that
-consumes `analytics/` aggregates via the event bus, **without breaking** any of
-the four existing contexts. See [`PRODUCT_DOMAIN.md §12.1`](docs/PRODUCT_DOMAIN.md).
+LangLint ships an **adaptive English tutor**: a fifth bounded context (`tutor/`)
+that consumes `analytics/` aggregates through the event bus and generates
+personalized study sessions (theory, traps and exercises) with Structured
+Outputs, **without breaking** any of the four MVP contexts. Improvements for
+session history, topic selection and spaced repetition live in the backlog
+[`docs/checklist/10-tutor-mejoras.md`](docs/checklist/10-tutor-mejoras.md).
+See [`PRODUCT_DOMAIN.md §12.1`](docs/PRODUCT_DOMAIN.md).
 
 ---
 

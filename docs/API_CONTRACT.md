@@ -77,6 +77,8 @@ contexto:
 | `Fragment` / `TargetVerbReview` / … | `analysis.Fragment` (+ value objects) |
 | `QuizQuestion` / `QuizEvaluation` | `analysis.QuizQuestion` / `analysis.QuizEvaluation` |
 | `ErrorPatternStats` | `analytics.ErrorMetric` |
+| `QuizStats` | `analytics.QuizStats` (derivado on-read de `analytics.QuizAttempt`) |
+| `StudySession` / `WeaknessEntry` / `StudySessionTrap` / `StudySessionExercise` | `tutor.StudySession` (+ value objects) |
 | `AccessLogEntry` | `identity.AccessEvent` |
 | `DataExport.email` | `identity.Email` (origen: ver GAP-2) |
 
@@ -85,4 +87,4 @@ Campos de **respuesta calculados** (no del agregado): `AccessLog.total`,
 
 ---
 
-**Última revisión**: 2026-09-21.
+**Última revisión**: 2026-09-22.

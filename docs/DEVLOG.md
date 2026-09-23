@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-09-22 — Sincronización documental (docs ↔ código)
+
+**Estado**: solo documentación (sin cambios de código ni de contrato, A12). Se revisan las fuentes autoritativas contra el estado real del repo (`3.4.0`, Fase 8 y Fase 9 cerradas) y se corrigen drift acumulado desde la Fase 7.
+
+**Hecho**:
+- `ARCHITECTURE.md`: contrato `3.0.0 → 3.4.0`; `cmd/import` en `cmd/` y en la tabla de entry points; quinto BC `tutor/` (dominio, tabla §3.3, y `StudySessionGenerator` en §3.5); tablas `study_sessions`/`quiz_attempts` (append-only ledger) en §5.2; rutas/features frontend `/study-session`; versión `1.1.0`.
+- `PRODUCT_DOMAIN.md`: `tutor/` como quinto BC implementado (§4.1), endpoints `POST /v1/study-sessions` y `GET /v1/analytics/quiz` (§5.1), fases 8–9 en el roadmap (§12) y §12.1 marcada como implementada (ya no "a futuro").
+- `API_CONTRACT.md`: mapeos wire↔dominio de `QuizStats`, `StudySession` y sus schemas; fecha de revisión.
+- `README.md` / `README.en.md`: estado del proyecto (Fase 7 gate verde, Fase 8 tutor MVP, Fase 9 incl. `9.7`, Fase 10 backlog), BC `tutor` en la tabla y roadmap 7–9 ✅; sección "Futuro" reformulada como implementada + backlog.
+
+**Decisiones**:
+- **No se toca el código ni `api.yaml`** (A12): el contrato ya estaba en `3.4.0`; solo se alinea la documentación descriptiva con lo implementado.
+- **`PRODUCT_DOMAIN.md` §12.1 se conserva como sección histórica** (el diseño anticipado sigue siendo válido) con una nota de estado que remite a la Fase 8 y al backlog de Fase 10.
+
+**Bloqueos**: ninguno.
+
+**Próximo paso**: retomar el backlog de Fase 10 (`10.1` historial, `10.2` elección de tema) o la deuda de seguridad `SD-3`.
+
+---
+
 ## 2026-09-22 — Backlog del tutor (checklist Fase 10)
 
 **Estado**: solo documentación. Se crea `docs/checklist/10-tutor-mejoras.md` para evidenciar que el tutor necesita más trabajo (post-MVP): historial de sesiones (`GET /v1/study-sessions`), elección del tema intensivo a reforzar, ciclo de vida completo, repetición espaciada e integración quiz→repaso. Ningún item está implementado; son mejoras aditivas sobre la Fase 8. `AGENTS.md` actualizado para apuntar a este backlog. Sin cambios de código ni de contrato (A12).

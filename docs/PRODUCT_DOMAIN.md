@@ -117,11 +117,12 @@ Para mantener el proyecto acotado y evitar la parálisis por análisis (MVP acot
 | `identity/` | Identidad portable del usuario (A9). Propietario de los datos de estudio. | `User` |
 | `practice/` | El ejercicio de escritura: texto base, borrador del usuario, reglas objetivo. | `Practice` |
 | `analysis/` | El análisis fragmentado generado por la IA sobre una práctica. | `Analysis` |
-| `analytics/` | Materialización de patrones de error y progreso temporal. | `ErrorMetric`, `ProgressMetric` |
+| `analytics/` | Materialización de patrones de error, progreso temporal y aciertos del quiz. | `ErrorMetric`, `ProgressMetric`, `QuizAttempt` |
+| `tutor/` | Tutor adaptativo (Fase 8, post-MVP): perfil de debilidades y sesiones de estudio personalizadas. | `StudySession`, `WeaknessProfile` |
 
-**Regla de aislamiento (A3)**: los cuatro bounded contexts **no se importan entre sí**. Se comunican vía puertos en `internal/api/ports/` y eventos de dominio append-only. `analysis/` referencia a `Practice` por su `ID` (tipo primitivo `domain.ID`), nunca importando el paquete `practice/`.
+**Regla de aislamiento (A3)**: los cinco bounded contexts **no se importan entre sí**. Se comunican vía puertos en `internal/api/ports/` y eventos de dominio append-only. `analysis/` referencia a `Practice` por su `ID` (tipo primitivo `domain.ID`), nunca importando el paquete `practice/`.
 
-> **Evolución futura (fuera del MVP)**: un quinto bounded context, **`tutor/`** (o `curriculum/`), se incorporará en el roadmap post-MVP como un **tutor adaptativo** que consume los agregados de `analytics/` para generar sesiones de estudio personalizadas (ver §12.1). Gracias al diseño por eventos (A3, A4), esta incorporación **no romperá** ninguno de los cuatro contexts existentes: `tutor/` será un módulo desacoplado que se suscribe al Domain Event Bus (outbox).
+> **Quinto bounded context implementado (post-MVP, Fase 8)**: **`tutor/`** consume los agregados de `analytics/` **por puerto** (nunca lo importa) y reacciona al evento `WeaknessDetected` emitido vía outbox para construir el `WeaknessProfile`; el endpoint `POST /v1/study-sessions` genera la sesión bajo demanda. Su incorporación fue **aditiva** y no rompió ninguno de los otros contextos (ver §12.1 y [`checklist/08-tutor-adaptativo.md`](checklist/08-tutor-adaptativo.md)). Las mejoras pendientes (historial, elección de tema, repetición espaciada) se llevan en [`checklist/10-tutor-mejoras.md`](checklist/10-tutor-mejoras.md).
 
 ### 4.2 Entidades y Agregados
 
@@ -278,6 +279,8 @@ Cada `ErrorPattern` además lleva `severity` (`minor` | `moderate` | `critical`)
 | `POST` | `/v1/practices/{practiceId}/analyze` | Dispara el análisis asíncrono. | `202` (polling) + `Retry-After` |
 | `GET` | `/v1/analytics/error-patterns` | Agregados de patrones de error (`?window=day\|week\|month`). | `200` `ErrorPatternStats` |
 | `GET` | `/v1/analytics/progress` | Serie temporal de progreso (`?window=day\|week\|month`). | `200` `ProgressSeries` |
+| `GET` | `/v1/analytics/quiz` | Métrica acumulada del quiz (aciertos/fallos/precisión). | `200` `QuizStats` |
+| `POST` | `/v1/study-sessions` | Tutor adaptativo: genera una sesión de estudio (`?window=day\|week\|month`). | `201` `StudySession` · `409 invalid_state` |
 | `GET` | `/v1/me/data/export` | Portabilidad de datos (A9, GDPR Art. 15+20). | `200` `DataExport` |
 | `DELETE` | `/v1/me/data` | Derecho al olvido, gracia 30 días (A9, GDPR Art. 17). | `202` |
 | `GET` | `/v1/me/access-log` | Auditoría del usuario (A9), paginada (`?limit&offset`). | `200` `AccessLog` (`{items, total}`) |
@@ -541,10 +544,12 @@ Para considerar el proyecto listo para el portafolio:
 | **5. Frontend** | Next.js: vista diff 3 columnas + dashboard de analíticas. | F1–F12 |
 | **6. Provisioner y privacidad** | Jobs `refresh-aggregates`, `purge-raw-data`, `execute-deletions` + endpoints A9. | A8, A9 |
 | **7. Hardening** | CI/CD (turbo remote cache, gosec, govulncheck), docs, README de portafolio. | AP-MR7, §6.5 |
+| **8. Tutor Adaptativo (post-MVP)** | Quinto BC `tutor/`: detección de debilidades (`WeaknessDetected`) + generación de sesión bajo demanda (`POST /v1/study-sessions`). | A3, A4, A8, A12 |
+| **9. Feedback profundo (post-MVP)** | Explicaciones estructuradas + quiz con IA + analytics del quiz (`GET /v1/analytics/quiz`). | F1–F12, A3 |
 
 ### 12.1 Roadmap Post-MVP — Tutor Adaptativo (Spaced Repetition + Inteligencia de Aprendizaje)
 
-> **Evolución natural del producto**, en el radar a futuro. No se implementa en el MVP; su diseño se anticipa para que su incorporación sea aditiva, nunca disruptiva.
+> **Sección histórica + estado**: esta sección anticipó el tutor y su diseño sigue vigente. Tras el MVP se implementó como **Fase 8** (`tutor/` + `POST /v1/study-sessions`, aditivo y sin rupturas; ver §4.1) y se amplió con la práctica activa en la **Fase 9**. Las mejoras restantes (historial de sesiones, elección de tema, repetición espaciada) están en el backlog [`checklist/10-tutor-mejoras.md`](checklist/10-tutor-mejoras.md). El texto siguiente describe el diseño original; su vocabulario de "a futuro" debe leerse como "implementado en Fase 8".
 
 **La idea**: transformar LangLint de una "herramienta de corrección de textos" a un **Tutor de Inglés Personalizado y Adaptativo**, un sistema de Spaced Repetition e inteligencia de aprendizaje basado en los **errores reales** del propio usuario.
 
@@ -572,7 +577,7 @@ Es decir, el sistema deja de *solo corregir* lo que el usuario escribe hoy, y pa
 - `ErrorMetric`/`ProgressMetric` (§4.2.4) son el **input agregado** que el tutor necesita; ya se materializan en el MVP.
 - El patrón outbox (§4.7) es **reusable** para el evento `WeaknessDetected` sin tocar el relay ni el dispatcher existentes.
 
-**Regla de oro**: el MVP **no** implementa el tutor. Solo deja el terreno preparado (taxonomía, agregados, bus de eventos) para que el Roadmap Post-MVP lo incorpore como un paso aditivo.
+**Regla de oro**: el MVP (Fases 1–7) **no** implementó el tutor; dejó el terreno preparado (taxonomía, agregados, bus de eventos) para que el roadmap post-MVP lo incorporara después como un paso aditivo. Esa incorporación ocurrió en la **Fase 8** (`tutor/` + `POST /v1/study-sessions`), sin tocar los cuatro contexts del MVP.
 
 ---
 

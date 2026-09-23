@@ -57,13 +57,13 @@ plataforma de práctica de escritura con corrección por IA. La arquitectura es 
 langlint/
 ├── apps/
 │   ├── contracts/                  # SSOT OpenAPI + pipeline de generación
-│   │   ├── openapi/api.yaml        # Contrato HTTP (versión 3.0.0)
+│   │   ├── openapi/api.yaml        # Contrato HTTP (versión 3.4.0)
 │   │   ├── scripts/generate.sh     # oapi-codegen (Go) + openapi-typescript (TS)
 │   │   └── scripts/check-version.sh
 │   ├── backend/                    # Go: un único go.mod (A11)
-│   │   ├── cmd/{api,provisioner,migrate,llmcheck}/
+│   │   ├── cmd/{api,provisioner,migrate,llmcheck,import}/
 │   │   ├── internal/
-│   │   │   ├── domain/{identity,practice,analysis,analytics}/  # puro (A1)
+│   │   │   ├── domain/{identity,practice,analysis,analytics,tutor}/  # puro (A1)
 │   │   │   ├── api/{handlers,services,ports,adapters,accesslog,di}/
 │   │   │   ├── provisioner/{handlers,services,ports,adapters,di}/
 │   │   │   └── shared/{config,db,httpx,logger,pseudonymizer,testdb}/
@@ -71,8 +71,8 @@ langlint/
 │   │   ├── test/e2e/               # tests Tier 3 cross-cutting
 │   │   └── Makefile                # generate, mocks, test, test-integration
 │   └── frontend/                   # Next.js 15 (App Router)
-│       ├── src/app/                # rutas: /, /practices/[id], /practices/new, /analytics
-│       ├── src/features/           # casos de uso (practice, analytics)
+│       ├── src/app/                # rutas: /, /practices/[id], /practices/new, /analytics, /study-session
+│       ├── src/features/           # casos de uso (practice, analytics, study-session)
 │       ├── src/components/{ui,feature}/
 │       ├── src/lib/{api,query,store,schemas,utils}/
 │       └── src/types/
@@ -121,25 +121,28 @@ duplican por entry-point.
 | `cmd/provisioner` | Jobs batch: `refresh-aggregates`, `purge-raw-data`, `execute-deletions`. | `ProvisionerConfig` |
 | `cmd/migrate` | Aplica las migraciones goose embebidas. | `APP_DATABASE_URL` |
 | `cmd/llmcheck` | Sonda de desarrollo para el motor de IA (no es producción). | `OpenAIConfig` |
+| `cmd/import` | Herramienta **one-off** de migración de prácticas manuales (fechas back-dateadas); no es producción. | `APP_DATABASE_URL` + `OpenAIConfig` |
 
 Cada entry-point tiene su propio `fx.Module` en `internal/<entrypoint>/di/`; no
 se comparten módulos Fx entre entry-points.
 
 ### 3.3 Bounded contexts (A3)
 
-Cuatro contextos **aislados** que solo comparten primitivos del paquete raíz
-`domain` (`ID`, errores sentinela). Se comunican por puertos y eventos de
-dominio (nunca importándose entre sí).
+Cinco contextos **aislados** que solo comparten primitivos del paquete raíz
+`domain` (`ID`, errores sentinela, `Window`). Se comunican por puertos y eventos
+de dominio (nunca importándose entre sí).
 
 | Contexto | Agregado raíz | Responsabilidad |
 |---|---|---|
 | `identity` | `User`, `AccessEvent`, `DeletionRequest` | Identidad portable (A9), portabilidad, olvido y auditoría de accesos. |
 | `practice` | `Practice` | El ejercicio: texto base (es), borrador (en) y reglas objetivo. |
 | `analysis` | `Analysis` | El análisis fragmentado generado por la IA. |
-| `analytics` | `ErrorMetric`, `ProgressMetric` | Materialización de patrones de error y progreso. |
+| `analytics` | `ErrorMetric`, `ProgressMetric`, `QuizAttempt` | Materialización de patrones de error, progreso y aciertos del quiz. |
+| `tutor` | `StudySession`, `WeaknessProfile` | Tutor adaptativo (Fase 8, post-MVP): construye el perfil de debilidades y genera sesiones de estudio. |
 
 `analysis` referencia `Practice` por su `ID` (`domain.ID`), sin importar el
-paquete `practice`.
+paquete `practice`. `tutor` consume los **agregados** de `analytics` por puerto
+(nunca lo importa) y reacciona al evento `WeaknessDetected`.
 
 ### 3.4 Transacciones y comunicación asíncrona
 
@@ -167,6 +170,11 @@ para el quiz). El adaptador `OpenAIExtractor` usa **Structured Outputs** (JSON
 Schema estricto) y se invoca **una vez por frase** del borrador; el backend fija
 el `user_draft` a partir de su propia segmentación, de modo que cobertura y
 orden quedan garantizados por construcción.
+
+El tutor añade el puerto `StudySessionGenerator` (`OpenAIStudySessionGenerator`),
+que genera la sesión (teoría, trampas y ejercicios) también con Structured
+Outputs estrictos y `temperature=0`, a partir **solo de los agregados** de
+`analytics` (A8 por construcción).
 
 - **Anonimización antes del LLM (A8)**: no se envían datos personales.
 - **`temperature=0`** y prompt acotado para reducir varianza y truncado.
@@ -232,12 +240,13 @@ la plantilla.
 - Migraciones **goose** embebidas (`//go:embed *.sql` en `migrations/`), aplicadas
   por `cmd/migrate`, `cmd/api` y `cmd/provisioner` al arrancar.
 - Tablas: `practices`, `analyses`, `error_metrics`, `outbox_events`,
-  `deletion_requests`, `access_events`.
+  `deletion_requests`, `access_events`, `study_sessions`, `quiz_attempts`.
 - **Separación de datos crudos y analytics (A8)**: las tablas crudas
   (`practices`/`analyses`) se purgan; `error_metrics` solo guarda una clave
   **pseudonimizada** (HMAC-SHA256 con `APP_PSEUDONYM_SECRET`).
 - Tablas **append-only** de verdad de negocio: `outbox_events` (no de negocio),
-  `access_events` (auditoría A9, sin Update/Delete).
+  `access_events` (auditoría A9, sin Update/Delete) y `quiz_attempts` (ledger de
+  aciertos/fallos del quiz, fuera de `refresh-aggregates`).
 
 ### 5.3 CI/CD y seguridad
 
@@ -284,8 +293,8 @@ de verdad · rendimiento por construcción.
 
 ---
 
-**Versión**: 1.0.0
+**Versión**: 1.1.0
 **Mantenedor**: equipo de arquitectura.
-**Última revisión**: 2026-09-21.
+**Última revisión**: 2026-09-22.
 **Próxima revisión**: tras cada release mayor o cuando cambie el contrato
 arquitectónico (nuevos bounded contexts, cambios de capas o de despliegue).

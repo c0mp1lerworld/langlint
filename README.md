@@ -4,7 +4,7 @@
 
 **Español** · [English](README.en.md)
 
-[![Contract](https://img.shields.io/badge/contract-3.0.0-informational)](apps/contracts/CHANGELOG.md)
+[![Contract](https://img.shields.io/badge/contract-3.4.0-informational)](apps/contracts/CHANGELOG.md)
 [![Go](https://img.shields.io/badge/Go-1.26.8-00ADD8)](apps/backend/go.mod)
 [![Next.js](https://img.shields.io/badge/Next.js-15-black)](apps/frontend/package.json)
 
@@ -49,11 +49,16 @@ lo largo del tiempo para eliminar puntos ciegos.
 
 - **MVP funcional completo**: Fases 1–6 (fundaciones, dominio puro, puertos y
   adaptadores, motor IA, frontend y provisioner/privacidad) en verde.
-- **Fase 7 — Hardening**: CI/CD (`7.1`) y Seguridad (`7.2`) completados;
-  documentación (`7.3`) en cierre. El código, los tests y los gates locales
-  están en verde.
-- **Mejora post-MVP — Fase 9**: feedback profundo estructurado y práctica activa
-  (quiz con IA) completados (`9.1`–`9.6`).
+- **Fase 7 — Hardening**: CI/CD (`7.1`), Seguridad (`7.2`) y Documentación
+  (`7.3`) completadas; **Gate de Fase 7 en verde** (primer run real de CI sin
+  errores).
+- **Fase 8 — Tutor Adaptativo (post-MVP)**: quinto bounded context `tutor/`,
+  detección de debilidades (`WeaknessDetected` vía outbox) y generación de
+  sesiones de estudio (`POST /v1/study-sessions`), aditivo y sin rupturas.
+- **Fase 9 — Feedback profundo y práctica activa**: explicaciones estructuradas,
+  quiz con IA y analytics del quiz (`9.1`–`9.7`, contrato `3.4.0`).
+- **Fase 10 — Backlog del tutor**: historial de sesiones, elección de tema y
+  repetición espaciada (ver [`docs/checklist/10-tutor-mejoras.md`](docs/checklist/10-tutor-mejoras.md)).
 - **Non-goals del MVP**: multi-usuario real, multi-idioma y streaming
   (ver [`PRODUCT_DOMAIN.md §3.2`](docs/PRODUCT_DOMAIN.md)).
 
@@ -102,6 +107,7 @@ cmd  →  adapters  →  services  →  ports  →  domain
 | `practice` | El ejercicio: texto base, borrador y reglas objetivo. | `Practice` |
 | `analysis` | El análisis fragmentado generado por la IA. | `Analysis` |
 | `analytics` | Materialización de patrones de error y progreso. | `ErrorMetric` |
+| `tutor` | Tutor adaptativo (post-MVP): debilidades y sesiones de estudio. | `StudySession` |
 
 Se comunican por puertos y **eventos de dominio** vía outbox, nunca por imports
 cruzados. Los detalles están en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
@@ -148,10 +154,10 @@ langlint/
 | Cobertura de services | **91–98 %** | `go test -cover ./internal/api/services/...` |
 | Tests backend (Tier 1+2) | en verde | `pnpm test` (`go test -race`) |
 | Integración (Tier 3) | en verde | `pnpm test-integration --filter=backend` (testcontainers) |
-| Tests frontend (Vitest) | **95** | `pnpm --filter frontend test` |
+| Tests frontend (Vitest) | **99** | `pnpm --filter frontend test` |
 | e2e (Playwright) | 2 | `pnpm test:e2e` |
 | Análisis estático de seguridad | **0 hallazgos** | `gosec` / `govulncheck` (CI `security.yml`) |
-| Contrato | **3.0.0** | `contracts.yml`: drift + `info.version` |
+| Contrato | **3.4.0** | `contracts.yml`: drift + `info.version` |
 
 ---
 
@@ -207,16 +213,19 @@ Ver [`docs/RUNBOOK.md`](docs/RUNBOOK.md) para diagnóstico y
 | 4 | Motor de IA (Structured Outputs) | ✅ |
 | 5 | Frontend (diff de 3 columnas + analíticas) | ✅ |
 | 6 | Provisioner y privacidad (A9) | ✅ |
-| 7 | Hardening (CI/CD, seguridad, documentación) | en cierre |
+| 7 | Hardening (CI/CD, seguridad, documentación) | ✅ |
+| 8 | Tutor Adaptativo (post-MVP: `tutor/`, `POST /v1/study-sessions`) | ✅ |
+| 9 | Feedback profundo y práctica activa (quiz + analytics) | ✅ |
 
-### Futuro (post-MVP): Tutor Adaptativo
+### Tutor Adaptativo (Fase 8) y backlog (Fase 10)
 
-La evolución natural es convertir LangLint en un **tutor de inglés adaptativo**
-con *spaced repetition* e inteligencia de aprendizaje basada en los **errores
-reales** del usuario. Se incorpora como un quinto bounded context (`tutor/`) que
-consume los agregados de `analytics/` vía el bus de eventos, **sin romper**
-ninguno de los cuatro contextos existentes. Ver
-[`PRODUCT_DOMAIN.md §12.1`](docs/PRODUCT_DOMAIN.md).
+LangLint incorpora un **tutor de inglés adaptativo**: un quinto bounded context
+(`tutor/`) que consume los agregados de `analytics/` vía el bus de eventos y
+genera sesiones de estudio personalizadas (teoría, trampas y ejercicios) con
+Structured Outputs, **sin romper** ninguno de los cuatro contextos del MVP. Las
+mejoras de historial, elección de tema y repetición espaciada están en el
+backlog [`docs/checklist/10-tutor-mejoras.md`](docs/checklist/10-tutor-mejoras.md).
+Ver [`PRODUCT_DOMAIN.md §12.1`](docs/PRODUCT_DOMAIN.md).
 
 ---
 
